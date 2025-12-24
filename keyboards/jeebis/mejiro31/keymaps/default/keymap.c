@@ -18,8 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include QMK_KEYBOARD_H
 #include "os_detection.h"
 #include "keymap_japanese.h"
-// key overrides はコンパイル条件により無効化される場合があるため、
-// シンボル参照はガードして扱う
 
 // レイヤー定義（enumの値を0から連番で確保する）
 enum layer_names {
@@ -212,6 +210,8 @@ static uint8_t combo_fifo_len = 0;
 static hold_state_t hold_state = {0, 0, false, 0, 0, false, false};  // 長押し状態の初期化
 
 static bool is_combo_candidate(uint16_t keycode) {
+    // 特殊キーはコンボ対象外（直接処理したい）
+    if (keycode == KC_DZ) return false;
     // 単独でも変換対象にしたいキー（GRV はコンボ外でも JIS 変換する）
     if (keycode == KC_GRV) return true;
 
@@ -441,6 +441,17 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
     // FIFO combo capture (press-only; releases are swallowed)
     if (is_combo_candidate(keycode)) {
+        // Alt+` in JIS mode: bypass combo path and send plain GRV without Alt
+        if (keycode == KC_GRV) {
+            uint8_t mods = get_mods();
+            if (is_jis_mode && (mods & MOD_MASK_ALT)) {
+                if (record->event.pressed) {
+                    tap_code16(KC_GRV); // 全角半角キーを出力
+                }
+                return false;
+            }
+        }
+
         if (record->event.pressed) {
             if (combo_fifo_len < COMBO_FIFO_LEN) {
                 uint16_t base = keycode;
@@ -538,7 +549,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 // 押された瞬間に0を2回送信
                 SEND_STRING("00");
             }
-            return true;
+            return false; // ここで処理完結（コンボから除外済み）
         case KC_LCTL:
             if (is_mac) {
                 // Macの場合はCommandとして振る舞わせる
