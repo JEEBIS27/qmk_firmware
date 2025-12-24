@@ -15,11 +15,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/*---------------------------------------------------------------------------------------------------*/
+/*----------------------------------------------初期設定----------------------------------------------*/
+/*---------------------------------------------------------------------------------------------------*/
+
 #include QMK_KEYBOARD_H
 #include "os_detection.h"
 #include "keymap_japanese.h"
 
-// レイヤー定義（enumの値を0から連番で確保する）
 enum layer_names {
     _QWERTY = 0,
     _GEMINI,
@@ -36,12 +39,12 @@ enum custom_keycodes {
 #define MT_ENT MT(MOD_LSFT, KC_ENT)  // タップでEnter、ホールドでShift
 #define MT_ESC MT(MOD_LGUI, KC_ESC)  // タップでEscape、ホールドでGUI
 #define MO_FUN MO(_FUNCTION)  // ホールドで_FUNCTIONレイヤー
-#define MT_TGL LT(_NUMBER, KC_F24)  // タップで_GEMINIレイヤー切替、ホールドで_NUMBERレイヤー
+#define MT_TGL LT(_NUMBER, KC_F24)  // タップで_QWERTY・_GEMINIレイヤー切替、ホールドで_NUMBERレイヤー
 
 static uint16_t default_layer = 0; // デフォルトレイヤー状態を保存する変数 (0:_QWERTY, 1: _GEMINI)
 static bool is_jis_mode = true;    // JISモード状態を保存する変数
 
-// ユーザー設定の永続化用（eeconfig_user）
+// ユーザー設定の永続化用
 typedef union {
     uint32_t raw;
     struct {
@@ -57,44 +60,43 @@ void eeconfig_init_user(void) {
     user_config.jis_mode = true;
     eeconfig_update_user(user_config.raw);
 
-    // STENOモードの初期化（既存動作を維持）
+    // STENOモードの初期化
     steno_set_mode(STENO_MODE_GEMINI);
 }
 
-// 起動後の初期化フック：必ずQWERTYから開始し、JISモードをEEPROMから復元
 void keyboard_post_init_user(void) {
     // JISモードの復元
     user_config.raw = eeconfig_read_user();
     is_jis_mode = (user_config.jis_mode);
 
-    // 起動時は必ずQWERTYをデフォルトに設定（EEPROMへは書かない）
+    // 起動時は必ずQWERTYをデフォルトに設定
     default_layer_set((layer_state_t)1UL << _QWERTY);
     layer_clear();
     layer_move(_QWERTY);
     default_layer = 0;
 }
 
-/* -------------------------------------------------------------------------- */
-/*  FIFO-based combo algorithm with timeout                                   */
-/* -------------------------------------------------------------------------- */
+/*---------------------------------------------------------------------------------------------------*/
+/*--------------------------------------------JIS×US変換---------------------------------------------*/
+/*---------------------------------------------------------------------------------------------------*/
+
 #define JP_TRANSFORM_ENABLED 1
 
-// JP_* マクロに変換するオンザフライ変換
+// JIS×US変換
 static inline uint16_t jis_transform(uint16_t kc, bool shifted) {
     if (!is_jis_mode) return kc;
     switch (kc) {
-        case KC_1: return shifted ? JP_EXLM : KC_1;
-        case KC_2: return shifted ? JP_AT   : KC_2;
-        case KC_3: return shifted ? JP_HASH : KC_3;
-        case KC_4: return shifted ? JP_DLR  : KC_4;
-        case KC_5: return shifted ? JP_PERC : KC_5;
-        case KC_6: return shifted ? JP_CIRC : KC_6;
-        case KC_7: return shifted ? JP_AMPR : KC_7;
-        case KC_8: return shifted ? JP_ASTR : KC_8;
-        case KC_9: return shifted ? JP_LPRN : KC_9;
-        case KC_0: return shifted ? JP_RPRN : KC_0;
+        case KC_1: return shifted ? JP_EXLM : KC_1;   // ! / 1
+        case KC_2: return shifted ? JP_AT   : KC_2;   // @ / 2
+        case KC_3: return shifted ? JP_HASH : KC_3;   // # / 3
+        case KC_4: return shifted ? JP_DLR  : KC_4;   // $ / 4
+        case KC_5: return shifted ? JP_PERC : KC_5;   // % / 5
+        case KC_6: return shifted ? JP_CIRC : KC_6;   // ^ / 6
+        case KC_7: return shifted ? JP_AMPR : KC_7;   // & / 7
+        case KC_8: return shifted ? JP_ASTR : KC_8;   // * / 8
+        case KC_9: return shifted ? JP_LPRN : KC_9;   // ( / 9
+        case KC_0: return shifted ? JP_RPRN : KC_0;   // ) / 0
 
-        // 記号群（USの意味を維持）
         case KC_GRV:  return shifted ? JP_TILD : JP_GRV;   // ~ / `
         case KC_MINS: return shifted ? JP_UNDS : JP_MINS;  // _ / -
         case KC_EQL:  return shifted ? JP_PLUS : JP_EQL;   // + / =
@@ -110,7 +112,7 @@ static inline uint16_t jis_transform(uint16_t kc, bool shifted) {
     }
 }
 
-// Shift を一時的に無効化してキーを送るヘルパー（JIS用）
+// JISモード時にShift を一時的に無効化
 static void tap_code16_unshifted(uint16_t kc) {
     uint8_t saved_mods      = get_mods();
     uint8_t saved_weak_mods = get_weak_mods();
@@ -144,9 +146,13 @@ static bool is_jis_shift_target(uint16_t kc, bool shifted) {
     }
 }
 
-#define COMBO_FIFO_LEN       30
-#define COMBO_TIMEOUT_MS     100
-#define HOLD_TIME_THRESHOLD_MS 200  // 長押し判定の閾値
+/*---------------------------------------------------------------------------------------------------*/
+/*--------------------------------------------FIFOコンボ----------------------------------------------*/
+/*---------------------------------------------------------------------------------------------------*/
+
+#define COMBO_FIFO_LEN       30  // FIFOの長さ
+#define COMBO_TIMEOUT_MS     100 // コンボ待機のタイムアウト時間(ms) ※ QMKコンボでいうところのCOMBO_TERM
+#define HOLD_TIME_THRESHOLD_MS 200  // 長押し判定の閾値(ms)
 
 typedef struct {
     uint16_t keycode;
@@ -175,7 +181,7 @@ typedef struct {
 
 // コンボ定義（順不同）
 static const combo_pair_t combo_pairs[] PROGMEM = {
-    // QWERTY layer combos
+    // QWERTY
     {KC_Q,    KC_Z,    KC_A,    _QWERTY},
     {KC_W,    KC_X,    KC_S,    _QWERTY},
     {KC_E,    KC_C,    KC_D,    _QWERTY},
@@ -193,7 +199,7 @@ static const combo_pair_t combo_pairs[] PROGMEM = {
     {KC_N,    KC_M,    KC_BSPC, _QWERTY},
     {KC_Y,    KC_U,    KC_DEL,  _QWERTY},
 
-    // NUMBER layer combos
+    // NUMBER
     {KC_1,    KC_7,    KC_4,     _NUMBER},
     {KC_2,    KC_8,    KC_5,     _NUMBER},
     {KC_3,    KC_9,    KC_6,     _NUMBER},
@@ -209,10 +215,11 @@ static combo_event_t combo_fifo[COMBO_FIFO_LEN];
 static uint8_t combo_fifo_len = 0;
 static hold_state_t hold_state = {0, 0, false, 0, 0, false, false};  // 長押し状態の初期化
 
+// コンボ候補キーか判定する関数
 static bool is_combo_candidate(uint16_t keycode) {
-    // 特殊キーはコンボ対象外（直接処理したい）
+    // 特殊キーはコンボ対象外
     if (keycode == KC_DZ) return false;
-    // 単独でも変換対象にしたいキー（GRV はコンボ外でも JIS 変換する）
+    // GRV はコンボ外でも JIS 変換する
     if (keycode == KC_GRV) return true;
 
     uint16_t base = keycode;
@@ -226,6 +233,7 @@ static bool is_combo_candidate(uint16_t keycode) {
     return false;
 }
 
+// コンボ定義を検索する関数
 static const combo_pair_t *find_combo(uint16_t a, uint16_t b, uint8_t layer) {
     for (uint8_t i = 0; i < COMBO_PAIR_COUNT; i++) {
         combo_pair_t pair;
@@ -238,6 +246,7 @@ static const combo_pair_t *find_combo(uint16_t a, uint16_t b, uint8_t layer) {
     return NULL;
 }
 
+// 指定インデックスの要素を削除する関数
 static void fifo_remove(uint8_t idx) {
     if (idx >= combo_fifo_len) return;
     for (uint8_t i = idx; i + 1 < combo_fifo_len; i++) {
@@ -264,7 +273,7 @@ static bool resolve_combo_head(void) {
             combo_pair_t pair;
             memcpy_P(&pair, hit, sizeof(pair));
 
-            // JP_* へのオンザフライ変換
+            // JIS×US変換
             uint8_t mods = get_mods();
             bool shifted = (mods & MOD_MASK_SHIFT);
             uint16_t orig_out = pair.out;
@@ -288,7 +297,7 @@ static bool resolve_combo_head(void) {
                 }
             fifo_remove(i); // 後ろから削除
             fifo_remove(0); // 先頭を削除
-            return true;    // 1件処理したので呼び出し側で再試行
+            return true;    // 呼び出し側で再試行
         }
     }
     return false;
@@ -297,9 +306,9 @@ static bool resolve_combo_head(void) {
 // タイムアウト処理とコンボ解決を行う
 static void combo_fifo_service(void) {
     while (combo_fifo_len > 0) {
-        // 2: タイムアウトチェック（先頭）
+        // タイムアウトチェック
         // キューに複数要素がある場合はコンボ待機を優先し、タイムアウト確定を延期
-        // キューが1つだけの場合、タイムアウト時はタップで確定（長押し処理はしない）
+        // キューが1つだけの場合、タイムアウト時はタップで確定
         if (combo_fifo_len == 1 && timer_elapsed(combo_fifo[0].time_pressed) > COMBO_TIMEOUT_MS) {
             uint16_t base_kc = combo_fifo[0].keycode;
             uint8_t mods = get_mods();
@@ -322,7 +331,7 @@ static void combo_fifo_service(void) {
             fifo_remove(0);  // FIFOから削除
             continue;
         }
-        // 3: 先頭と他要素のペア探索
+        // 先頭と他要素のペア探索
         if (combo_fifo_len >= 2) {
             if (resolve_combo_head()) {
                 continue; // コンボが解決されたので再ループ
@@ -338,7 +347,7 @@ static void combo_fifo_service(void) {
                 bool shifted = (mods & MOD_MASK_SHIFT);
                 uint16_t out = jis_transform(base_kc, shifted);
                 bool unshift = is_jis_shift_target(base_kc, shifted);
-                // タップで確定（hold_stateには登録しない＝長押し処理なし）
+                // タップで確定
                 fifo_remove(0);  // まずFIFOから削除
                 if (unshift) {
                     tap_code16_unshifted(out);
@@ -348,9 +357,13 @@ static void combo_fifo_service(void) {
                 continue; // 再ループで次の要素をチェック
             }
         }
-        break; // 何もすることがない
+        break;
     }
 }
+
+/*---------------------------------------------------------------------------------------------------*/
+/*--------------------------------------------キーマップ----------------------------------------------*/
+/*---------------------------------------------------------------------------------------------------*/
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
@@ -431,17 +444,15 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
                                      KC_TRNS, KC_TRNS, KC_F12,  KC_F13
     ),
 };
-// ..................................................................... Keymaps
 
-// コンボを通常のQMKコンボ機能から除外したため、combo_t key_combos[] は削除しています。
+/*---------------------------------------------------------------------------------------------------*/
+/*--------------------------------------------メイン処理----------------------------------------------*/
+/*---------------------------------------------------------------------------------------------------*/
 
-// （CJ_* は廃止）
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
-    // FIFO combo capture (press-only; releases are swallowed)
     if (is_combo_candidate(keycode)) {
-        // Alt+` in JIS mode: bypass combo path and send plain GRV without Alt
         if (keycode == KC_GRV) {
             uint8_t mods = get_mods();
             if (is_jis_mode && (mods & MOD_MASK_ALT)) {
@@ -490,7 +501,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                     hold_state.keycode = 0;
                 }
             } else {
-                // タイムアウト前（まだ長押しが確定していない）にキーが離された場合：タップで出力
+                // タイムアウト前にキーが離された場合タップで出力
                 // FIFOから削除して、タップ送信
                 for (uint8_t i = 0; i < combo_fifo_len; i++) {
                     if (combo_fifo[i].keycode == base) {
@@ -519,7 +530,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         case MT_TGL:  // MT_TGLキー
             if (record->tap.count > 0) {
                 if (record->event.pressed) {
-                    // _QWERTY と _GEMINI の間でトグル切り替えを行う（EEPROMへは保存しない）
+                    // _QWERTY と _GEMINI の間でトグル切り替えを行う
                     if (default_layer == 0) {
                         default_layer_set((layer_state_t)1UL << _GEMINI);
                         layer_move(_GEMINI);
@@ -542,14 +553,13 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 user_config.jis_mode = is_jis_mode;
                 eeconfig_update_user(user_config.raw);
             }
-            // QK_KEY_OVERRIDE_TOGGLE 本来の挙動（キーオーバーライドの有効/無効）も通す
             return true;
         case KC_DZ:
             if (record->event.pressed) {
                 // 押された瞬間に0を2回送信
                 SEND_STRING("00");
             }
-            return false; // ここで処理完結（コンボから除外済み）
+            return false;
         case KC_LCTL:
             if (is_mac) {
                 // Macの場合はCommandとして振る舞わせる
@@ -638,5 +648,4 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 // 毎スキャンでFIFOコンボの処理を行う
 void matrix_scan_user(void) {
     combo_fifo_service();
-    // 長押し処理は不要（register_code16で既に押下状態）
 }
