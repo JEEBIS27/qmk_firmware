@@ -48,9 +48,9 @@ static bool is_alt_mode = false;
 static bool force_qwerty_active = false;
 static bool is_mac = false;
 // 0:未使用, 1:英語, 2:日本語, 3:無変更
-static int stn_lang = 0; // ステノ時の言語
-static int kbd_lang = 0; // キーボード時の言語
-static int alt_lang = 0; // Alternative Layoutの言語設定
+static int stn_lang = 2; // ステノ時の言語
+static int kbd_lang = 1; // キーボード時の言語
+static int alt_lang = 1; // Alternative Layoutの言語設定
 
 typedef union {
     uint32_t raw;
@@ -159,40 +159,40 @@ static bool is_jis_shift_target(uint16_t kc, bool shifted) {
 static inline uint16_t alt_transform(uint16_t kc) {
     if (!is_alt_mode || force_qwerty_active) return kc;
     switch (kc) {
-        case KC_Q: return KC_B;
-        case KC_W: return KC_L;
-        case KC_E: return KC_D;
-        case KC_R: return KC_W;
-        case KC_T: return KC_Z;
-        case KC_Y: return KC_QUOT;
-        case KC_U: return KC_F;
-        case KC_I: return KC_O;
-        case KC_O: return KC_U;
-        case KC_P: return KC_J;
-        case KC_MINS: return KC_MINS;
+        case KC_Q: return KC_QUOT;
+        case KC_W: return KC_COMM;
+        case KC_E: return KC_DOT;
+        case KC_R: return KC_P;
+        case KC_T: return KC_Y;
+        case KC_Y: return KC_F;
+        case KC_U: return KC_G;
+        case KC_I: return KC_C;
+        case KC_O: return KC_R;
+        case KC_P: return KC_L;
+        case KC_MINS: return KC_SLSH;
 
         case KC_A: return KC_N;
-        case KC_S: return KC_R;
-        case KC_D: return KC_T;
-        case KC_F: return KC_S;
-        case KC_G: return KC_G;
-        case KC_H: return KC_Y;
+        case KC_S: return KC_O;
+        case KC_D: return KC_E;
+        case KC_F: return KC_U;
+        case KC_G: return KC_I;
+        case KC_H: return KC_D;
         case KC_J: return KC_H;
-        case KC_K: return KC_A;
-        case KC_L: return KC_E;
-        case KC_SCLN: return KC_I;
-        case KC_QUOT: return KC_SCLN;
+        case KC_K: return KC_T;
+        case KC_L: return KC_N;
+        case KC_SCLN: return KC_S;
+        case KC_QUOT: return KC_MINS;
 
-        case KC_Z: return KC_Q;
-        case KC_X: return KC_X;
-        case KC_C: return KC_M;
-        case KC_V: return KC_C;
-        case KC_B: return KC_V;
-        case KC_N: return KC_K;
-        case KC_M: return KC_P;
-        case KC_COMM: return KC_COMM;
-        case KC_DOT: return KC_DOT;
-        case KC_SLSH: return KC_SLSH;
+        case KC_Z: return KC_SCLN;
+        case KC_X: return KC_Q;
+        case KC_C: return KC_J;
+        case KC_V: return KC_K;
+        case KC_B: return KC_X;
+        case KC_N: return KC_B;
+        case KC_M: return KC_M;
+        case KC_COMM: return KC_W;
+        case KC_DOT: return KC_V;
+        case KC_SLSH: return KC_Z;
         case KC_BSLS: return KC_BSLS;
         default: return kc;
     }
@@ -516,7 +516,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
     // NUMBER
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  `  │  -  │  1  │  2  │  3  │ 00  │             │ PGU │ HOM │  ↑  │ END │ CAP │ JIS │
+    // │  `  │  -  │  1  │  2  │  3  │ 00  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼──,──┼──4──┼──5──┼──6──┼─────┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
     // │ ESC │  .  │  7  │  8  │  9  │  0  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
@@ -527,7 +527,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER
     [_NUMBER] = LAYOUT(
-        KC_GRV, KC_MINS, KC_1, KC_2, KC_3,    KC_DZ,   KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_JIS,
+        KC_GRV, KC_MINS, KC_1, KC_2, KC_3,    KC_DZ,   KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_ALT,
         KC_ESC, KC_DOT,  KC_7, KC_8, KC_9,    KC_0,    KC_PGDN, KC_LEFT, KC_DOWN, KC_RIGHT, KC_LGUI, MO_FUN,
                                      MT_SPC,  KC_TRNS, MT_ENT,
                                      KC_LALT, KC_LCTL, KC_INT5, KC_INT4
