@@ -155,41 +155,41 @@ static bool is_jis_shift_target(uint16_t kc, bool shifted) {
 /*---------------------------------------------------------------------------------------------------*/
 
 // Alternative Layout変換
-// 配列名：Graphite
+// 配列名：QWERTY
 static inline uint16_t alt_transform(uint16_t kc) {
     if (!is_alt_mode || force_qwerty_active) return kc;
     switch (kc) {
-        case KC_Q: return KC_B;
-        case KC_W: return KC_L;
-        case KC_E: return KC_D;
-        case KC_R: return KC_W;
-        case KC_T: return KC_Z;
-        case KC_Y: return KC_QUOT;
-        case KC_U: return KC_F;
-        case KC_I: return KC_O;
-        case KC_O: return KC_U;
-        case KC_P: return KC_J;
+        case KC_Q: return KC_Q;
+        case KC_W: return KC_W;
+        case KC_E: return KC_E;
+        case KC_R: return KC_R;
+        case KC_T: return KC_T;
+        case KC_Y: return KC_Y;
+        case KC_U: return KC_U;
+        case KC_I: return KC_I;
+        case KC_O: return KC_O;
+        case KC_P: return KC_P;
         case KC_MINS: return KC_MINS;
 
-        case KC_A: return KC_N;
-        case KC_S: return KC_R;
-        case KC_D: return KC_T;
-        case KC_F: return KC_S;
+        case KC_A: return KC_A;
+        case KC_S: return KC_S;
+        case KC_D: return KC_D;
+        case KC_F: return KC_F;
         case KC_G: return KC_G;
-        case KC_H: return KC_Y;
-        case KC_J: return KC_H;
-        case KC_K: return KC_A;
-        case KC_L: return KC_E;
-        case KC_SCLN: return KC_I;
-        case KC_QUOT: return KC_SCLN;
+        case KC_H: return KC_H;
+        case KC_J: return KC_J;
+        case KC_K: return KC_K;
+        case KC_L: return KC_L;
+        case KC_SCLN: return KC_SCLN;
+        case KC_QUOT: return KC_QUOT;
 
-        case KC_Z: return KC_Q;
+        case KC_Z: return KC_Z;
         case KC_X: return KC_X;
-        case KC_C: return KC_M;
-        case KC_V: return KC_C;
-        case KC_B: return KC_V;
-        case KC_N: return KC_K;
-        case KC_M: return KC_P;
+        case KC_C: return KC_C;
+        case KC_V: return KC_V;
+        case KC_B: return KC_B;
+        case KC_N: return KC_N;
+        case KC_M: return KC_M;
         case KC_COMM: return KC_COMM;
         case KC_DOT: return KC_DOT;
         case KC_SLSH: return KC_SLSH;
