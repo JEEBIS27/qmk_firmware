@@ -169,7 +169,7 @@ static inline uint16_t alt_transform(uint16_t kc) {
         case KC_I: return KC_H;
         case KC_O: return KC_G;
         case KC_P: return KC_W;
-        case KC_MINS: return KC_SCLS;
+        case KC_MINS: return KC_SCLN;
 
         case KC_A: return KC_I;
         case KC_S: return KC_O;
