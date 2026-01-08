@@ -50,7 +50,7 @@ static bool is_mac = false;
 // 0:未使用, 1:英語, 2:日本語, 3:無変更
 static int stn_lang = 2; // ステノ時の言語
 static int kbd_lang = 1; // キーボード時の言語
-static int alt_lang = 1; // Alternative Layoutの言語設定
+static int alt_lang = 3; // Alternative Layoutの言語設定
 
 typedef union {
     uint32_t raw;
@@ -155,44 +155,44 @@ static bool is_jis_shift_target(uint16_t kc, bool shifted) {
 /*---------------------------------------------------------------------------------------------------*/
 
 // Alternative Layout変換
-// 配列名：Graphite
+// 配列名：Colemak Mod-DH配列
 static inline uint16_t alt_transform(uint16_t kc) {
     if (!is_alt_mode || force_qwerty_active) return kc;
     switch (kc) {
-        case KC_Q: return KC_QUOT;
-        case KC_W: return KC_COMM;
-        case KC_E: return KC_DOT;
+        case KC_Q: return KC_Q;
+        case KC_W: return KC_W;
+        case KC_E: return KC_F;
         case KC_R: return KC_P;
-        case KC_T: return KC_Y;
-        case KC_Y: return KC_F;
-        case KC_U: return KC_G;
-        case KC_I: return KC_C;
-        case KC_O: return KC_R;
-        case KC_P: return KC_L;
-        case KC_MINS: return KC_SLSH;
+        case KC_T: return KC_B;
+        case KC_Y: return KC_J;
+        case KC_U: return KC_L;
+        case KC_I: return KC_U;
+        case KC_O: return KC_Y;
+        case KC_P: return KC_SCLN;
+        case KC_MINS: return KC_MINS;
 
-        case KC_A: return KC_N;
-        case KC_S: return KC_O;
-        case KC_D: return KC_E;
-        case KC_F: return KC_U;
-        case KC_G: return KC_I;
-        case KC_H: return KC_D;
-        case KC_J: return KC_H;
-        case KC_K: return KC_T;
-        case KC_L: return KC_N;
-        case KC_SCLN: return KC_S;
-        case KC_QUOT: return KC_MINS;
+        case KC_A: return KC_A;
+        case KC_S: return KC_R;
+        case KC_D: return KC_S;
+        case KC_F: return KC_T;
+        case KC_G: return KC_G;
+        case KC_H: return KC_M;
+        case KC_J: return KC_N;
+        case KC_K: return KC_E;
+        case KC_L: return KC_I;
+        case KC_SCLN: return KC_O;
+        case KC_QUOT: return KC_QUOT;
 
-        case KC_Z: return KC_SCLN;
-        case KC_X: return KC_Q;
-        case KC_C: return KC_J;
-        case KC_V: return KC_K;
-        case KC_B: return KC_X;
-        case KC_N: return KC_B;
-        case KC_M: return KC_M;
-        case KC_COMM: return KC_W;
-        case KC_DOT: return KC_V;
-        case KC_SLSH: return KC_Z;
+        case KC_Z: return KC_Z;
+        case KC_X: return KC_X;
+        case KC_C: return KC_C;
+        case KC_V: return KC_D;
+        case KC_B: return KC_V;
+        case KC_N: return KC_K;
+        case KC_M: return KC_H;
+        case KC_COMM: return KC_COMM;
+        case KC_DOT: return KC_DOT;
+        case KC_SLSH: return KC_SLSH;
         case KC_BSLS: return KC_BSLS;
         default: return kc;
     }
