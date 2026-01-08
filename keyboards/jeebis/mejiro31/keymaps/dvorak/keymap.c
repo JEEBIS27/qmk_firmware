@@ -50,7 +50,7 @@ static bool is_mac = false;
 // 0:未使用, 1:英語, 2:日本語, 3:無変更
 static int stn_lang = 2; // ステノ時の言語
 static int kbd_lang = 1; // キーボード時の言語
-static int alt_lang = 1; // Alternative Layoutの言語設定
+static int alt_lang = 3; // Alternative Layoutの言語設定
 
 typedef union {
     uint32_t raw;
@@ -155,7 +155,7 @@ static bool is_jis_shift_target(uint16_t kc, bool shifted) {
 /*---------------------------------------------------------------------------------------------------*/
 
 // Alternative Layout変換
-// 配列名：Graphite
+// 配列名：Dvorak
 static inline uint16_t alt_transform(uint16_t kc) {
     if (!is_alt_mode || force_qwerty_active) return kc;
     switch (kc) {
