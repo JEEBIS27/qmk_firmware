@@ -273,14 +273,13 @@ static void refresh_force_qwerty_state(void) {
 /*---------------------------------------------------------------------------------------------------*/
 
 #define COMBO_FIFO_LEN       30  // FIFOの長さ
-#define COMBO_TIMEOUT_MS     200 // コンボ待機のタイムアウト時間(ms) ※ QMKコンボでいうところのCOMBO_TERM
-#define HOLD_TIME_THRESHOLD_MS 200  // 長押し判定の閾値(ms)
+#define COMBO_TIMEOUT_MS     300 // コンボ待機のタイムアウト時間(ms) ※ QMKコンボでいうところのCOMBO_TERM
 
 typedef struct {
     uint16_t keycode;
-    uint16_t orig_keycode;
     uint16_t time_pressed;
     uint8_t  layer;
+    bool     released;
 } combo_event_t;
 
 typedef struct {
@@ -424,30 +423,53 @@ static bool resolve_combo_head(void) {
 // タイムアウト処理とコンボ解決を行う
 static void combo_fifo_service(void) {
     while (combo_fifo_len > 0) {
-        if (combo_fifo_len == 1 && timer_elapsed(combo_fifo[0].time_pressed) > COMBO_TIMEOUT_MS) {
-            uint16_t base_kc = combo_fifo[0].keycode;
-            uint8_t mods = get_mods();
-            bool shifted = (mods & MOD_MASK_SHIFT);
-            transformed_key_t transformed = apply_alt_then_jis(base_kc, shifted);
-            hold_state.keycode = transformed.keycode;
-            hold_state.time_confirmed = timer_read();
-            hold_state.is_held = !transformed.needs_unshift;
-            hold_state.source_key_a = base_kc;
-            hold_state.source_key_b = 0;
-            hold_state.source_a_pressed = true;
-            hold_state.source_b_pressed = false;
-            if (transformed.needs_unshift) {
-                tap_code16_unshifted(transformed.keycode);
-            } else {
-                register_code16(transformed.keycode);
+        // FIFOに1つのキーしかない場合
+        if (combo_fifo_len == 1) {
+            // キーが離されている場合、即座に出力
+            if (combo_fifo[0].released) {
+                uint16_t base_kc = combo_fifo[0].keycode;
+                uint8_t mods = get_mods();
+                bool shifted = (mods & MOD_MASK_SHIFT);
+                transformed_key_t transformed = apply_alt_then_jis(base_kc, shifted);
+                if (transformed.needs_unshift) {
+                    tap_code16_unshifted(transformed.keycode);
+                } else {
+                    tap_code16(transformed.keycode);
+                }
+                fifo_remove(0);
+                continue;
             }
-            fifo_remove(0);
-            continue;
+            // キーがまだ押されていてタイムアウト時間経過の場合
+            if (timer_elapsed(combo_fifo[0].time_pressed) > COMBO_TIMEOUT_MS) {
+                uint16_t base_kc = combo_fifo[0].keycode;
+                uint8_t mods = get_mods();
+                bool shifted = (mods & MOD_MASK_SHIFT);
+                transformed_key_t transformed = apply_alt_then_jis(base_kc, shifted);
+                hold_state.keycode = transformed.keycode;
+                hold_state.time_confirmed = timer_read();
+                hold_state.is_held = !transformed.needs_unshift;
+                hold_state.source_key_a = base_kc;
+                hold_state.source_key_b = 0;
+                hold_state.source_a_pressed = true;
+                hold_state.source_b_pressed = false;
+                if (transformed.needs_unshift) {
+                    tap_code16_unshifted(transformed.keycode);
+                } else {
+                    register_code16(transformed.keycode);
+                }
+                fifo_remove(0);
+                continue;
+            }
+            break;
         }
+        // FIFOに2つ以上のキーがある場合
         if (combo_fifo_len >= 2) {
             if (resolve_combo_head()) {
                 continue;
-            } else {
+            }
+            // コンボが成立しなかった場合、先頭要素の離脱状態を確認
+            if (combo_fifo[0].released) {
+                // コンボ候補のキーが離されている場合、即座に出力
                 if (hold_state.is_held) {
                     unregister_code16(hold_state.keycode);
                     hold_state.is_held = false;
@@ -463,6 +485,8 @@ static void combo_fifo_service(void) {
                     tap_code16(transformed.keycode);
                 }
                 continue;
+            } else {
+                break;
             }
         }
         break;
@@ -579,9 +603,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                     hold_state.is_held = false;
                 }
                 combo_fifo[combo_fifo_len].keycode = base;
-                combo_fifo[combo_fifo_len].orig_keycode = keycode;
                 combo_fifo[combo_fifo_len].layer   = get_highest_layer(layer_state | default_layer_state);
                 combo_fifo[combo_fifo_len].time_pressed = timer_read();
+                combo_fifo[combo_fifo_len].released = false;  // 初期化
                 combo_fifo_len++;
             } else {
                 uint8_t mods = get_mods();
@@ -609,16 +633,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 }
             } else {
                 for (uint8_t i = 0; i < combo_fifo_len; i++) {
-                    if (combo_fifo[i].keycode == base) {
-                        uint8_t mods = get_mods();
-                        bool shifted = (mods & MOD_MASK_SHIFT);
-                        transformed_key_t transformed = apply_alt_then_jis(base, shifted);
-                        if (transformed.needs_unshift) {
-                            tap_code16_unshifted(transformed.keycode);
-                        } else {
-                            tap_code16(transformed.keycode);
-                        }
-                        fifo_remove(i);
+                    if (combo_fifo[i].keycode == base && !combo_fifo[i].released) {
+                        combo_fifo[i].released = true;
+                        combo_fifo_service();
                         break;
                     }
                 }
