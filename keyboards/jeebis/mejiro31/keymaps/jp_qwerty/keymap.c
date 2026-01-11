@@ -48,8 +48,8 @@ static bool is_alt_mode = false;
 static bool force_qwerty_active = false;
 static bool is_mac = false;
 // 0:未使用, 1:英語, 2:日本語, 3:無変更
-static int stn_lang = 2; // ステノ時の言語
-static int kbd_lang = 1; // キーボード時の言語
+static int stn_lang = 1; // ステノ時の言語
+static int kbd_lang = 2; // キーボード時の言語
 static int alt_lang = 0; // Alternative Layoutの言語設定
 
 typedef union {
