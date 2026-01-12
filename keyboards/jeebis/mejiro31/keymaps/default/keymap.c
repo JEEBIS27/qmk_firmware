@@ -21,7 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include QMK_KEYBOARD_H
 #include "os_detection.h"
-#include "keymap_japanese.h"
 
 enum layer_names {
     _QWERTY = 0,
@@ -32,7 +31,6 @@ enum layer_names {
 
 enum custom_keycodes {
     KC_DZ = SAFE_RANGE,  // 00キー
-    TG_JIS,              // JISモード切替キー
     TG_ALT,              // Alternative Layout切替キー
 };
 
@@ -43,19 +41,14 @@ enum custom_keycodes {
 #define MT_TGL LT(_NUMBER, KC_F24)  // タップで_QWERTY・_GEMINIレイヤー切替、ホールドで_NUMBERレイヤー
 
 static uint16_t default_layer = 0; // (0:_QWERTY, 1: _GEMINI)
-static bool is_jis_mode = true;
 static bool is_alt_mode = false;
 static bool force_qwerty_active = false;
 static bool is_mac = false;
-// 0:未使用, 1:英語, 2:日本語, 3:無変更
-static int stn_lang = 0; // ステノ時の言語
-static int kbd_lang = 0; // キーボード時の言語
-static int alt_lang = 0; // Alternative Layoutの言語設定
+static bool os_detected = false;  // OS検知完了フラグ
 
 typedef union {
     uint32_t raw;
     struct {
-        bool jis_mode : 1;
         bool alt_mode : 1;
     };
 } user_config_t;
@@ -64,7 +57,6 @@ static user_config_t user_config;
 
 void eeconfig_init_user(void) {
     user_config.raw = 0;
-    user_config.jis_mode = true;
     user_config.alt_mode = false;
     eeconfig_update_user(user_config.raw);
     steno_set_mode(STENO_MODE_GEMINI);
@@ -74,80 +66,11 @@ void keyboard_post_init_user(void) {
     os_variant_t os = detected_host_os();
     is_mac = (os == OS_MACOS || os == OS_IOS);
     user_config.raw = eeconfig_read_user();
-    is_jis_mode = (user_config.jis_mode);
     is_alt_mode = (user_config.alt_mode);
     default_layer_set((layer_state_t)1UL << _QWERTY);
     layer_clear();
     layer_move(_QWERTY);
     default_layer = 0;
-}
-
-/*---------------------------------------------------------------------------------------------------*/
-/*--------------------------------------------JIS×US変換---------------------------------------------*/
-/*---------------------------------------------------------------------------------------------------*/
-
-// JIS×US変換
-static inline uint16_t jis_transform(uint16_t kc, bool shifted) {
-    if (!is_jis_mode) return kc;
-    switch (kc) {
-        case KC_1: return shifted ? JP_EXLM : KC_1;   // ! / 1
-        case KC_2: return shifted ? JP_AT   : KC_2;   // @ / 2
-        case KC_3: return shifted ? JP_HASH : KC_3;   // # / 3
-        case KC_4: return shifted ? JP_DLR  : KC_4;   // $ / 4
-        case KC_5: return shifted ? JP_PERC : KC_5;   // % / 5
-        case KC_6: return shifted ? JP_CIRC : KC_6;   // ^ / 6
-        case KC_7: return shifted ? JP_AMPR : KC_7;   // & / 7
-        case KC_8: return shifted ? JP_ASTR : KC_8;   // * / 8
-        case KC_9: return shifted ? JP_LPRN : KC_9;   // ( / 9
-        case KC_0: return shifted ? JP_RPRN : KC_0;   // ) / 0
-
-        case KC_GRV:  return shifted ? JP_TILD : JP_GRV;   // ~ / `
-        case KC_MINS: return shifted ? JP_UNDS : JP_MINS;  // _ / -
-        case KC_EQL:  return shifted ? JP_PLUS : JP_EQL;   // + / =
-        case KC_LBRC: return shifted ? JP_LCBR : JP_LBRC;  // { / [
-        case KC_RBRC: return shifted ? JP_RCBR : JP_RBRC;  // } / ]
-        case KC_BSLS: return shifted ? JP_PIPE : JP_BSLS;  // | / ￥
-        case KC_SCLN: return shifted ? JP_COLN : JP_SCLN;  // : / ;
-        case KC_QUOT: return shifted ? JP_DQUO : JP_QUOT;  // " / '
-        case KC_COMM: return shifted ? JP_LABK : JP_COMM;  // < / ,
-        case KC_DOT:  return shifted ? JP_RABK : JP_DOT;   // > / .
-        case KC_SLSH: return shifted ? JP_QUES : JP_SLSH;  // ? / /
-        default: return kc;
-    }
-}
-
-// JISモード時にShift を一時的に無効化
-static void tap_code16_unshifted(uint16_t kc) {
-    uint8_t saved_mods      = get_mods();
-    uint8_t saved_weak_mods = get_weak_mods();
-    uint8_t saved_osm       = get_oneshot_mods();
-
-    del_mods(MOD_MASK_SHIFT);
-    del_weak_mods(MOD_MASK_SHIFT);
-    clear_oneshot_mods();
-    send_keyboard_report();
-
-    tap_code16(kc);
-
-    set_mods(saved_mods);
-    set_weak_mods(saved_weak_mods);
-    set_oneshot_mods(saved_osm);
-    send_keyboard_report();
-}
-
-// JIS変換対象でシフト解除が必要なキーか判定
-static bool is_jis_shift_target(uint16_t kc, bool shifted) {
-    if (!is_jis_mode || !shifted) return false;
-    switch (kc) {
-        case KC_1: case KC_2: case KC_3: case KC_4: case KC_5:
-        case KC_6: case KC_7: case KC_8: case KC_9: case KC_0:
-        case KC_GRV: case KC_MINS: case KC_EQL:
-        case KC_LBRC: case KC_RBRC: case KC_BSLS:
-        case KC_SCLN: case KC_QUOT: case KC_COMM: case KC_DOT: case KC_SLSH:
-            return true;
-        default:
-            return false;
-    }
 }
 
 /*---------------------------------------------------------------------------------------------------*/
@@ -198,53 +121,12 @@ static inline uint16_t alt_transform(uint16_t kc) {
     }
 }
 
-typedef struct {
-    uint16_t keycode;
-    bool     needs_unshift;
-} transformed_key_t;
 
-static inline transformed_key_t apply_alt_then_jis(uint16_t kc, bool shifted) {
-    uint16_t alt_kc = alt_transform(kc);
-    transformed_key_t result = {
-        .keycode = jis_transform(alt_kc, shifted),
-        .needs_unshift = is_jis_shift_target(alt_kc, shifted),
-    };
-    return result;
-}
 
 static inline bool mods_except_shift_active(void) {
     uint8_t mods = get_mods() | get_weak_mods() | get_oneshot_mods();
     mods &= ~MOD_MASK_SHIFT;
     return mods != 0;
-}
-
-// lang : 0=なし, 1=英語, 2=日本語
-static void update_lang(uint8_t lang) {
-    switch (alt_lang) {
-        case 0:
-            is_alt_mode = false;
-            break;
-        case 1:
-            is_alt_mode = (lang == 1);
-            break;
-        case 2:
-            is_alt_mode = (lang == 2);
-            break;
-        default:
-            break;
-    }
-    switch (lang) {
-        case 1:
-            tap_code16(is_mac ? KC_LNG1 : KC_INT5); // Mac: 英数 / Win: 無変換
-            break;
-        case 2:
-            tap_code16(is_mac ? KC_LNG2 : KC_INT4); // Mac: かな / Win: 変換
-            break;
-        default:
-            break;
-    }
-    user_config.alt_mode = is_alt_mode;
-    eeconfig_update_user(user_config.raw);
 }
 
 static void refresh_force_qwerty_state(void) {
@@ -328,6 +210,7 @@ static const combo_pair_t combo_pairs[] PROGMEM = {
     {KC_3,    KC_DZ,   KC_ESC,   _NUMBER},
     {KC_PGDN, KC_LEFT, KC_BSPC,  _NUMBER},
     {KC_PGUP, KC_HOME, KC_DEL,   _NUMBER},
+    {KC_LBRC, KC_RBRC, KC_EQL,   _NUMBER},
 };
 #define COMBO_PAIR_COUNT (sizeof(combo_pairs) / sizeof(combo_pairs[0]))
 
@@ -339,7 +222,14 @@ static hold_state_t hold_state = {0, 0, false, 0, 0, false, false};
 static bool is_combo_candidate(uint16_t keycode) {
 
     if (keycode == KC_DZ) return false;
-    if (keycode == KC_GRV) return true;
+    // モディファイア類はコンボから除外（入れ替え処理や修飾の素通しのため）
+    switch (keycode) {
+        case KC_LCTL: case KC_RCTL:
+        case KC_LGUI: case KC_RGUI:
+        case KC_LALT: case KC_RALT:
+        case KC_LSFT: case KC_RSFT:
+            return false;
+    }
 
     uint16_t base = keycode;
         for (uint8_t i = 0; i < COMBO_PAIR_COUNT; i++) {
@@ -374,6 +264,14 @@ static void fifo_remove(uint8_t idx) {
     combo_fifo_len--;
 }
 
+static void clear_hold_state(void) {
+    if (hold_state.is_held) {
+        unregister_code16(hold_state.keycode);
+        hold_state.is_held = false;
+        hold_state.keycode = 0;
+    }
+}
+
 // 先頭要素とそれ以外のペアを探索し、コンボがあれば発射して削除
 static bool resolve_combo_head(void) {
     if (combo_fifo_len < 2) return false;
@@ -392,26 +290,29 @@ static bool resolve_combo_head(void) {
             combo_pair_t pair;
             memcpy_P(&pair, hit, sizeof(pair));
 
-            // JIS×US変換
-            uint8_t mods = get_mods();
-            bool shifted = (mods & MOD_MASK_SHIFT);
-            uint16_t orig_out = pair.out;
-            transformed_key_t transformed = apply_alt_then_jis(orig_out, shifted);
+            uint16_t out_kc = alt_transform(pair.out);
+            bool head_pressed  = !combo_fifo[0].released;
+            bool other_pressed = !combo_fifo[i].released;
 
-            hold_state.keycode = transformed.keycode;
+            // If either source is already released, treat as a tap to avoid stuck holds.
+            if (!head_pressed || !other_pressed) {
+                clear_hold_state();
+                tap_code16(out_kc);
+                fifo_remove(i);
+                fifo_remove(0);
+                return true;
+            }
+
+            clear_hold_state();
+            hold_state.keycode = out_kc;
             hold_state.time_confirmed = timer_read();
             hold_state.is_held = true;
             hold_state.source_key_a = head_kc;
             hold_state.source_key_b = other_kc;
-            hold_state.source_a_pressed = true;
-            hold_state.source_b_pressed = true;
+            hold_state.source_a_pressed = head_pressed;
+            hold_state.source_b_pressed = other_pressed;
 
-                if (transformed.needs_unshift) {
-                    tap_code16_unshifted(transformed.keycode);
-                    hold_state.is_held = false;
-                } else {
-                    register_code16(transformed.keycode);
-                }
+            register_code16(out_kc);
             fifo_remove(i);
             fifo_remove(0);
             return true;
@@ -428,35 +329,24 @@ static void combo_fifo_service(void) {
             // キーが離されている場合、即座に出力
             if (combo_fifo[0].released) {
                 uint16_t base_kc = combo_fifo[0].keycode;
-                uint8_t mods = get_mods();
-                bool shifted = (mods & MOD_MASK_SHIFT);
-                transformed_key_t transformed = apply_alt_then_jis(base_kc, shifted);
-                if (transformed.needs_unshift) {
-                    tap_code16_unshifted(transformed.keycode);
-                } else {
-                    tap_code16(transformed.keycode);
-                }
+                uint16_t out_kc = alt_transform(base_kc);
+                tap_code16(out_kc);
                 fifo_remove(0);
                 continue;
             }
             // キーがまだ押されていてタイムアウト時間経過の場合
             if (timer_elapsed(combo_fifo[0].time_pressed) > COMBO_TIMEOUT_MS) {
                 uint16_t base_kc = combo_fifo[0].keycode;
-                uint8_t mods = get_mods();
-                bool shifted = (mods & MOD_MASK_SHIFT);
-                transformed_key_t transformed = apply_alt_then_jis(base_kc, shifted);
-                hold_state.keycode = transformed.keycode;
+                uint16_t out_kc = alt_transform(base_kc);
+                clear_hold_state();
+                hold_state.keycode = out_kc;
                 hold_state.time_confirmed = timer_read();
-                hold_state.is_held = !transformed.needs_unshift;
+                hold_state.is_held = true;
                 hold_state.source_key_a = base_kc;
                 hold_state.source_key_b = 0;
                 hold_state.source_a_pressed = true;
                 hold_state.source_b_pressed = false;
-                if (transformed.needs_unshift) {
-                    tap_code16_unshifted(transformed.keycode);
-                } else {
-                    register_code16(transformed.keycode);
-                }
+                register_code16(out_kc);
                 fifo_remove(0);
                 continue;
             }
@@ -475,15 +365,9 @@ static void combo_fifo_service(void) {
                     hold_state.is_held = false;
                 }
                 uint16_t base_kc = combo_fifo[0].keycode;
-                uint8_t mods = get_mods();
-                bool shifted = (mods & MOD_MASK_SHIFT);
-                transformed_key_t transformed = apply_alt_then_jis(base_kc, shifted);
+                uint16_t out_kc = alt_transform(base_kc);
                 fifo_remove(0);
-                if (transformed.needs_unshift) {
-                    tap_code16_unshifted(transformed.keycode);
-                } else {
-                    tap_code16(transformed.keycode);
-                }
+                tap_code16(out_kc);
                 continue;
             } else {
                 break;
@@ -540,7 +424,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
     // NUMBER
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  `  │  -  │  1  │  2  │  3  │ 00  │             │ PGU │ HOM │  ↑  │ END │ CAP │ JIS │
+    // │  `  │  -  │  1  │  2  │  3  │ 00  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼──,──┼──4──┼──5──┼──6──┼─────┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
     // │ ESC │  .  │  7  │  8  │  9  │  0  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
@@ -551,15 +435,15 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER
     [_NUMBER] = LAYOUT(
-        KC_GRV, KC_MINS, KC_1, KC_2, KC_3,    KC_DZ,   KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_JIS,
+        KC_GRV, KC_MINS, KC_1, KC_2, KC_3,    KC_DZ,   KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_ALT,
         KC_ESC, KC_DOT,  KC_7, KC_8, KC_9,    KC_0,    KC_PGDN, KC_LEFT, KC_DOWN, KC_RIGHT, KC_LGUI, MO_FUN,
                                      MT_SPC,  KC_TRNS, MT_ENT,
-                                     KC_LALT, KC_LCTL, KC_INT5, KC_INT4
+                                     KC_LALT, KC_LCTL, KC_LBRC, KC_RBRC
     ),
 
     // FUNCTION
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │ F1  │ F2  │ F3  │ F4  │ F5  │ F11 │             │ BRU │ VL0 │ VL- │ VL+ │ PSC │ JIS │
+    // │ F1  │ F2  │ F3  │ F4  │ F5  │ F11 │             │ BRU │ VL0 │ VL- │ VL+ │ PSC │ xxx │
     // ├─────┼─────┼─────┼─────┼─────┼─────┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
     // │ ESC │ F6  │ F7  │ F8  │ F9  │ F10 │             │ BRD │ |<< │ >|| │ >>| │ INS │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
@@ -570,7 +454,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // FUNCTION
     [_FUNCTION] = LAYOUT(
-        KC_F1,  KC_F2, KC_F3, KC_F4, KC_F5,   KC_F11,  KC_BRIU, KC_MUTE, KC_VOLD, KC_VOLU, KC_PSCR, TG_JIS,
+        KC_F1,  KC_F2, KC_F3, KC_F4, KC_F5,   KC_F11,  KC_BRIU, KC_MUTE, KC_VOLD, KC_VOLU, KC_PSCR, KC_NO,
         KC_ESC, KC_F6, KC_F7, KC_F8, KC_F9,   KC_F10,  KC_BRID, KC_MPRV, KC_MPLY, KC_MNXT, KC_LGUI, KC_TRNS,
                                      KC_TRNS, KC_TRNS, KC_TRNS,
                                      KC_TRNS, KC_TRNS, KC_F12,  KC_F13
@@ -585,15 +469,6 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
     if (is_combo_candidate(keycode)) {
-        if (keycode == KC_GRV) {
-            uint8_t mods = get_mods();
-            if (is_jis_mode && (mods & MOD_MASK_ALT)) {
-                if (record->event.pressed) {
-                    tap_code16(KC_GRV); // 全角半角
-                }
-                return false;
-            }
-        }
 
         if (record->event.pressed) {
             if (combo_fifo_len < COMBO_FIFO_LEN) {
@@ -608,14 +483,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 combo_fifo[combo_fifo_len].released = false;  // 初期化
                 combo_fifo_len++;
             } else {
-                uint8_t mods = get_mods();
-                bool shifted = (mods & MOD_MASK_SHIFT);
-                transformed_key_t transformed = apply_alt_then_jis(keycode, shifted);
-                if (transformed.needs_unshift) {
-                    tap_code16_unshifted(transformed.keycode);
-                } else {
-                    tap_code16(transformed.keycode);
-                }
+                uint16_t out_kc = alt_transform(keycode);
+                tap_code16(out_kc);
             }
         } else {
             uint16_t base = keycode;
@@ -631,14 +500,18 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                     hold_state.is_held = false;
                     hold_state.keycode = 0;
                 }
-            } else {
-                for (uint8_t i = 0; i < combo_fifo_len; i++) {
-                    if (combo_fifo[i].keycode == base && !combo_fifo[i].released) {
-                        combo_fifo[i].released = true;
-                        combo_fifo_service();
-                        break;
-                    }
+            }
+
+            bool fifo_updated = false;
+            for (uint8_t i = 0; i < combo_fifo_len; i++) {
+                if (combo_fifo[i].keycode == base && !combo_fifo[i].released) {
+                    combo_fifo[i].released = true;
+                    fifo_updated = true;
+                    break;
                 }
+            }
+            if (fifo_updated) {
+                combo_fifo_service();
             }
         }
         return false;
@@ -652,22 +525,13 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                         default_layer_set((layer_state_t)1UL << _GEMINI);
                         layer_move(_GEMINI);
                         default_layer = 1;
-                        update_lang(stn_lang); // 日本語へ切り替え
                     } else {
                         default_layer_set((layer_state_t)1UL << _QWERTY);
                         layer_move(_QWERTY);
                         default_layer = 0;
-                        update_lang(kbd_lang); // 英語へ切り替え
                     }
                 }
                 return false;
-            }
-            return true;
-        case TG_JIS:
-            if (record->event.pressed) {
-                is_jis_mode = !is_jis_mode;
-                user_config.jis_mode = is_jis_mode;
-                eeconfig_update_user(user_config.raw);
             }
             return true;
         case TG_ALT:
@@ -685,9 +549,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         case KC_LCTL:
             if (is_mac) {
                 if (record->event.pressed) {
-                    register_code(KC_LGUI);
+                    register_mods(MOD_LGUI);
                 } else {
-                    unregister_code(KC_LGUI);
+                    unregister_mods(MOD_LGUI);
                 }
                 return false;
             }
@@ -695,64 +559,47 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         case KC_LGUI:
             if (is_mac) {
                 if (record->event.pressed) {
-                    register_code(KC_LCTL);
+                    register_mods(MOD_LCTL);
                 } else {
-                    unregister_code(KC_LCTL);
+                    unregister_mods(MOD_LCTL);
                 }
                 return false;
             }
             return true;
-        case KC_INT4:
-            update_lang(2); // 日本語へ切り替え
-            if (stn_lang == 2) {
-                default_layer = 1;
+        case KC_RCTL:
+            if (is_mac) {
+                if (record->event.pressed) {
+                    register_mods(MOD_RGUI);
+                } else {
+                    unregister_mods(MOD_RGUI);
+                }
+                return false;
             }
-            return false;
-        case KC_INT5:
-            update_lang(1); // 英語へ切り替え
-            if (stn_lang == 1) {
-                default_layer = 0;
+            return true;
+        case KC_RGUI:
+            if (is_mac) {
+                if (record->event.pressed) {
+                    register_mods(MOD_RCTL);
+                } else {
+                    unregister_mods(MOD_RCTL);
+                }
+                return false;
             }
-            return false;
+            return true;
         default:
             break;
-    }
-    if ((keycode >= QK_MOD_TAP && keycode <= QK_MOD_TAP_MAX)) {
-        if (QK_MOD_TAP_GET_MODS(keycode) == MOD_LCTL) {
-            if (is_mac) {
-                if (record->event.pressed) {
-                    if (record->tap.count > 0) {
-                        return true;
-                    } else {
-                        register_code(KC_LGUI);
-                        return false;
-                    }
-                } else {
-                    unregister_code(KC_LGUI);
-                    return true;
-                }
-            }
-        }
-        else if (QK_MOD_TAP_GET_MODS(keycode) == MOD_LGUI) {
-            if (is_mac) {
-                if (record->event.pressed) {
-                    if (record->tap.count > 0) {
-                        return true;
-                    } else {
-                        register_code(KC_LCTL);
-                        return false;
-                    }
-                } else {
-                    unregister_code(KC_LCTL);
-                    return true;
-                }
-            }
-        }
     }
     return true;
 }
 
 void matrix_scan_user(void) {
+    if (!os_detected) {
+        os_variant_t os = detected_host_os();
+        if (os == OS_MACOS || os == OS_IOS) {
+            is_mac = true;
+            os_detected = true;
+        }
+    }
     refresh_force_qwerty_state();
     combo_fifo_service();
 }
