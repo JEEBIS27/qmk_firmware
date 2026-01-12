@@ -101,7 +101,7 @@ uint16_t alt_transform(uint16_t kc) {
         case KC_I: return KC_O;
         case KC_O: return KC_U;
         case KC_P: return KC_J;
-        case KC_MINS: return KC_MINS;
+        case KC_MINS: return KC_SCLN;
 
         case KC_A: return KC_N;
         case KC_S: return KC_R;
@@ -113,7 +113,7 @@ uint16_t alt_transform(uint16_t kc) {
         case KC_K: return KC_A;
         case KC_L: return KC_E;
         case KC_SCLN: return KC_I;
-        case KC_QUOT: return KC_SCLN;
+        case KC_QUOT: return KC_COMM;
 
         case KC_Z: return KC_Q;
         case KC_X: return KC_X;
@@ -122,8 +122,8 @@ uint16_t alt_transform(uint16_t kc) {
         case KC_B: return KC_V;
         case KC_N: return KC_K;
         case KC_M: return KC_P;
-        case KC_COMM: return KC_COMM;
-        case KC_DOT: return KC_DOT;
+        case KC_COMM: return KC_DOT;
+        case KC_DOT: return KC_MINS;
         case KC_SLSH: return KC_SLSH;
         case KC_BSLS: return KC_BSLS;
         default: return kc;
