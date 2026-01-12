@@ -88,7 +88,7 @@ void keyboard_post_init_user(void) {
 /*---------------------------------------------------------------------------------------------------*/
 
 // 配列名：Colemak配列
-static inline uint16_t alt_transform(uint16_t kc) {
+uint16_t alt_transform(uint16_t kc) {
     if (!is_alt_mode || force_qwerty_active) return kc;
     switch (kc) {
         case KC_Q: return KC_Q;
