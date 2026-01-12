@@ -83,11 +83,11 @@ const combo_pair_t combo_pairs[] PROGMEM = {
     {KC_2,    KC_8,    KC_5,     _NUMBER},
     {KC_3,    KC_9,    KC_6,     _NUMBER},
     {KC_DOT,  KC_MINS, KC_COMMA, _NUMBER},
+    {KC_LBRC, KC_RBRC, KC_EQL,   _NUMBER},
     {KC_9,    KC_0,    KC_TAB,   _NUMBER},
     {KC_3,    KC_DZ,   KC_ESC,   _NUMBER},
     {KC_PGDN, KC_LEFT, KC_BSPC,  _NUMBER},
     {KC_PGUP, KC_HOME, KC_DEL,   _NUMBER},
-    {KC_LBRC, KC_RBRC, KC_EQL,   _NUMBER},
 };
 uint8_t combo_pair_count = sizeof(combo_pairs) / sizeof(combo_pairs[0]);
 
