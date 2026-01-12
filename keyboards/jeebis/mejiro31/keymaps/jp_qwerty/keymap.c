@@ -47,10 +47,11 @@ static bool is_jis_mode = true;
 static bool is_alt_mode = false;
 static bool force_qwerty_active = false;
 static bool is_mac = false;
+static bool os_detected = false;  // OS検知完了フラグ
 // 0:未使用, 1:英語, 2:日本語, 3:無変更
-static int stn_lang = 1; // ステノ時の言語
-static int kbd_lang = 2; // キーボード時の言語
-static int alt_lang = 0; // Alternative Layoutの言語設定
+static int stn_lang = 2; // ステノ時の言語
+static int kbd_lang = 1; // キーボード時の言語
+static int alt_lang = 1; // Alternative Layoutの言語設定
 
 typedef union {
     uint32_t raw;
@@ -339,6 +340,14 @@ static hold_state_t hold_state = {0, 0, false, 0, 0, false, false};
 static bool is_combo_candidate(uint16_t keycode) {
 
     if (keycode == KC_DZ) return false;
+    // モディファイア類はコンボから除外（入れ替え処理や修飾の素通しのため）
+    switch (keycode) {
+        case KC_LCTL: case KC_RCTL:
+        case KC_LGUI: case KC_RGUI:
+        case KC_LALT: case KC_RALT:
+        case KC_LSFT: case KC_RSFT:
+            return false;
+    }
     if (keycode == KC_GRV) return true;
 
     uint16_t base = keycode;
@@ -374,6 +383,14 @@ static void fifo_remove(uint8_t idx) {
     combo_fifo_len--;
 }
 
+static void clear_hold_state(void) {
+    if (hold_state.is_held) {
+        unregister_code16(hold_state.keycode);
+        hold_state.is_held = false;
+        hold_state.keycode = 0;
+    }
+}
+
 // 先頭要素とそれ以外のペアを探索し、コンボがあれば発射して削除
 static bool resolve_combo_head(void) {
     if (combo_fifo_len < 2) return false;
@@ -398,20 +415,37 @@ static bool resolve_combo_head(void) {
             uint16_t orig_out = pair.out;
             transformed_key_t transformed = apply_alt_then_jis(orig_out, shifted);
 
+            bool head_pressed  = !combo_fifo[0].released;
+            bool other_pressed = !combo_fifo[i].released;
+
+            // If either source is already released, treat as a tap to avoid stuck holds.
+            if (!head_pressed || !other_pressed) {
+                clear_hold_state();
+                if (transformed.needs_unshift) {
+                    tap_code16_unshifted(transformed.keycode);
+                } else {
+                    tap_code16(transformed.keycode);
+                }
+                fifo_remove(i);
+                fifo_remove(0);
+                return true;
+            }
+
+            clear_hold_state();
             hold_state.keycode = transformed.keycode;
             hold_state.time_confirmed = timer_read();
             hold_state.is_held = true;
             hold_state.source_key_a = head_kc;
             hold_state.source_key_b = other_kc;
-            hold_state.source_a_pressed = true;
-            hold_state.source_b_pressed = true;
+            hold_state.source_a_pressed = head_pressed;
+            hold_state.source_b_pressed = other_pressed;
 
-                if (transformed.needs_unshift) {
-                    tap_code16_unshifted(transformed.keycode);
-                    hold_state.is_held = false;
-                } else {
-                    register_code16(transformed.keycode);
-                }
+            if (transformed.needs_unshift) {
+                tap_code16_unshifted(transformed.keycode);
+                hold_state.is_held = false;
+            } else {
+                register_code16(transformed.keycode);
+            }
             fifo_remove(i);
             fifo_remove(0);
             return true;
@@ -445,6 +479,7 @@ static void combo_fifo_service(void) {
                 uint8_t mods = get_mods();
                 bool shifted = (mods & MOD_MASK_SHIFT);
                 transformed_key_t transformed = apply_alt_then_jis(base_kc, shifted);
+                clear_hold_state();
                 hold_state.keycode = transformed.keycode;
                 hold_state.time_confirmed = timer_read();
                 hold_state.is_held = !transformed.needs_unshift;
@@ -631,14 +666,18 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                     hold_state.is_held = false;
                     hold_state.keycode = 0;
                 }
-            } else {
-                for (uint8_t i = 0; i < combo_fifo_len; i++) {
-                    if (combo_fifo[i].keycode == base && !combo_fifo[i].released) {
-                        combo_fifo[i].released = true;
-                        combo_fifo_service();
-                        break;
-                    }
+            }
+
+            bool fifo_updated = false;
+            for (uint8_t i = 0; i < combo_fifo_len; i++) {
+                if (combo_fifo[i].keycode == base && !combo_fifo[i].released) {
+                    combo_fifo[i].released = true;
+                    fifo_updated = true;
+                    break;
                 }
+            }
+            if (fifo_updated) {
+                combo_fifo_service();
             }
         }
         return false;
@@ -685,9 +724,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         case KC_LCTL:
             if (is_mac) {
                 if (record->event.pressed) {
-                    register_code(KC_LGUI);
+                    register_mods(MOD_LGUI);
                 } else {
-                    unregister_code(KC_LGUI);
+                    unregister_mods(MOD_LGUI);
                 }
                 return false;
             }
@@ -695,9 +734,29 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         case KC_LGUI:
             if (is_mac) {
                 if (record->event.pressed) {
-                    register_code(KC_LCTL);
+                    register_mods(MOD_LCTL);
                 } else {
-                    unregister_code(KC_LCTL);
+                    unregister_mods(MOD_LCTL);
+                }
+                return false;
+            }
+            return true;
+        case KC_RCTL:
+            if (is_mac) {
+                if (record->event.pressed) {
+                    register_mods(MOD_RGUI);
+                } else {
+                    unregister_mods(MOD_RGUI);
+                }
+                return false;
+            }
+            return true;
+        case KC_RGUI:
+            if (is_mac) {
+                if (record->event.pressed) {
+                    register_mods(MOD_RCTL);
+                } else {
+                    unregister_mods(MOD_RCTL);
                 }
                 return false;
             }
@@ -717,42 +776,17 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         default:
             break;
     }
-    if ((keycode >= QK_MOD_TAP && keycode <= QK_MOD_TAP_MAX)) {
-        if (QK_MOD_TAP_GET_MODS(keycode) == MOD_LCTL) {
-            if (is_mac) {
-                if (record->event.pressed) {
-                    if (record->tap.count > 0) {
-                        return true;
-                    } else {
-                        register_code(KC_LGUI);
-                        return false;
-                    }
-                } else {
-                    unregister_code(KC_LGUI);
-                    return true;
-                }
-            }
-        }
-        else if (QK_MOD_TAP_GET_MODS(keycode) == MOD_LGUI) {
-            if (is_mac) {
-                if (record->event.pressed) {
-                    if (record->tap.count > 0) {
-                        return true;
-                    } else {
-                        register_code(KC_LCTL);
-                        return false;
-                    }
-                } else {
-                    unregister_code(KC_LCTL);
-                    return true;
-                }
-            }
-        }
-    }
     return true;
 }
 
 void matrix_scan_user(void) {
+    if (!os_detected) {
+        os_variant_t os = detected_host_os();
+        if (os == OS_MACOS || os == OS_IOS) {
+            is_mac = true;
+            os_detected = true;
+        }
+    }
     refresh_force_qwerty_state();
     combo_fifo_service();
 }
