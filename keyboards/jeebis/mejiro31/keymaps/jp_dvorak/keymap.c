@@ -22,6 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include QMK_KEYBOARD_H
 #include "os_detection.h"
 #include "keymap_japanese.h"
+#include "jis_transform.h"
+#include "combo_fifo.h"
+#include "alt_layout.h"
 
 enum layer_names {
     _QWERTY = 0,
@@ -36,18 +39,15 @@ enum custom_keycodes {
     TG_ALT,              // Alternative Layout切替キー
 };
 
-#define MT_SPC MT(MOD_LSFT, KC_SPC)  // タップでSpace、ホールドでShift
-#define MT_ENT MT(MOD_LSFT, KC_ENT)  // タップでEnter、ホールドでShift
-#define MT_ESC MT(MOD_LGUI, KC_ESC)  // タップでEscape、ホールドでGUI
-#define MO_FUN MO(_FUNCTION)  // ホールドで_FUNCTIONレイヤー
-#define MT_TGL LT(_NUMBER, KC_F24)  // タップで_QWERTY・_GEMINIレイヤー切替、ホールドで_NUMBERレイヤー
+#define MT_SPC MT(MOD_LSFT, KC_SPC)
+#define MT_ENT MT(MOD_LSFT, KC_ENT)
+#define MT_ESC MT(MOD_LGUI, KC_ESC)
+#define MO_FUN MO(_FUNCTION)
+#define MT_TGL LT(_NUMBER, KC_F24)
 
-static uint16_t default_layer = 0; // (0:_QWERTY, 1: _GEMINI)
-static bool is_jis_mode = true;
-static bool is_alt_mode = false;
-static bool force_qwerty_active = false;
+bool is_jis_mode = true;
 static bool is_mac = false;
-static bool os_detected = false;  // OS検知完了フラグ
+static bool os_detected = false;
 // 0:未使用, 1:英語, 2:日本語, 3:無変更
 static int stn_lang = 2; // ステノ時の言語
 static int kbd_lang = 1; // キーボード時の言語
@@ -84,78 +84,9 @@ void keyboard_post_init_user(void) {
 }
 
 /*---------------------------------------------------------------------------------------------------*/
-/*--------------------------------------------JIS×US変換---------------------------------------------*/
-/*---------------------------------------------------------------------------------------------------*/
-
-// JIS×US変換
-static inline uint16_t jis_transform(uint16_t kc, bool shifted) {
-    if (!is_jis_mode) return kc;
-    switch (kc) {
-        case KC_1: return shifted ? JP_EXLM : KC_1;   // ! / 1
-        case KC_2: return shifted ? JP_AT   : KC_2;   // @ / 2
-        case KC_3: return shifted ? JP_HASH : KC_3;   // # / 3
-        case KC_4: return shifted ? JP_DLR  : KC_4;   // $ / 4
-        case KC_5: return shifted ? JP_PERC : KC_5;   // % / 5
-        case KC_6: return shifted ? JP_CIRC : KC_6;   // ^ / 6
-        case KC_7: return shifted ? JP_AMPR : KC_7;   // & / 7
-        case KC_8: return shifted ? JP_ASTR : KC_8;   // * / 8
-        case KC_9: return shifted ? JP_LPRN : KC_9;   // ( / 9
-        case KC_0: return shifted ? JP_RPRN : KC_0;   // ) / 0
-
-        case KC_GRV:  return shifted ? JP_TILD : JP_GRV;   // ~ / `
-        case KC_MINS: return shifted ? JP_UNDS : JP_MINS;  // _ / -
-        case KC_EQL:  return shifted ? JP_PLUS : JP_EQL;   // + / =
-        case KC_LBRC: return shifted ? JP_LCBR : JP_LBRC;  // { / [
-        case KC_RBRC: return shifted ? JP_RCBR : JP_RBRC;  // } / ]
-        case KC_BSLS: return shifted ? JP_PIPE : JP_BSLS;  // | / ￥
-        case KC_SCLN: return shifted ? JP_COLN : JP_SCLN;  // : / ;
-        case KC_QUOT: return shifted ? JP_DQUO : JP_QUOT;  // " / '
-        case KC_COMM: return shifted ? JP_LABK : JP_COMM;  // < / ,
-        case KC_DOT:  return shifted ? JP_RABK : JP_DOT;   // > / .
-        case KC_SLSH: return shifted ? JP_QUES : JP_SLSH;  // ? / /
-        default: return kc;
-    }
-}
-
-// JISモード時にShift を一時的に無効化
-static void tap_code16_unshifted(uint16_t kc) {
-    uint8_t saved_mods      = get_mods();
-    uint8_t saved_weak_mods = get_weak_mods();
-    uint8_t saved_osm       = get_oneshot_mods();
-
-    del_mods(MOD_MASK_SHIFT);
-    del_weak_mods(MOD_MASK_SHIFT);
-    clear_oneshot_mods();
-    send_keyboard_report();
-
-    tap_code16(kc);
-
-    set_mods(saved_mods);
-    set_weak_mods(saved_weak_mods);
-    set_oneshot_mods(saved_osm);
-    send_keyboard_report();
-}
-
-// JIS変換対象でシフト解除が必要なキーか判定
-static bool is_jis_shift_target(uint16_t kc, bool shifted) {
-    if (!is_jis_mode || !shifted) return false;
-    switch (kc) {
-        case KC_1: case KC_2: case KC_3: case KC_4: case KC_5:
-        case KC_6: case KC_7: case KC_8: case KC_9: case KC_0:
-        case KC_GRV: case KC_MINS: case KC_EQL:
-        case KC_LBRC: case KC_RBRC: case KC_BSLS:
-        case KC_SCLN: case KC_QUOT: case KC_COMM: case KC_DOT: case KC_SLSH:
-            return true;
-        default:
-            return false;
-    }
-}
-
-/*---------------------------------------------------------------------------------------------------*/
 /*----------------------------------------Alternative Layout-----------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
 
-// Alternative Layout変換
 // 配列名：Dvorak
 static inline uint16_t alt_transform(uint16_t kc) {
     if (!is_alt_mode || force_qwerty_active) return kc;
@@ -199,11 +130,6 @@ static inline uint16_t alt_transform(uint16_t kc) {
     }
 }
 
-typedef struct {
-    uint16_t keycode;
-    bool     needs_unshift;
-} transformed_key_t;
-
 static inline transformed_key_t apply_alt_then_jis(uint16_t kc, bool shifted) {
     uint16_t alt_kc = alt_transform(kc);
     transformed_key_t result = {
@@ -213,10 +139,25 @@ static inline transformed_key_t apply_alt_then_jis(uint16_t kc, bool shifted) {
     return result;
 }
 
-static inline bool mods_except_shift_active(void) {
-    uint8_t mods = get_mods() | get_weak_mods() | get_oneshot_mods();
-    mods &= ~MOD_MASK_SHIFT;
-    return mods != 0;
+static void refresh_force_qwerty_state(void) {
+    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+    bool is_number_or_function = (current_layer == _NUMBER || current_layer == _FUNCTION);
+
+    bool should_force = mods_except_shift_active() && !is_number_or_function;
+    layer_state_t qwerty_default = (layer_state_t)1UL << _QWERTY;
+
+    if (should_force) {
+        if (!force_qwerty_active || default_layer_state != qwerty_default) {
+            default_layer_set(qwerty_default);
+            layer_move(_QWERTY);
+        }
+        force_qwerty_active = true;
+    } else if (force_qwerty_active) {
+        layer_state_t target_default = (layer_state_t)1UL << (default_layer == 0 ? _QWERTY : _GEMINI);
+        default_layer_set(target_default);
+        layer_move(default_layer == 0 ? _QWERTY : _GEMINI);
+        force_qwerty_active = false;
+    }
 }
 
 // lang : 0=なし, 1=英語, 2=日本語
@@ -248,61 +189,13 @@ static void update_lang(uint8_t lang) {
     eeconfig_update_user(user_config.raw);
 }
 
-static void refresh_force_qwerty_state(void) {
-    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-    bool is_number_or_function = (current_layer == _NUMBER || current_layer == _FUNCTION);
-
-    bool should_force = mods_except_shift_active() && !is_number_or_function;
-    layer_state_t qwerty_default = (layer_state_t)1UL << _QWERTY;
-
-    if (should_force) {
-        if (!force_qwerty_active || default_layer_state != qwerty_default) {
-            default_layer_set(qwerty_default);
-            layer_move(_QWERTY);
-        }
-        force_qwerty_active = true;
-    } else if (force_qwerty_active) {
-        layer_state_t target_default = (layer_state_t)1UL << (default_layer == 0 ? _QWERTY : _GEMINI);
-        default_layer_set(target_default);
-        layer_move(default_layer == 0 ? _QWERTY : _GEMINI);
-        force_qwerty_active = false;
-    }
-}
-
 /*---------------------------------------------------------------------------------------------------*/
 /*--------------------------------------------FIFOコンボ----------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
 
-#define COMBO_FIFO_LEN       30  // FIFOの長さ
-#define COMBO_TIMEOUT_MS     300 // コンボ待機のタイムアウト時間(ms) ※ QMKコンボでいうところのCOMBO_TERM
-
-typedef struct {
-    uint16_t keycode;
-    uint16_t time_pressed;
-    uint8_t  layer;
-    bool     released;
-} combo_event_t;
-
-typedef struct {
-    uint16_t a;
-    uint16_t b;
-    uint16_t out;
-    uint8_t  layer;
-} combo_pair_t;
-
-typedef struct {
-    uint16_t keycode;
-    uint16_t time_confirmed;
-    bool     is_held;
-    uint16_t source_key_a;
-    uint16_t source_key_b;
-    bool     source_a_pressed;
-    bool     source_b_pressed;
-} hold_state_t;
-
 // コンボ定義（順不同）
-static const combo_pair_t combo_pairs[] PROGMEM = {
-    // QWERTY
+const combo_pair_t combo_pairs[] PROGMEM = {
+
     {KC_Q,    KC_Z,    KC_A,    _QWERTY},
     {KC_W,    KC_X,    KC_S,    _QWERTY},
     {KC_E,    KC_C,    KC_D,    _QWERTY},
@@ -320,7 +213,6 @@ static const combo_pair_t combo_pairs[] PROGMEM = {
     {KC_N,    KC_M,    KC_BSPC, _QWERTY},
     {KC_Y,    KC_U,    KC_DEL,  _QWERTY},
 
-    // NUMBER
     {KC_1,    KC_7,    KC_4,     _NUMBER},
     {KC_2,    KC_8,    KC_5,     _NUMBER},
     {KC_3,    KC_9,    KC_6,     _NUMBER},
@@ -330,202 +222,16 @@ static const combo_pair_t combo_pairs[] PROGMEM = {
     {KC_PGDN, KC_LEFT, KC_BSPC,  _NUMBER},
     {KC_PGUP, KC_HOME, KC_DEL,   _NUMBER},
 };
-#define COMBO_PAIR_COUNT (sizeof(combo_pairs) / sizeof(combo_pairs[0]))
+uint8_t combo_pair_count = sizeof(combo_pairs) / sizeof(combo_pairs[0]);
 
-static combo_event_t combo_fifo[COMBO_FIFO_LEN];
-static uint8_t combo_fifo_len = 0;
-static hold_state_t hold_state = {0, 0, false, 0, 0, false, false};
-
-// コンボ候補キーか判定する関数
-static bool is_combo_candidate(uint16_t keycode) {
-
+bool is_combo_candidate(uint16_t keycode) {
     if (keycode == KC_DZ) return false;
-    // モディファイア類はコンボから除外（入れ替え処理や修飾の素通しのため）
-    switch (keycode) {
-        case KC_LCTL: case KC_RCTL:
-        case KC_LGUI: case KC_RGUI:
-        case KC_LALT: case KC_RALT:
-        case KC_LSFT: case KC_RSFT:
-            return false;
-    }
     if (keycode == KC_GRV) return true;
-
-    uint16_t base = keycode;
-        for (uint8_t i = 0; i < COMBO_PAIR_COUNT; i++) {
-        combo_pair_t pair;
-        memcpy_P(&pair, &combo_pairs[i], sizeof(pair));
-        if (pair.a == base || pair.b == base) {
-            return true;
-        }
-    }
-    return false;
+    return is_combo_candidate_default(keycode, 0);
 }
 
-// コンボ定義を検索する関数
-static const combo_pair_t *find_combo(uint16_t a, uint16_t b, uint8_t layer) {
-    for (uint8_t i = 0; i < COMBO_PAIR_COUNT; i++) {
-        combo_pair_t pair;
-        memcpy_P(&pair, &combo_pairs[i], sizeof(pair));
-        if (pair.layer != layer) continue;
-        if ((pair.a == a && pair.b == b) || (pair.a == b && pair.b == a)) {
-            return &combo_pairs[i];
-        }
-    }
-    return NULL;
-}
-
-// 指定インデックスの要素を削除する関数
-static void fifo_remove(uint8_t idx) {
-    if (idx >= combo_fifo_len) return;
-    for (uint8_t i = idx; i + 1 < combo_fifo_len; i++) {
-        combo_fifo[i] = combo_fifo[i + 1];
-    }
-    combo_fifo_len--;
-}
-
-static void clear_hold_state(void) {
-    if (hold_state.is_held) {
-        unregister_code16(hold_state.keycode);
-        hold_state.is_held = false;
-        hold_state.keycode = 0;
-    }
-}
-
-// 先頭要素とそれ以外のペアを探索し、コンボがあれば発射して削除
-static bool resolve_combo_head(void) {
-    if (combo_fifo_len < 2) return false;
-
-    uint16_t head_kc    = combo_fifo[0].keycode;
-    uint8_t  head_layer = combo_fifo[0].layer;
-
-    for (uint8_t i = 1; i < combo_fifo_len; i++) {
-        uint16_t other_kc    = combo_fifo[i].keycode;
-        uint8_t  other_layer = combo_fifo[i].layer;
-
-        if (other_layer != head_layer) continue;
-
-        const combo_pair_t *hit = find_combo(head_kc, other_kc, head_layer);
-        if (hit) {
-            combo_pair_t pair;
-            memcpy_P(&pair, hit, sizeof(pair));
-
-            // JIS×US変換
-            uint8_t mods = get_mods();
-            bool shifted = (mods & MOD_MASK_SHIFT);
-            uint16_t orig_out = pair.out;
-            transformed_key_t transformed = apply_alt_then_jis(orig_out, shifted);
-
-            bool head_pressed  = !combo_fifo[0].released;
-            bool other_pressed = !combo_fifo[i].released;
-
-            // If either source is already released, treat as a tap to avoid stuck holds.
-            if (!head_pressed || !other_pressed) {
-                clear_hold_state();
-                if (transformed.needs_unshift) {
-                    tap_code16_unshifted(transformed.keycode);
-                } else {
-                    tap_code16(transformed.keycode);
-                }
-                fifo_remove(i);
-                fifo_remove(0);
-                return true;
-            }
-
-            clear_hold_state();
-            hold_state.keycode = transformed.keycode;
-            hold_state.time_confirmed = timer_read();
-            hold_state.is_held = true;
-            hold_state.source_key_a = head_kc;
-            hold_state.source_key_b = other_kc;
-            hold_state.source_a_pressed = head_pressed;
-            hold_state.source_b_pressed = other_pressed;
-
-            if (transformed.needs_unshift) {
-                tap_code16_unshifted(transformed.keycode);
-                hold_state.is_held = false;
-            } else {
-                register_code16(transformed.keycode);
-            }
-            fifo_remove(i);
-            fifo_remove(0);
-            return true;
-        }
-    }
-    return false;
-}
-
-// タイムアウト処理とコンボ解決を行う
-static void combo_fifo_service(void) {
-    while (combo_fifo_len > 0) {
-        // FIFOに1つのキーしかない場合
-        if (combo_fifo_len == 1) {
-            // キーが離されている場合、即座に出力
-            if (combo_fifo[0].released) {
-                uint16_t base_kc = combo_fifo[0].keycode;
-                uint8_t mods = get_mods();
-                bool shifted = (mods & MOD_MASK_SHIFT);
-                transformed_key_t transformed = apply_alt_then_jis(base_kc, shifted);
-                if (transformed.needs_unshift) {
-                    tap_code16_unshifted(transformed.keycode);
-                } else {
-                    tap_code16(transformed.keycode);
-                }
-                fifo_remove(0);
-                continue;
-            }
-            // キーがまだ押されていてタイムアウト時間経過の場合
-            if (timer_elapsed(combo_fifo[0].time_pressed) > COMBO_TIMEOUT_MS) {
-                uint16_t base_kc = combo_fifo[0].keycode;
-                uint8_t mods = get_mods();
-                bool shifted = (mods & MOD_MASK_SHIFT);
-                transformed_key_t transformed = apply_alt_then_jis(base_kc, shifted);
-                clear_hold_state();
-                hold_state.keycode = transformed.keycode;
-                hold_state.time_confirmed = timer_read();
-                hold_state.is_held = !transformed.needs_unshift;
-                hold_state.source_key_a = base_kc;
-                hold_state.source_key_b = 0;
-                hold_state.source_a_pressed = true;
-                hold_state.source_b_pressed = false;
-                if (transformed.needs_unshift) {
-                    tap_code16_unshifted(transformed.keycode);
-                } else {
-                    register_code16(transformed.keycode);
-                }
-                fifo_remove(0);
-                continue;
-            }
-            break;
-        }
-        // FIFOに2つ以上のキーがある場合
-        if (combo_fifo_len >= 2) {
-            if (resolve_combo_head()) {
-                continue;
-            }
-            // コンボが成立しなかった場合、先頭要素の離脱状態を確認
-            if (combo_fifo[0].released) {
-                // コンボ候補のキーが離されている場合、即座に出力
-                if (hold_state.is_held) {
-                    unregister_code16(hold_state.keycode);
-                    hold_state.is_held = false;
-                }
-                uint16_t base_kc = combo_fifo[0].keycode;
-                uint8_t mods = get_mods();
-                bool shifted = (mods & MOD_MASK_SHIFT);
-                transformed_key_t transformed = apply_alt_then_jis(base_kc, shifted);
-                fifo_remove(0);
-                if (transformed.needs_unshift) {
-                    tap_code16_unshifted(transformed.keycode);
-                } else {
-                    tap_code16(transformed.keycode);
-                }
-                continue;
-            } else {
-                break;
-            }
-        }
-        break;
-    }
+transformed_key_t transform_key_extended(uint16_t kc, bool shifted) {
+    return apply_alt_then_jis(kc, shifted);
 }
 
 /*---------------------------------------------------------------------------------------------------*/
@@ -640,7 +346,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 combo_fifo[combo_fifo_len].keycode = base;
                 combo_fifo[combo_fifo_len].layer   = get_highest_layer(layer_state | default_layer_state);
                 combo_fifo[combo_fifo_len].time_pressed = timer_read();
-                combo_fifo[combo_fifo_len].released = false;  // 初期化
+                combo_fifo[combo_fifo_len].released = false;
                 combo_fifo_len++;
             } else {
                 uint8_t mods = get_mods();
@@ -677,7 +383,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 }
             }
             if (fifo_updated) {
-                combo_fifo_service();
+                combo_fifo_service_extended(transform_key_extended);
             }
         }
         return false;
@@ -691,12 +397,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                         default_layer_set((layer_state_t)1UL << _GEMINI);
                         layer_move(_GEMINI);
                         default_layer = 1;
-                        update_lang(stn_lang); // 日本語へ切り替え
+                        update_lang(stn_lang);
                     } else {
                         default_layer_set((layer_state_t)1UL << _QWERTY);
                         layer_move(_QWERTY);
                         default_layer = 0;
-                        update_lang(kbd_lang); // 英語へ切り替え
+                        update_lang(kbd_lang);
                     }
                 }
                 return false;
@@ -788,5 +494,5 @@ void matrix_scan_user(void) {
         }
     }
     refresh_force_qwerty_state();
-    combo_fifo_service();
+    combo_fifo_service_extended(transform_key_extended);
 }
