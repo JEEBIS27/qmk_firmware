@@ -177,10 +177,10 @@ static void update_lang(uint8_t lang) {
     }
     switch (lang) {
         case 1:
-            tap_code16(is_mac ? KC_LNG1 : KC_INT5); // Mac: 英数 / Win: 無変換
+            tap_code16(is_mac ? KC_LNG2 : KC_INT5); // Mac: 英数 / Win: 無変換
             break;
         case 2:
-            tap_code16(is_mac ? KC_LNG2 : KC_INT4); // Mac: かな / Win: 変換
+            tap_code16(is_mac ? KC_LNG1 : KC_INT4); // Mac: かな / Win: 変換
             break;
         default:
             break;
@@ -226,6 +226,8 @@ uint8_t combo_pair_count = sizeof(combo_pairs) / sizeof(combo_pairs[0]);
 
 bool is_combo_candidate(uint16_t keycode) {
     if (keycode == KC_DZ) return false;
+    if (keycode == KC_INT4) return false;
+    if (keycode == KC_INT5) return false;
     if (keycode == KC_GRV) return true;
     return is_combo_candidate_default(keycode, 0);
 }
