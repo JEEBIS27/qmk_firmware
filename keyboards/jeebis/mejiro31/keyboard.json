@@ -5,7 +5,6 @@
     "maintainer": "JEEBIS",
     "diode_direction": "COL2ROW",
     "features": {
-        "steno": true,
         "nkro": true,
         "bootmagic": true,
         "mousekey": false,
@@ -28,7 +27,7 @@
     },
     "processor": "RP2040",
     "bootloader": "rp2040",
-    
+
     "layouts": {
         "LAYOUT": {
             "layout": [
