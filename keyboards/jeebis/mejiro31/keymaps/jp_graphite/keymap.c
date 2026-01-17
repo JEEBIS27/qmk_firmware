@@ -211,7 +211,7 @@ static const alt_mapping_t alt_mappings[] PROGMEM = {
     {KC_E,    KC_D,    KC_D},
     {KC_R,    KC_W,    KC_W},
     {KC_T,    KC_Z,    KC_Z},
-    {KC_Y,    KC_QUOT, KC_UNDS},  // ' / _
+    {KC_Y,    KC_QUOT, KC_UNDS},
     {KC_U,    KC_F,    KC_F},
     {KC_I,    KC_O,    KC_O},
     {KC_O,    KC_U,    KC_U},
@@ -228,7 +228,7 @@ static const alt_mapping_t alt_mappings[] PROGMEM = {
     {KC_K,    KC_A,    KC_A},
     {KC_L,    KC_E,    KC_E},
     {KC_SCLN, KC_I,    KC_I},
-    {KC_QUOT, KC_COMM, KC_QUES},  // , / ?
+    {KC_QUOT, KC_COMM, KC_QUES},
 
     {KC_Z,    KC_Q,    KC_Q},
     {KC_X,    KC_X,    KC_X},
@@ -238,8 +238,8 @@ static const alt_mapping_t alt_mappings[] PROGMEM = {
     {KC_N,    KC_K,    KC_K},
     {KC_M,    KC_P,    KC_P},
     {KC_COMM, KC_DOT,  KC_RABK},
-    {KC_DOT,  KC_MINS, KC_DQUO},  // - / "
-    {KC_SLSH, KC_SLSH, KC_LABK},  // / / <
+    {KC_DOT,  KC_MINS, KC_DQUO},
+    {KC_SLSH, KC_SLSH, KC_LABK},
     {KC_BSLS, KC_BSLS, KC_PIPE},
 };
 
