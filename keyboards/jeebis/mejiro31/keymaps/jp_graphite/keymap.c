@@ -155,8 +155,8 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     {KC_EQL,  KC_HASH, KC_AT,      _QWERTY},  // = / # / @
 
     {KC_DZ,   KC_DZ,   KC_PERC,    _NUMBER},  // 00 / 00 / %
-    {KC_1,    KC_1,    KC_LBRC,    _NUMBER},  // 1 / 1 / [
-    {KC_2,    KC_2,    KC_LCBR,    _NUMBER},  // 2 / 2 / {
+    {KC_1,    KC_1,    KC_LCBR,    _NUMBER},  // 1 / 1 / {
+    {KC_2,    KC_2,    KC_LBRC,    _NUMBER},  // 2 / 2 / [
     {KC_3,    KC_3,    KC_LPRN,    _NUMBER},  // 3 / 3 / (
     {KC_MINS, KC_MINS, KC_LABK,    _NUMBER},  // - / - / <
     {KC_TZ,   KC_TZ,   KC_SLSH,    _NUMBER},  // 000 / 000 / /
@@ -165,8 +165,8 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     {KC_6,    KC_6,    KC_PLUS,    _NUMBER},  // 6 / 6 / +
     {KC_COMM, KC_COMM, KC_CIRC,    _NUMBER},  // , / , / ^
     {KC_0,    KC_0,    KC_DLR,     _NUMBER},  // 0 / 0 / $
-    {KC_7,    KC_7,    KC_RBRC,    _NUMBER},  // 7 / 7 / ]
-    {KC_8,    KC_8,    KC_RCBR,    _NUMBER},  // 8 / 8 / }
+    {KC_7,    KC_7,    KC_RCBR,    _NUMBER},  // 7 / 7 / }
+    {KC_8,    KC_8,    KC_RBRC,    _NUMBER},  // 8 / 8 / ]
     {KC_9,    KC_9,    KC_RPRN,    _NUMBER},  // 9 / 9 / )
     {KC_DOT,  KC_DOT,  KC_RABK,    _NUMBER},  // . / . / >
 };
