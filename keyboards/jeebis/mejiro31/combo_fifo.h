@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include QMK_KEYBOARD_H
 
 #define COMBO_FIFO_LEN       30  // FIFOの長さ
-#define COMBO_TIMEOUT_MS     300 // コンボ待機のタイムアウト時間(ms) ※ QMKコンボでいうところのCOMBO_TERM
+#define COMBO_TIMEOUT_MS     200 // コンボ待機のタイムアウト時間(ms) ※ QMKコンボでいうところのCOMBO_TERM
 
 typedef struct {
     uint16_t keycode;
@@ -278,14 +278,8 @@ static inline void combo_fifo_service_basic(key_transform_fn_t transform_fn) {
                 uint16_t base_kc = combo_fifo[0].keycode;
                 uint16_t out_kc = transform_fn(base_kc);
                 clear_hold_state();
-                hold_state.keycode = out_kc;
-                hold_state.time_confirmed = timer_read();
-                hold_state.is_held = true;
-                hold_state.source_key_a = base_kc;
-                hold_state.source_key_b = 0;
-                hold_state.source_a_pressed = true;
-                hold_state.source_b_pressed = false;
-                register_code16(out_kc);
+                // タイムアウト時は単打出力（ホールドはしない）
+                tap_code16(out_kc);
                 fifo_remove(0);
                 continue;
             }
@@ -306,6 +300,14 @@ static inline void combo_fifo_service_basic(key_transform_fn_t transform_fn) {
                 tap_code16(out_kc);
                 continue;
             } else {
+                // 先頭キーの個別タイムアウトをチェック
+                if (timer_elapsed(combo_fifo[0].time_pressed) > COMBO_TIMEOUT_MS) {
+                    uint16_t base_kc = combo_fifo[0].keycode;
+                    uint16_t out_kc = transform_fn(base_kc);
+                    tap_code16(out_kc);
+                    fifo_remove(0);
+                    continue;
+                }
                 break;
             }
         }
@@ -339,17 +341,11 @@ static inline void combo_fifo_service_extended(key_transform_extended_fn_t trans
                 bool shifted = (mods & MOD_MASK_SHIFT);
                 transformed_key_t transformed = transform_fn(base_kc, shifted);
                 clear_hold_state();
-                hold_state.keycode = transformed.keycode;
-                hold_state.time_confirmed = timer_read();
-                hold_state.is_held = !transformed.needs_unshift;
-                hold_state.source_key_a = base_kc;
-                hold_state.source_key_b = 0;
-                hold_state.source_a_pressed = true;
-                hold_state.source_b_pressed = false;
+                // タイムアウト時は単打出力（ホールドはしない）
                 if (transformed.needs_unshift) {
                     tap_code16_unshifted(transformed.keycode);
                 } else {
-                    register_code16(transformed.keycode);
+                    tap_code16(transformed.keycode);
                 }
                 fifo_remove(0);
                 continue;
@@ -377,6 +373,20 @@ static inline void combo_fifo_service_extended(key_transform_extended_fn_t trans
                 }
                 continue;
             } else {
+                // 先頭キーの個別タイムアウトをチェック
+                if (timer_elapsed(combo_fifo[0].time_pressed) > COMBO_TIMEOUT_MS) {
+                    uint16_t base_kc = combo_fifo[0].keycode;
+                    uint8_t mods = get_mods();
+                    bool shifted = (mods & MOD_MASK_SHIFT);
+                    transformed_key_t transformed = transform_fn(base_kc, shifted);
+                    if (transformed.needs_unshift) {
+                        tap_code16_unshifted(transformed.keycode);
+                    } else {
+                        tap_code16(transformed.keycode);
+                    }
+                    fifo_remove(0);
+                    continue;
+                }
                 break;
             }
         }
