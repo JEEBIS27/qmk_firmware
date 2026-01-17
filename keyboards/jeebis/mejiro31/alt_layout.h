@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include QMK_KEYBOARD_H
+#include "combo_fifo.h"
 
 // グローバル変数の宣言
 extern bool is_alt_mode;
@@ -27,12 +28,11 @@ extern uint16_t default_layer;
 // 列挙型の宣言（各キーマップで定義）
 // enum layer_names の _QWERTY, _GEMINI, _NUMBER, _FUNCTION が必要
 
-/**
- * Alternative Layoutキー変換関数（各キーマップで定義）
- * @param kc キーコード
- * @return 変換後のキーコード
- */
-extern uint16_t alt_transform(uint16_t kc);
+typedef struct {
+    uint16_t base;
+    uint16_t unshifted;
+    uint16_t shifted;
+} alt_mapping_t;
 
 /**
  * Shift以外のモディファイアが押されているか判定
