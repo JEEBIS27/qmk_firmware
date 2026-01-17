@@ -51,14 +51,13 @@ bool is_jis_mode = true;
 bool is_sbl_mode = true;
 static bool is_mac = false;
 static bool os_detected = false;
+static uint16_t dz_timer = 0;
+static bool dz_delayed = false;
 // 0:未使用, 1:英語, 2:日本語, 3:無変更
 static int stn_lang = 2; // ステノ時の言語
 static int kbd_lang = 1; // キーボード時の言語
 static int alt_lang = 1; // Alternative Layoutの言語設定
 
-// KC_DZ遅延出力管理
-static uint16_t dz_timer = 0;
-static bool dz_delayed = false;
 
 typedef union {
     uint32_t raw;
@@ -105,6 +104,51 @@ typedef struct {
 } sbl_mapping_t;
 
 static const sbl_mapping_t sbl_mappings[] PROGMEM = {
+
+    // QWERTY
+    // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
+    // │  `  │  q  │  w  │  e  │  r ESC t  │             │  y DEL u  │  i  │  o  │  p  │  -  │
+    // ├─────┼──a──┼──s──┼──d──┼──f──┼──g──┤             ├──h──┼──j──┼──k──┼──l──┼──;──┼──'──┤
+    // │ ESC │  z  │  x  │  c  │  v TAB b  │             │  n BSP m  │  ,  │  .  │  /  │  \  │
+    // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
+    //                         ┌───────────┐             ┌───────────┐
+    //                         │   SandS   │             │   EandS   │
+    //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
+    //                         │ ALT │ CTL │   │MT_TG│   │  !  #  ?  │
+    //                         └─────┴─────┘   └─────┘   └─────┴─────┘
+    // QWERTY Shifted
+    // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
+    // │  ~  │  Q  │  W  │  E  │  R ESC T  │             │  Y DEL U  │  I  │  O  │  P  │  _  │
+    // ├─────┼──A──┼──S──┼──D──┼──F──┼──G──┤             ├──H──┼──J──┼──K──┼──L──┼──:──┼──"──┤
+    // │ ESC │  Z  │  X  │  C  │  V TAB B  │             │  N BSP M  │  <  │  >  │  ?  │  |  │
+    // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
+    //                         ┌───────────┐             ┌───────────┐
+    //                         │   SandS   │             │   EandS   │
+    //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
+    //                         │ ALT │ CTL │   │MT_TG│   │  &  @  |  │
+    //                         └─────┴─────┘   └─────┘   └─────┴─────┘
+    // NUMBER
+    // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
+    // │  `  │ 00  │  1  │  2  │  3  │  -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // ├─────┼─────┼──4──┼──5──┼──6──┼──,──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
+    // │ ESC │  0  │  7  │  8  │  9  │  .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
+    //                         ┌───────────┐             ┌───────────┐
+    //                         │   SandS   │             │   EandS   │
+    //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
+    //                         │ ALT │ CTL │   │MT_TG│   │INT5 │INT4 │
+    //                         └─────┴─────┘   └─────┘   └─────┴─────┘
+    // NUMBER Shifted
+    // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
+    // │  ~  │  %  │  [  │  {  │  (  │  <  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // ├─────┼──/──┼──*──┼──=──┼──+──┼──^──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
+    // │ ESC │  $  │  ]  │  }  │  )  │  >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
+    //                         ┌───────────┐             ┌───────────┐
+    //                         │   SandS   │             │   EandS   │
+    //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
+    //                         │ ALT │ CTL │   │MT_TG│   │INT5 │INT4 │
+    //                         └─────┴─────┘   └─────┘   └─────┴─────┘
 
     {KC_LBRC, KC_EXLM, KC_AMPR,    _QWERTY},  // [ / ! / &
     {KC_RBRC, KC_QUES, KC_PIPE,    _QWERTY},  // ] / ? / |
@@ -207,9 +251,23 @@ uint16_t alt_transform(uint16_t kc, bool shifted) {
 static inline transformed_key_t transform_key_extended(uint16_t kc, bool shifted) {
     uint16_t sbl_kc = sbl_transform(kc, shifted);
     uint16_t alt_kc = alt_transform(sbl_kc, shifted);
+
+    // Check if shift should be removed for SBL or JIS
+    bool needs_unshift = is_jis_shift_target(alt_kc, shifted);
+
+    // Also check SBL: when shifted and sbl_transform changed the key
+    if (!needs_unshift && shifted && is_sbl_mode && !force_qwerty_active) {
+        uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+        if (current_layer == _NUMBER || current_layer == _QWERTY) {
+            if (sbl_kc != kc) {
+                needs_unshift = true;
+            }
+        }
+    }
+
     transformed_key_t result = {
         .keycode = jis_transform(alt_kc, shifted),
-        .needs_unshift = is_jis_shift_target(alt_kc, shifted),
+        .needs_unshift = needs_unshift,
     };
     return result;
 }
@@ -357,9 +415,20 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     ),
     // NUMBER
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  `  │ 00  │  1  │  2  │  3  │  -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │  `  │ 00  │  1  │  2  │  3 ESC -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼─────┼──4──┼──5──┼──6──┼──,──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
-    // │ ESC │  0  │  7  │  8  │  9  │  .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // │ ESC │  0  │  7  │  8  │  9 TAB .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
+    //                         ┌───────────┐             ┌───────────┐
+    //                         │   SandS   │             │   EandS   │
+    //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
+    //                         │ ALT │ CTL │   │MT_TG│   │INT5 │INT4 │
+    //                         └─────┴─────┘   └─────┘   └─────┴─────┘
+    // NUMBER Shifted
+    // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
+    // │  ~  │ ()← │  !  │  @  │  # ESC _  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // ├─────┼─────┼──$──┼──%──┼──^──┼──<──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
+    // │ ESC │  )  │  &  │  *  │  ( TAB >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
@@ -511,7 +580,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                     tap_code16(is_jis_mode ? JP_RPRN : KC_RPRN);
                     tap_code16_unshifted(KC_LEFT);
                 } else {
-                    // タップされたらタイマーを開始（200ms後に出力）
                     dz_timer = timer_read();
                     dz_delayed = true;
                 }
@@ -586,7 +654,6 @@ void matrix_scan_user(void) {
     refresh_force_qwerty_state();
     combo_fifo_service_extended(transform_key_extended);
 
-    // KC_DZ遅延出力処理：200ms経過したら「00」を出力
     if (dz_delayed && timer_elapsed(dz_timer) >= 200) {
         SEND_STRING("00");
         dz_delayed = false;
