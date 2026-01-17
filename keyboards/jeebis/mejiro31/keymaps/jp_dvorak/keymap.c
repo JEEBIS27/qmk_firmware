@@ -35,8 +35,10 @@ enum layer_names {
 
 enum custom_keycodes {
     KC_DZ = SAFE_RANGE,  // 00キー
+    KC_TZ,               // 000キー
     TG_JIS,              // JISモード切替キー
     TG_ALT,              // Alternative Layout切替キー
+    TG_SBL,              // Mejiro31 Symbol Layout切替キー
 };
 
 #define MT_SPC MT(MOD_LSFT, KC_SPC)
@@ -46,18 +48,30 @@ enum custom_keycodes {
 #define MT_TGL LT(_NUMBER, KC_F24)
 
 bool is_jis_mode = true;
+bool is_sbl_mode = true;
 static bool is_mac = false;
 static bool os_detected = false;
+static uint16_t dz_timer = 0;
+static bool dz_delayed = false;
+typedef struct {
+    bool pressed;
+    uint16_t timer;
+} toggle_hold_state_t;
+static toggle_hold_state_t tg_jis_state = {false, 0};
+static toggle_hold_state_t tg_alt_state = {false, 0};
+static toggle_hold_state_t tg_sbl_state = {false, 0};
 // 0:未使用, 1:英語, 2:日本語, 3:無変更
 static int stn_lang = 2; // ステノ時の言語
 static int kbd_lang = 1; // キーボード時の言語
 static int alt_lang = 3; // Alternative Layoutの言語設定
+
 
 typedef union {
     uint32_t raw;
     struct {
         bool jis_mode : 1;
         bool alt_mode : 1;
+        bool sbl_mode : 1;
     };
 } user_config_t;
 
@@ -66,7 +80,8 @@ static user_config_t user_config;
 void eeconfig_init_user(void) {
     user_config.raw = 0;
     user_config.jis_mode = true;
-    user_config.alt_mode = false;
+    user_config.alt_mode = true;
+    user_config.sbl_mode = true;
     eeconfig_update_user(user_config.raw);
     steno_set_mode(STENO_MODE_GEMINI);
 }
@@ -77,6 +92,7 @@ void keyboard_post_init_user(void) {
     user_config.raw = eeconfig_read_user();
     is_jis_mode = (user_config.jis_mode);
     is_alt_mode = (user_config.alt_mode);
+    is_sbl_mode = (user_config.sbl_mode);
     default_layer_set((layer_state_t)1UL << _QWERTY);
     layer_clear();
     layer_move(_QWERTY);
@@ -84,57 +100,184 @@ void keyboard_post_init_user(void) {
 }
 
 /*---------------------------------------------------------------------------------------------------*/
+/*-------------------------------------Mejiro31 Symbol Layout----------------------------------------*/
+/*---------------------------------------------------------------------------------------------------*/
+
+typedef struct {
+    uint16_t base;
+    uint16_t unshifted;
+    uint16_t shifted;
+    uint8_t layer;
+} sbl_mapping_t;
+
+static const sbl_mapping_t sbl_mappings[] PROGMEM = {
+
+    // QWERTY
+    // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
+    // │  `  │  q  │  w  │  e  │  r ESC t  │             │  y DEL u  │  i  │  o  │  p  │  -  │
+    // ├─────┼──a──┼──s──┼──d──┼──f──┼──g──┤             ├──h──┼──j──┼──k──┼──l──┼──;──┼──'──┤
+    // │ ESC │  z  │  x  │  c  │  v TAB b  │             │  n BSP m  │  ,  │  .  │  /  │  \  │
+    // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
+    //                         ┌───────────┐             ┌───────────┐
+    //                         │   SandS   │             │   EandS   │
+    //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
+    //                         │ ALT │ CTL │   │MT_TG│   │  !  #  ?  │
+    //                         └─────┴─────┘   └─────┘   └─────┴─────┘
+    // QWERTY Shifted
+    // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
+    // │  ~  │  Q  │  W  │  E  │  R ESC T  │             │  Y DEL U  │  I  │  O  │  P  │  _  │
+    // ├─────┼──A──┼──S──┼──D──┼──F──┼──G──┤             ├──H──┼──J──┼──K──┼──L──┼──:──┼──"──┤
+    // │ ESC │  Z  │  X  │  C  │  V TAB B  │             │  N BSP M  │  <  │  >  │  ?  │  |  │
+    // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
+    //                         ┌───────────┐             ┌───────────┐
+    //                         │   SandS   │             │   EandS   │
+    //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
+    //                         │ ALT │ CTL │   │MT_TG│   │  &  @  |  │
+    //                         └─────┴─────┘   └─────┘   └─────┴─────┘
+    // NUMBER
+    // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
+    // │  `  │ 00  │  1  │  2  │  3  │  -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // ├─────┼─────┼──4──┼──5──┼──6──┼──,──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
+    // │ ESC │  0  │  7  │  8  │  9  │  .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
+    //                         ┌───────────┐             ┌───────────┐
+    //                         │   SandS   │             │   EandS   │
+    //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
+    //                         │ ALT │ CTL │   │MT_TG│   │INT5 │INT4 │
+    //                         └─────┴─────┘   └─────┘   └─────┴─────┘
+    // NUMBER Shifted
+    // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
+    // │  ~  │  %  │  [  │  {  │  (  │  <  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // ├─────┼──/──┼──*──┼──=──┼──+──┼──^──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
+    // │ ESC │  $  │  ]  │  }  │  )  │  >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
+    //                         ┌───────────┐             ┌───────────┐
+    //                         │   SandS   │             │   EandS   │
+    //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
+    //                         │ ALT │ CTL │   │MT_TG│   │INT5 │INT4 │
+    //                         └─────┴─────┘   └─────┘   └─────┴─────┘
+
+    {KC_LBRC, KC_EXLM, KC_AMPR,    _QWERTY},  // [ / ! / &
+    {KC_RBRC, KC_QUES, KC_PIPE,    _QWERTY},  // ] / ? / |
+    {KC_EQL,  KC_HASH, KC_AT,      _QWERTY},  // = / # / @
+
+    {KC_DZ,   KC_DZ,   KC_PERC,    _NUMBER},  // 00 / 00 / %
+    {KC_1,    KC_1,    KC_LCBR,    _NUMBER},  // 1 / 1 / {
+    {KC_2,    KC_2,    KC_LBRC,    _NUMBER},  // 2 / 2 / [
+    {KC_3,    KC_3,    KC_LPRN,    _NUMBER},  // 3 / 3 / (
+    {KC_MINS, KC_MINS, KC_LABK,    _NUMBER},  // - / - / <
+    {KC_TZ,   KC_TZ,   KC_SLSH,    _NUMBER},  // 000 / 000 / /
+    {KC_4,    KC_4,    KC_ASTR,    _NUMBER},  // 4 / 4 / *
+    {KC_5,    KC_5,    KC_EQL,     _NUMBER},  // 5 / 5 / =
+    {KC_6,    KC_6,    KC_PLUS,    _NUMBER},  // 6 / 6 / +
+    {KC_COMM, KC_COMM, KC_CIRC,    _NUMBER},  // , / , / ^
+    {KC_0,    KC_0,    KC_DLR,     _NUMBER},  // 0 / 0 / $
+    {KC_7,    KC_7,    KC_RCBR,    _NUMBER},  // 7 / 7 / }
+    {KC_8,    KC_8,    KC_RBRC,    _NUMBER},  // 8 / 8 / ]
+    {KC_9,    KC_9,    KC_RPRN,    _NUMBER},  // 9 / 9 / )
+    {KC_DOT,  KC_DOT,  KC_RABK,    _NUMBER},  // . / . / >
+};
+
+uint16_t sbl_transform(uint16_t kc, bool shifted) {
+    if (!is_sbl_mode || force_qwerty_active) return kc;
+
+    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+
+    for (uint8_t i = 0; i < sizeof(sbl_mappings) / sizeof(sbl_mappings[0]); i++) {
+        sbl_mapping_t mapping;
+        memcpy_P(&mapping, &sbl_mappings[i], sizeof(mapping));
+        if (mapping.layer != current_layer) continue;
+        if (mapping.base == kc) {
+            return shifted ? mapping.shifted : mapping.unshifted;
+        }
+    }
+
+    return kc;
+}
+
+/*---------------------------------------------------------------------------------------------------*/
 /*----------------------------------------Alternative Layout-----------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
 
-// 配列名：Dvorak
-uint16_t alt_transform(uint16_t kc) {
+// 配列：Dvorak
+// ┌─────┬─────┬─────┬─────┬─────┐┌─────┬─────┬─────┬─────┬─────┬─────┐
+// │  '  │  ,  │  .  │  p  │  y  ││  f  │  g  │  c  │  r  │  l  │  /  │
+// ├──a──┼──o──┼──e──┼──u──┼──i──┤├──d──┼──h──┼──t──┼──n──┼──s──┼──-──┤
+// │  ;  │  q  │  j  │  k  │  x  ││  b  │  m  │  w  │  v  │  z  │  \  │
+// └─────┴─────┴─────┴─────┴─────┘└─────┴─────┴─────┴─────┴─────┴─────┘
+static const alt_mapping_t alt_mappings[] PROGMEM = {
+    {KC_Q,    KC_QUOT, KC_DQUO},
+    {KC_W,    KC_COMM, KC_LABK},
+    {KC_E,    KC_DOT,  KC_RABK},
+    {KC_R,    KC_P,    KC_P},
+    {KC_T,    KC_Y,    KC_Y},
+    {KC_Y,    KC_F,    KC_F},
+    {KC_U,    KC_G,    KC_G},
+    {KC_I,    KC_C,    KC_C},
+    {KC_O,    KC_R,    KC_R},
+    {KC_P,    KC_L,    KC_L},
+    {KC_MINS, KC_SLSH, KC_QUES},
+
+    {KC_A,    KC_A,    KC_A},
+    {KC_S,    KC_O,    KC_O},
+    {KC_D,    KC_E,    KC_E},
+    {KC_F,    KC_U,    KC_U},
+    {KC_G,    KC_I,    KC_I},
+    {KC_H,    KC_D,    KC_D},
+    {KC_J,    KC_H,    KC_H},
+    {KC_K,    KC_T,    KC_T},
+    {KC_L,    KC_N,    KC_N},
+    {KC_SCLN, KC_S,    KC_S},
+    {KC_QUOT, KC_MINS, KC_UNDS},
+
+    {KC_Z,    KC_SCLN, KC_COLN},
+    {KC_X,    KC_Q,    KC_Q},
+    {KC_C,    KC_J,    KC_J},
+    {KC_V,    KC_K,    KC_K},
+    {KC_B,    KC_X,    KC_X},
+    {KC_N,    KC_B,    KC_B},
+    {KC_M,    KC_M,    KC_M},
+    {KC_COMM, KC_W,    KC_W},
+    {KC_DOT,  KC_V,    KC_V},
+    {KC_SLSH, KC_Z,    KC_Z},
+    {KC_BSLS, KC_BSLS, KC_PIPE},
+};
+
+uint16_t alt_transform(uint16_t kc, bool shifted) {
     if (!is_alt_mode || force_qwerty_active) return kc;
-    switch (kc) {
-        case KC_Q: return KC_QUOT;
-        case KC_W: return KC_COMM;
-        case KC_E: return KC_DOT;
-        case KC_R: return KC_P;
-        case KC_T: return KC_Y;
-        case KC_Y: return KC_F;
-        case KC_U: return KC_G;
-        case KC_I: return KC_C;
-        case KC_O: return KC_R;
-        case KC_P: return KC_L;
-        case KC_MINS: return KC_SLSH;
 
-        case KC_A: return KC_N;
-        case KC_S: return KC_O;
-        case KC_D: return KC_E;
-        case KC_F: return KC_U;
-        case KC_G: return KC_I;
-        case KC_H: return KC_D;
-        case KC_J: return KC_H;
-        case KC_K: return KC_T;
-        case KC_L: return KC_N;
-        case KC_SCLN: return KC_S;
-        case KC_QUOT: return KC_MINS;
+    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+    if (current_layer != _QWERTY) return kc;
 
-        case KC_Z: return KC_SCLN;
-        case KC_X: return KC_Q;
-        case KC_C: return KC_J;
-        case KC_V: return KC_K;
-        case KC_B: return KC_X;
-        case KC_N: return KC_B;
-        case KC_M: return KC_M;
-        case KC_COMM: return KC_W;
-        case KC_DOT: return KC_V;
-        case KC_SLSH: return KC_Z;
-        case KC_BSLS: return KC_BSLS;
-        default: return kc;
+    for (uint8_t i = 0; i < sizeof(alt_mappings) / sizeof(alt_mappings[0]); i++) {
+        alt_mapping_t mapping;
+        memcpy_P(&mapping, &alt_mappings[i], sizeof(mapping));
+        if (mapping.base == kc) {
+            return shifted ? mapping.shifted : mapping.unshifted;
+        }
     }
+
+    return kc;
 }
 
-static inline transformed_key_t apply_alt_then_jis(uint16_t kc, bool shifted) {
-    uint16_t alt_kc = alt_transform(kc);
+static inline transformed_key_t transform_key_extended(uint16_t kc, bool shifted) {
+    uint16_t sbl_kc = sbl_transform(kc, shifted);
+    uint16_t alt_kc = alt_transform(sbl_kc, shifted);
+
+    bool needs_unshift = is_jis_shift_target(alt_kc, shifted);
+
+    if (!needs_unshift && shifted && is_sbl_mode && !force_qwerty_active) {
+        uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+        if (current_layer == _NUMBER || current_layer == _QWERTY) {
+            if (sbl_kc != kc) {
+                needs_unshift = true;
+            }
+        }
+    }
+
     transformed_key_t result = {
         .keycode = jis_transform(alt_kc, shifted),
-        .needs_unshift = is_jis_shift_target(alt_kc, shifted),
+        .needs_unshift = needs_unshift,
     };
     return result;
 }
@@ -189,6 +332,40 @@ static void update_lang(uint8_t lang) {
     eeconfig_update_user(user_config.raw);
 }
 
+static void toggle_jis_mode(void) {
+    is_jis_mode = !is_jis_mode;
+    user_config.jis_mode = is_jis_mode;
+    eeconfig_update_user(user_config.raw);
+}
+
+static void toggle_alt_mode(void) {
+    is_alt_mode = !is_alt_mode;
+    user_config.alt_mode = is_alt_mode;
+    eeconfig_update_user(user_config.raw);
+}
+
+static void toggle_sbl_mode(void) {
+    is_sbl_mode = !is_sbl_mode;
+    user_config.sbl_mode = is_sbl_mode;
+    eeconfig_update_user(user_config.raw);
+}
+
+static bool handle_toggle_on_hold(keyrecord_t *record, toggle_hold_state_t *state, void (*toggle_fn)(void)) {
+    if (record->event.pressed) {
+        state->pressed = true;
+        state->timer = timer_read();
+        return false;
+    }
+
+    if (!state->pressed) return false;
+
+    state->pressed = false;
+    if (timer_elapsed(state->timer) >= COMBO_TIMEOUT_MS) {
+        toggle_fn();
+    }
+    return false;
+}
+
 /*---------------------------------------------------------------------------------------------------*/
 /*--------------------------------------------FIFOコンボ----------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
@@ -216,24 +393,24 @@ const combo_pair_t combo_pairs[] PROGMEM = {
     {KC_1,    KC_7,    KC_4,     _NUMBER},
     {KC_2,    KC_8,    KC_5,     _NUMBER},
     {KC_3,    KC_9,    KC_6,     _NUMBER},
+    {KC_0,    KC_DZ,   KC_TZ,    _NUMBER},
     {KC_DOT,  KC_MINS, KC_COMMA, _NUMBER},
-    {KC_9,    KC_0,    KC_TAB,   _NUMBER},
-    {KC_3,    KC_DZ,   KC_ESC,   _NUMBER},
+    {KC_9,    KC_DOT,  KC_TAB,   _NUMBER},
+    {KC_3,    KC_MINS, KC_ESC,   _NUMBER},
     {KC_PGDN, KC_LEFT, KC_BSPC,  _NUMBER},
     {KC_PGUP, KC_HOME, KC_DEL,   _NUMBER},
 };
 uint8_t combo_pair_count = sizeof(combo_pairs) / sizeof(combo_pairs[0]);
 
 bool is_combo_candidate(uint16_t keycode) {
-    if (keycode == KC_DZ) return false;
+    uint8_t mods = get_mods();
+    bool shifted = (mods & MOD_MASK_SHIFT);
     if (keycode == KC_INT4) return false;
     if (keycode == KC_INT5) return false;
     if (keycode == KC_GRV) return true;
+    if (keycode == KC_DZ) return is_sbl_mode && shifted;
+    if (keycode == KC_TZ) return is_sbl_mode && shifted;
     return is_combo_candidate_default(keycode, 0);
-}
-
-transformed_key_t transform_key_extended(uint16_t kc, bool shifted) {
-    return apply_alt_then_jis(kc, shifted);
 }
 
 /*---------------------------------------------------------------------------------------------------*/
@@ -280,12 +457,22 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
                                         STN_N3, MT_TGL,  STN_N4,
                                         STN_A,  STN_O,   STN_E,   STN_U
     ),
-
     // NUMBER
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  `  │  -  │  1  │  2  │  3  │ 00  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
-    // ├─────┼──,──┼──4──┼──5──┼──6──┼─────┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
-    // │ ESC │  .  │  7  │  8  │  9  │  0  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // │  `  │ 00  │  1  │  2  │  3 ESC -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // ├─────┼─────┼──4──┼──5──┼──6──┼──,──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
+    // │ ESC │  0  │  7  │  8  │  9 TAB .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
+    //                         ┌───────────┐             ┌───────────┐
+    //                         │   SandS   │             │   EandS   │
+    //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
+    //                         │ ALT │ CTL │   │MT_TG│   │INT5 │INT4 │
+    //                         └─────┴─────┘   └─────┘   └─────┴─────┘
+    // NUMBER Shifted
+    // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
+    // │  ~  │ ()← │  !  │  @  │  # ESC _  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // ├─────┼─────┼──$──┼──%──┼──^──┼──<──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
+    // │ ESC │  )  │  &  │  *  │  ( TAB >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
@@ -294,29 +481,29 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER
     [_NUMBER] = LAYOUT(
-        KC_GRV, KC_MINS, KC_1, KC_2, KC_3,    KC_DZ,   KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_ALT,
-        KC_ESC, KC_DOT,  KC_7, KC_8, KC_9,    KC_0,    KC_PGDN, KC_LEFT, KC_DOWN, KC_RIGHT, KC_LGUI, MO_FUN,
+        KC_GRV, KC_DZ,  KC_1, KC_2, KC_3,    KC_MINS,   KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_ALT,
+        KC_ESC, KC_0,   KC_7, KC_8, KC_9,    KC_DOT,    KC_PGDN, KC_LEFT, KC_DOWN, KC_RIGHT, KC_LGUI, MO_FUN,
                                      MT_SPC,  KC_TRNS, MT_ENT,
                                      KC_LALT, KC_LCTL, KC_INT5, KC_INT4
     ),
 
     // FUNCTION
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │ F1  │ F2  │ F3  │ F4  │ F5  │ F11 │             │ BRU │ VL0 │ VL- │ VL+ │ PSC │ JIS │
+    // │ JIS │ F1  │ F2  │ F3  │ F4  │ F5  │             │ BRU │ VL0 │ VL- │ VL+ │ PSC │ SBL │
     // ├─────┼─────┼─────┼─────┼─────┼─────┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
     // │ ESC │ F6  │ F7  │ F8  │ F9  │ F10 │             │ BRD │ |<< │ >|| │ >>| │ INS │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │ F12 │ F13 │
+    //                         │ ALT │ CTL │   │MT_TG│   │ F11 │ F12 │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // FUNCTION
     [_FUNCTION] = LAYOUT(
-        KC_F1,  KC_F2, KC_F3, KC_F4, KC_F5,   KC_F11,  KC_BRIU, KC_MUTE, KC_VOLD, KC_VOLU, KC_PSCR, TG_JIS,
+        TG_JIS, KC_F1, KC_F2, KC_F3, KC_F4,   KC_F5,   KC_BRIU, KC_MUTE, KC_VOLD, KC_VOLU, KC_PSCR, TG_SBL,
         KC_ESC, KC_F6, KC_F7, KC_F8, KC_F9,   KC_F10,  KC_BRID, KC_MPRV, KC_MPLY, KC_MNXT, KC_LGUI, KC_TRNS,
                                      KC_TRNS, KC_TRNS, KC_TRNS,
-                                     KC_TRNS, KC_TRNS, KC_F12,  KC_F13
+                                     KC_TRNS, KC_TRNS, KC_F11,  KC_F12
     ),
 };
 
@@ -326,10 +513,11 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    uint8_t mods = get_mods();
+    bool shifted = (mods & MOD_MASK_SHIFT);
 
     if (is_combo_candidate(keycode)) {
         if (keycode == KC_GRV) {
-            uint8_t mods = get_mods();
             if (is_jis_mode && (mods & MOD_MASK_ALT)) {
                 if (record->event.pressed) {
                     tap_code16(KC_GRV); // 全角半角
@@ -351,9 +539,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 combo_fifo[combo_fifo_len].released = false;
                 combo_fifo_len++;
             } else {
-                uint8_t mods = get_mods();
-                bool shifted = (mods & MOD_MASK_SHIFT);
-                transformed_key_t transformed = apply_alt_then_jis(keycode, shifted);
+                transformed_key_t transformed = transform_key_extended(keycode, shifted);
                 if (transformed.needs_unshift) {
                     tap_code16_unshifted(transformed.keycode);
                 } else {
@@ -411,22 +597,21 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             }
             return true;
         case TG_JIS:
-            if (record->event.pressed) {
-                is_jis_mode = !is_jis_mode;
-                user_config.jis_mode = is_jis_mode;
-                eeconfig_update_user(user_config.raw);
-            }
-            return true;
+            return handle_toggle_on_hold(record, &tg_jis_state, toggle_jis_mode);
         case TG_ALT:
-            if (record->event.pressed) {
-                is_alt_mode = !is_alt_mode;
-                user_config.alt_mode = is_alt_mode;
-                eeconfig_update_user(user_config.raw);
-            }
-            return true;
+            return handle_toggle_on_hold(record, &tg_alt_state, toggle_alt_mode);
+        case TG_SBL:
+            return handle_toggle_on_hold(record, &tg_sbl_state, toggle_sbl_mode);
         case KC_DZ:
             if (record->event.pressed) {
-                SEND_STRING("00");
+                if (shifted) {
+                    tap_code16(is_jis_mode ? JP_LPRN : KC_LPRN);
+                    tap_code16(is_jis_mode ? JP_RPRN : KC_RPRN);
+                    tap_code16_unshifted(KC_LEFT);
+                } else {
+                    dz_timer = timer_read();
+                    dz_delayed = true;
+                }
             }
             return false;
         case KC_LCTL:
@@ -497,4 +682,9 @@ void matrix_scan_user(void) {
     }
     refresh_force_qwerty_state();
     combo_fifo_service_extended(transform_key_extended);
+
+    if (dz_delayed && timer_elapsed(dz_timer) >= 200) {
+        SEND_STRING("00");
+        dz_delayed = false;
+    }
 }
