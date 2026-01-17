@@ -53,6 +53,13 @@ static bool is_mac = false;
 static bool os_detected = false;
 static uint16_t dz_timer = 0;
 static bool dz_delayed = false;
+typedef struct {
+    bool pressed;
+    uint16_t timer;
+} toggle_hold_state_t;
+static toggle_hold_state_t tg_jis_state = {false, 0};
+static toggle_hold_state_t tg_alt_state = {false, 0};
+static toggle_hold_state_t tg_sbl_state = {false, 0};
 // 0:未使用, 1:英語, 2:日本語, 3:無変更
 static int stn_lang = 2; // ステノ時の言語
 static int kbd_lang = 1; // キーボード時の言語
@@ -252,10 +259,8 @@ static inline transformed_key_t transform_key_extended(uint16_t kc, bool shifted
     uint16_t sbl_kc = sbl_transform(kc, shifted);
     uint16_t alt_kc = alt_transform(sbl_kc, shifted);
 
-    // Check if shift should be removed for SBL or JIS
     bool needs_unshift = is_jis_shift_target(alt_kc, shifted);
 
-    // Also check SBL: when shifted and sbl_transform changed the key
     if (!needs_unshift && shifted && is_sbl_mode && !force_qwerty_active) {
         uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
         if (current_layer == _NUMBER || current_layer == _QWERTY) {
@@ -320,6 +325,40 @@ static void update_lang(uint8_t lang) {
     }
     user_config.alt_mode = is_alt_mode;
     eeconfig_update_user(user_config.raw);
+}
+
+static void toggle_jis_mode(void) {
+    is_jis_mode = !is_jis_mode;
+    user_config.jis_mode = is_jis_mode;
+    eeconfig_update_user(user_config.raw);
+}
+
+static void toggle_alt_mode(void) {
+    is_alt_mode = !is_alt_mode;
+    user_config.alt_mode = is_alt_mode;
+    eeconfig_update_user(user_config.raw);
+}
+
+static void toggle_sbl_mode(void) {
+    is_sbl_mode = !is_sbl_mode;
+    user_config.sbl_mode = is_sbl_mode;
+    eeconfig_update_user(user_config.raw);
+}
+
+static bool handle_toggle_on_hold(keyrecord_t *record, toggle_hold_state_t *state, void (*toggle_fn)(void)) {
+    if (record->event.pressed) {
+        state->pressed = true;
+        state->timer = timer_read();
+        return false;
+    }
+
+    if (!state->pressed) return false;
+
+    state->pressed = false;
+    if (timer_elapsed(state->timer) >= COMBO_TIMEOUT_MS) {
+        toggle_fn();
+    }
+    return false;
 }
 
 /*---------------------------------------------------------------------------------------------------*/
@@ -553,26 +592,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             }
             return true;
         case TG_JIS:
-            if (record->event.pressed) {
-                is_jis_mode = !is_jis_mode;
-                user_config.jis_mode = is_jis_mode;
-                eeconfig_update_user(user_config.raw);
-            }
-            return true;
+            return handle_toggle_on_hold(record, &tg_jis_state, toggle_jis_mode);
         case TG_ALT:
-            if (record->event.pressed) {
-                is_alt_mode = !is_alt_mode;
-                user_config.alt_mode = is_alt_mode;
-                eeconfig_update_user(user_config.raw);
-            }
-            return true;
+            return handle_toggle_on_hold(record, &tg_alt_state, toggle_alt_mode);
         case TG_SBL:
-            if (record->event.pressed) {
-                is_sbl_mode = !is_sbl_mode;
-                user_config.sbl_mode = is_sbl_mode;
-                eeconfig_update_user(user_config.raw);
-            }
-            return true;
+            return handle_toggle_on_hold(record, &tg_sbl_state, toggle_sbl_mode);
         case KC_DZ:
             if (record->event.pressed) {
                 if (shifted) {
