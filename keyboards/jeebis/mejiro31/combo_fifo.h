@@ -278,8 +278,15 @@ static inline void combo_fifo_service_basic(key_transform_fn_t transform_fn) {
                 uint16_t base_kc = combo_fifo[0].keycode;
                 uint16_t out_kc = transform_fn(base_kc);
                 clear_hold_state();
-                // タイムアウト時は単打出力（ホールドはしない）
-                tap_code16(out_kc);
+                // 単要素時は長押し対応のためホールド
+                hold_state.keycode = out_kc;
+                hold_state.time_confirmed = timer_read();
+                hold_state.is_held = true;
+                hold_state.source_key_a = base_kc;
+                hold_state.source_key_b = 0;
+                hold_state.source_a_pressed = true;
+                hold_state.source_b_pressed = false;
+                register_code16(out_kc);
                 fifo_remove(0);
                 continue;
             }
@@ -341,11 +348,18 @@ static inline void combo_fifo_service_extended(key_transform_extended_fn_t trans
                 bool shifted = (mods & MOD_MASK_SHIFT);
                 transformed_key_t transformed = transform_fn(base_kc, shifted);
                 clear_hold_state();
-                // タイムアウト時は単打出力（ホールドはしない）
+                // 単要素時は長押し対応のためホールド（needs_unshiftの場合はtap）
+                hold_state.keycode = transformed.keycode;
+                hold_state.time_confirmed = timer_read();
+                hold_state.is_held = !transformed.needs_unshift;
+                hold_state.source_key_a = base_kc;
+                hold_state.source_key_b = 0;
+                hold_state.source_a_pressed = true;
+                hold_state.source_b_pressed = false;
                 if (transformed.needs_unshift) {
                     tap_code16_unshifted(transformed.keycode);
                 } else {
-                    tap_code16(transformed.keycode);
+                    register_code16(transformed.keycode);
                 }
                 fifo_remove(0);
                 continue;
