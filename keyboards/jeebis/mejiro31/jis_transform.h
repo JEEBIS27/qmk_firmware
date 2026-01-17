@@ -35,6 +35,35 @@ extern bool is_jis_mode;
  */
 static inline uint16_t jis_transform(uint16_t kc, bool shifted) {
     if (!is_jis_mode) return kc;
+    // Direct symbol keycodes that may arrive after Programmer Mode remap
+    switch (kc) {
+        case KC_EXLM: return JP_EXLM; // !
+        case KC_AT:   return JP_AT;   // @
+        case KC_HASH: return JP_HASH; // #
+        case KC_DLR:  return JP_DLR;  // $
+        case KC_PERC: return JP_PERC; // %
+        case KC_CIRC: return JP_CIRC; // ^
+        case KC_AMPR: return JP_AMPR; // &
+        case KC_ASTR: return JP_ASTR; // *
+        case KC_LPRN: return JP_LPRN; // (
+        case KC_RPRN: return JP_RPRN; // )
+        case KC_UNDS: return JP_UNDS; // _
+        case KC_PLUS: return JP_PLUS; // +
+        case KC_LCBR: return JP_LCBR; // {
+        case KC_RCBR: return JP_RCBR; // }
+        case KC_LBRC: return JP_LBRC; // [
+        case KC_RBRC: return JP_RBRC; // ]
+        case KC_PIPE: return JP_PIPE; // |
+        case KC_COLN: return JP_COLN; // :
+        case KC_DQUO: return JP_DQUO; // "
+        case KC_LABK: return JP_LABK; // <
+        case KC_RABK: return JP_RABK; // >
+        case KC_QUES: return JP_QUES; // ?
+        case KC_TILD: return JP_TILD; // ~
+        case KC_SLSH: return JP_SLSH; // /
+        case KC_EQL:  return JP_EQL;  // =
+        default: break;
+    }
     switch (kc) {
         case KC_1: return shifted ? JP_EXLM : KC_1;   // ! / 1
         case KC_2: return shifted ? JP_AT   : KC_2;   // @ / 2
@@ -95,7 +124,7 @@ static inline bool is_jis_shift_target(uint16_t kc, bool shifted) {
     switch (kc) {
         case KC_1: case KC_2: case KC_3: case KC_4: case KC_5:
         case KC_6: case KC_7: case KC_8: case KC_9: case KC_0:
-        case KC_GRV: case KC_MINS: case KC_EQL:
+        case KC_AT: case KC_CIRC: case KC_GRV: case KC_MINS: case KC_EQL:
         case KC_LBRC: case KC_RBRC: case KC_BSLS:
         case KC_SCLN: case KC_QUOT: case KC_COMM: case KC_DOT: case KC_SLSH:
             return true;
