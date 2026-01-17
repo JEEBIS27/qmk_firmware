@@ -56,6 +56,10 @@ static int stn_lang = 2; // ステノ時の言語
 static int kbd_lang = 1; // キーボード時の言語
 static int alt_lang = 1; // Alternative Layoutの言語設定
 
+// KC_DZ遅延出力管理
+static uint16_t dz_timer = 0;
+static bool dz_delayed = false;
+
 typedef union {
     uint32_t raw;
     struct {
@@ -106,21 +110,21 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     {KC_RBRC, KC_QUES, KC_PIPE,    _QWERTY},  // ] / ? / |
     {KC_EQL,  KC_HASH, KC_AT,      _QWERTY},  // = / # / @
 
+    {KC_DZ,   KC_DZ,   KC_PERC,    _NUMBER},  // 00 / 00 / %
     {KC_1,    KC_1,    KC_LBRC,    _NUMBER},  // 1 / 1 / [
     {KC_2,    KC_2,    KC_LCBR,    _NUMBER},  // 2 / 2 / {
     {KC_3,    KC_3,    KC_LPRN,    _NUMBER},  // 3 / 3 / (
-    {KC_DZ,   KC_DZ,   KC_LABK,    _NUMBER},  // 00 / 00 / <
-    {KC_4,    KC_4,    KC_PLUS,    _NUMBER},  // 4 / 4 / +
-    {KC_5,    KC_5,    KC_ASTR,    _NUMBER},  // 5 / 5 / *
-    {KC_6,    KC_6,    KC_SLSH,    _NUMBER},  // 6 / 6 / /
-    {KC_TZ,   KC_TZ,   KC_CIRC,    _NUMBER},  // 000 / 000 / ^
+    {KC_MINS, KC_MINS, KC_LABK,    _NUMBER},  // - / - / <
+    {KC_TZ,   KC_TZ,   KC_SLSH,    _NUMBER},  // 000 / 000 / /
+    {KC_4,    KC_4,    KC_ASTR,    _NUMBER},  // 4 / 4 / *
+    {KC_5,    KC_5,    KC_EQL,     _NUMBER},  // 5 / 5 / =
+    {KC_6,    KC_6,    KC_PLUS,    _NUMBER},  // 6 / 6 / +
+    {KC_COMM, KC_COMM, KC_CIRC,    _NUMBER},  // , / , / ^
+    {KC_0,    KC_0,    KC_DLR,     _NUMBER},  // 0 / 0 / $
     {KC_7,    KC_7,    KC_RBRC,    _NUMBER},  // 7 / 7 / ]
     {KC_8,    KC_8,    KC_RCBR,    _NUMBER},  // 8 / 8 / }
     {KC_9,    KC_9,    KC_RPRN,    _NUMBER},  // 9 / 9 / )
-    {KC_0,    KC_0,    KC_RABK,    _NUMBER},  // 0 / 0 / >
-    {KC_MINS, KC_MINS, KC_PERC,    _NUMBER},  // - / - / %
-    {KC_COMM, KC_COMM, KC_EQL,     _NUMBER},  // , / , / =
-    {KC_DOT,  KC_DOT,  KC_DLR,     _NUMBER},  // . / . / $
+    {KC_DOT,  KC_DOT,  KC_RABK,    _NUMBER},  // . / . / >
 };
 
 uint16_t sbl_transform(uint16_t kc, bool shifted) {
@@ -289,8 +293,8 @@ const combo_pair_t combo_pairs[] PROGMEM = {
     {KC_3,    KC_9,    KC_6,     _NUMBER},
     {KC_0,    KC_DZ,   KC_TZ,    _NUMBER},
     {KC_DOT,  KC_MINS, KC_COMMA, _NUMBER},
-    {KC_9,    KC_0,    KC_TAB,   _NUMBER},
-    {KC_3,    KC_DZ,   KC_ESC,   _NUMBER},
+    {KC_9,    KC_DOT,  KC_TAB,   _NUMBER},
+    {KC_3,    KC_MINS, KC_ESC,   _NUMBER},
     {KC_PGDN, KC_LEFT, KC_BSPC,  _NUMBER},
     {KC_PGUP, KC_HOME, KC_DEL,   _NUMBER},
 };
@@ -353,9 +357,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     ),
     // NUMBER
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  `  │  -  │  1  │  2  │  3  │ 00  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
-    // ├─────┼──,──┼──4──┼──5──┼──6──┼─────┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
-    // │ ESC │  .  │  7  │  8  │  9  │  0  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // │  `  │ 00  │  1  │  2  │  3  │  -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // ├─────┼─────┼──4──┼──5──┼──6──┼──,──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
+    // │ ESC │  0  │  7  │  8  │  9  │  .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
@@ -364,8 +368,8 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER
     [_NUMBER] = LAYOUT(
-        KC_GRV, KC_MINS, KC_1, KC_2, KC_3,    KC_DZ,   KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_ALT,
-        KC_ESC, KC_DOT,  KC_7, KC_8, KC_9,    KC_0,    KC_PGDN, KC_LEFT, KC_DOWN, KC_RIGHT, KC_LGUI, MO_FUN,
+        KC_GRV, KC_DZ,  KC_1, KC_2, KC_3,    KC_MINS,   KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_ALT,
+        KC_ESC, KC_0,   KC_7, KC_8, KC_9,    KC_DOT,    KC_PGDN, KC_LEFT, KC_DOWN, KC_RIGHT, KC_LGUI, MO_FUN,
                                      MT_SPC,  KC_TRNS, MT_ENT,
                                      KC_LALT, KC_LCTL, KC_INT5, KC_INT4
     ),
@@ -507,7 +511,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                     tap_code16(is_jis_mode ? JP_RPRN : KC_RPRN);
                     tap_code16_unshifted(KC_LEFT);
                 } else {
-                    SEND_STRING("00");
+                    // タップされたらタイマーを開始（200ms後に出力）
+                    dz_timer = timer_read();
+                    dz_delayed = true;
                 }
             }
             return false;
@@ -579,4 +585,10 @@ void matrix_scan_user(void) {
     }
     refresh_force_qwerty_state();
     combo_fifo_service_extended(transform_key_extended);
+
+    // KC_DZ遅延出力処理：200ms経過したら「00」を出力
+    if (dz_delayed && timer_elapsed(dz_timer) >= 200) {
+        SEND_STRING("00");
+        dz_delayed = false;
+    }
 }
