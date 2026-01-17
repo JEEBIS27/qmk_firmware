@@ -35,7 +35,7 @@ enum custom_keycodes {
     KC_DZ = SAFE_RANGE,  // 00 key
     KC_TZ,               // 000 key
     TG_ALT,              // Alternative Layout toggle key
-    TG_SBL,              // Mejiro31 symbol layout toggle key
+    TG_SBL,              // Mejiro31 Symbol Layout toggle key
 };
 
 #define MT_SPC MT(MOD_LSFT, KC_SPC)
@@ -204,19 +204,24 @@ uint16_t sbl_transform(uint16_t kc, bool shifted) {
 /*----------------------------------------Alternative Layout-----------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
 
-// Layout name: Graphite
+// Layout: Graphite
+// ┌─────┬─────┬─────┬─────┬─────┐┌─────┬─────┬─────┬─────┬─────┬─────┐
+// │  b  │  l  │  d  │  w  │  z  ││ ' _ │  f  │  o  │  u  │  j  │ ; : │
+// ├──n──┼──r──┼──t──┼──s──┼──g──┤├──y──┼──h──┼──a──┼──e──┼──i──┼──,──┤
+// │  q  │  x  │  m  │  c  │  v  ││  k  │  p  │ . > │ - " │ / < │ \ | │
+// └─────┴─────┴─────┴─────┴─────┘└─────┴─────┴─────┴─────┴─────┴─────┘
 static const alt_mapping_t alt_mappings[] PROGMEM = {
     {KC_Q,    KC_B,    KC_B},
     {KC_W,    KC_L,    KC_L},
     {KC_E,    KC_D,    KC_D},
     {KC_R,    KC_W,    KC_W},
     {KC_T,    KC_Z,    KC_Z},
-    {KC_Y,    KC_QUOT, KC_UNDS},  // ' / _
+    {KC_Y,    KC_QUOT, KC_UNDS},
     {KC_U,    KC_F,    KC_F},
     {KC_I,    KC_O,    KC_O},
     {KC_O,    KC_U,    KC_U},
     {KC_P,    KC_J,    KC_J},
-    {KC_MINS, KC_SCLN, KC_SCLN},  // ; / :
+    {KC_MINS, KC_SCLN, KC_COLN},
 
     {KC_A,    KC_N,    KC_N},
     {KC_S,    KC_R,    KC_R},
@@ -228,7 +233,7 @@ static const alt_mapping_t alt_mappings[] PROGMEM = {
     {KC_K,    KC_A,    KC_A},
     {KC_L,    KC_E,    KC_E},
     {KC_SCLN, KC_I,    KC_I},
-    {KC_QUOT, KC_COMM, KC_QUES},  // , / ?
+    {KC_QUOT, KC_COMM, KC_QUES},
 
     {KC_Z,    KC_Q,    KC_Q},
     {KC_X,    KC_X,    KC_X},
@@ -237,10 +242,10 @@ static const alt_mapping_t alt_mappings[] PROGMEM = {
     {KC_B,    KC_V,    KC_V},
     {KC_N,    KC_K,    KC_K},
     {KC_M,    KC_P,    KC_P},
-    {KC_COMM, KC_DOT,  KC_RABK},   // . / >
-    {KC_DOT,  KC_MINS, KC_DQUO},  // - / "
-    {KC_SLSH, KC_SLSH, KC_LABK},  // / / <
-    {KC_BSLS, KC_BSLS, KC_BSLS},
+    {KC_COMM, KC_DOT,  KC_RABK},
+    {KC_DOT,  KC_MINS, KC_DQUO},
+    {KC_SLSH, KC_SLSH, KC_LABK},
+    {KC_BSLS, KC_BSLS, KC_PIPE},
 };
 
 uint16_t alt_transform(uint16_t kc, bool shifted) {
