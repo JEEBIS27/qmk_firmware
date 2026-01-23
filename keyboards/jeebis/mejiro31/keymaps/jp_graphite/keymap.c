@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "jis_transform.h"
 #include "combo_fifo.h"
 #include "alt_layout.h"
+#include "mejiro_fifo.h"
 
 enum layer_names {
     _QWERTY = 0,
@@ -39,6 +40,7 @@ enum custom_keycodes {
     TG_JIS,              // JISモード切替キー
     TG_ALT,              // Alternative Layout切替キー
     TG_SBL,              // Mejiro31 Symbol Layout切替キー
+    TG_MJR,              // Mejiro（メジロ式）モード切替キー
 };
 
 #define MT_SPC MT(MOD_LSFT, KC_SPC)
@@ -49,6 +51,7 @@ enum custom_keycodes {
 
 bool is_jis_mode = true;
 bool is_sbl_mode = true;
+bool is_mejiro_mode = true;
 static bool is_mac = false;
 static bool os_detected = false;
 static uint16_t dz_timer = 0;
@@ -60,6 +63,7 @@ typedef struct {
 static toggle_hold_state_t tg_jis_state = {false, 0};
 static toggle_hold_state_t tg_alt_state = {false, 0};
 static toggle_hold_state_t tg_sbl_state = {false, 0};
+static toggle_hold_state_t tg_mjr_state = {false, 0};
 // 0:未使用, 1:英語, 2:日本語, 3:無変更
 static int stn_lang = 2; // ステノ時の言語
 static int kbd_lang = 1; // キーボード時の言語
@@ -72,6 +76,7 @@ typedef union {
         bool jis_mode : 1;
         bool alt_mode : 1;
         bool sbl_mode : 1;
+        bool mejiro_mode : 1;
     };
 } user_config_t;
 
@@ -82,6 +87,7 @@ void eeconfig_init_user(void) {
     user_config.jis_mode = true;
     user_config.alt_mode = true;
     user_config.sbl_mode = true;
+    user_config.mejiro_mode = false;
     eeconfig_update_user(user_config.raw);
     steno_set_mode(STENO_MODE_GEMINI);
 }
@@ -93,6 +99,7 @@ void keyboard_post_init_user(void) {
     is_jis_mode = (user_config.jis_mode);
     is_alt_mode = (user_config.alt_mode);
     is_sbl_mode = (user_config.sbl_mode);
+    is_mejiro_mode = (user_config.mejiro_mode);
     default_layer_set((layer_state_t)1UL << _QWERTY);
     layer_clear();
     layer_move(_QWERTY);
@@ -350,6 +357,12 @@ static void toggle_sbl_mode(void) {
     eeconfig_update_user(user_config.raw);
 }
 
+static void toggle_mejiro_mode(void) {
+    is_mejiro_mode = !is_mejiro_mode;
+    user_config.mejiro_mode = is_mejiro_mode;
+    eeconfig_update_user(user_config.raw);
+}
+
 static bool handle_toggle_on_hold(keyrecord_t *record, toggle_hold_state_t *state, void (*toggle_fn)(void)) {
     if (record->event.pressed) {
         state->pressed = true;
@@ -502,7 +515,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [_FUNCTION] = LAYOUT(
         TG_JIS, KC_F1, KC_F2, KC_F3, KC_F4,   KC_F5,   KC_BRIU, KC_MUTE, KC_VOLD, KC_VOLU, KC_PSCR, TG_SBL,
         KC_ESC, KC_F6, KC_F7, KC_F8, KC_F9,   KC_F10,  KC_BRID, KC_MPRV, KC_MPLY, KC_MNXT, KC_LGUI, KC_TRNS,
-                                     KC_TRNS, KC_TRNS, KC_TRNS,
+                                     TG_MJR,  KC_TRNS, KC_TRNS,
                                      KC_TRNS, KC_TRNS, KC_F11,  KC_F12
     ),
 };
@@ -515,6 +528,20 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     uint8_t mods = get_mods();
     bool shifted = (mods & MOD_MASK_SHIFT);
+
+    // メジロ式：GEMINIレイヤー上のSTN_キーのみ監視し、モードON時はQMK既定処理を抑止
+    if (is_mejiro_mode && get_highest_layer(layer_state | default_layer_state) == _GEMINI && is_stn_key(keycode)) {
+        if (record->event.pressed) {
+            mejiro_on_press(keycode);
+        } else {
+            mejiro_on_release(keycode);
+            // メジロ変換失敗時はSTN_キーコードをそのまま処理
+            if (mejiro_should_send_passthrough()) {
+                mejiro_send_passthrough_keys();
+            }
+        }
+        return false;
+    }
 
     if (is_combo_candidate(keycode)) {
         if (keycode == KC_GRV) {
@@ -602,6 +629,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             return handle_toggle_on_hold(record, &tg_alt_state, toggle_alt_mode);
         case TG_SBL:
             return handle_toggle_on_hold(record, &tg_sbl_state, toggle_sbl_mode);
+        case TG_MJR:
+            return handle_toggle_on_hold(record, &tg_mjr_state, toggle_mejiro_mode);
         case KC_DZ:
             if (record->event.pressed) {
                 if (shifted) {
