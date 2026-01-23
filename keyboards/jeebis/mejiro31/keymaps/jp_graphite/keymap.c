@@ -87,7 +87,7 @@ void eeconfig_init_user(void) {
     user_config.jis_mode = true;
     user_config.alt_mode = true;
     user_config.sbl_mode = true;
-    user_config.mejiro_mode = false;
+    user_config.mejiro_mode = true;
     eeconfig_update_user(user_config.raw);
     steno_set_mode(STENO_MODE_GEMINI);
 }
@@ -143,7 +143,7 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  `  │ 00  │  1  │  2  │  3  │  -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │ MJR │ 00  │  1  │  2  │  3  │  -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼─────┼──4──┼──5──┼──6──┼──,──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
     // │ ESC │  0  │  7  │  8  │  9  │  .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
@@ -154,7 +154,7 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER Shifted
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  ~  │  %  │  [  │  {  │  (  │  <  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │ MJR │  %  │  [  │  {  │  (  │  <  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼──/──┼──*──┼──=──┼──+──┼──^──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
     // │ ESC │  $  │  ]  │  }  │  )  │  >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
@@ -483,7 +483,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER Shifted
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  ~  │ ()← │  !  │  @  │  # ESC _  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │ MJR │ ()← │  !  │  @  │  # ESC _  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼─────┼──$──┼──%──┼──^──┼──<──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
     // │ ESC │  )  │  &  │  *  │  ( TAB >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
@@ -494,7 +494,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER
     [_NUMBER] = LAYOUT(
-        KC_GRV, KC_DZ,  KC_1, KC_2, KC_3,    KC_MINS,   KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_ALT,
+        TG_MJR, KC_DZ,  KC_1, KC_2, KC_3,    KC_MINS,   KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_ALT,
         KC_ESC, KC_0,   KC_7, KC_8, KC_9,    KC_DOT,    KC_PGDN, KC_LEFT, KC_DOWN, KC_RIGHT, KC_LGUI, MO_FUN,
                                      MT_SPC,  KC_TRNS, MT_ENT,
                                      KC_LALT, KC_LCTL, KC_INT5, KC_INT4
