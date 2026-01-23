@@ -84,48 +84,63 @@ static size_t utf8_char_count(const char *s) {
     return count;
 }
 
-// ひらがなをヘボン式ローマ字に変換
+// ひらがなをヘボン式ローマ字に変換（最長一致 + 促音対応）
 void kana_to_roma(const char *kana_input, char *roma_output, size_t output_size) {
     roma_output[0] = '\0';
     const char *p = kana_input;
-    
+
     while (*p && strlen(roma_output) < output_size - 10) {
-        bool matched = false;
-        
-        // 長いマッチを優先(3バイト以上)
+        // 促音（小さい「っ」）の処理：次の音の頭子音を重ねる
+        if (strncmp(p, "っ", 3) == 0) {
+            // 次のエントリを最長一致で先読み
+            const kana_roma_t *best = NULL;
+            size_t best_len = 0;
+            for (const kana_roma_t *entry = kana_roma_table; entry->kana != NULL; entry++) {
+                size_t kana_len = strlen(entry->kana);
+                if (kana_len > best_len && strncmp(p + 3, entry->kana, kana_len) == 0) {
+                    best = entry;
+                    best_len = kana_len;
+                }
+            }
+            if (best && best->roma && best->roma[0] != '\0') {
+                char c = best->roma[0];
+                // 母音頭の場合は重ねない
+                if (c != 'a' && c != 'e' && c != 'i' && c != 'o' && c != 'u') {
+                    size_t len = strlen(roma_output);
+                    if (len < output_size - 2) {
+                        roma_output[len] = c;
+                        roma_output[len + 1] = '\0';
+                    }
+                }
+            }
+            p += 3; // 「っ」を消費して続行
+            continue;
+        }
+
+        // 最長一致検索（拗音などを優先）
+        const kana_roma_t *best = NULL;
+        size_t best_len = 0;
         for (const kana_roma_t *entry = kana_roma_table; entry->kana != NULL; entry++) {
             size_t kana_len = strlen(entry->kana);
-            if (kana_len >= 3 && strncmp(p, entry->kana, kana_len) == 0) {
-                strcat(roma_output, entry->roma);
-                p += kana_len;
-                matched = true;
-                break;
+            if (kana_len > best_len && strncmp(p, entry->kana, kana_len) == 0) {
+                best = entry;
+                best_len = kana_len;
             }
         }
-        
-        if (matched) continue;
-        
-        // 通常のマッチ
-        for (const kana_roma_t *entry = kana_roma_table; entry->kana != NULL; entry++) {
-            size_t kana_len = strlen(entry->kana);
-            if (strncmp(p, entry->kana, kana_len) == 0) {
-                strcat(roma_output, entry->roma);
-                p += kana_len;
-                matched = true;
-                break;
-            }
+
+        if (best) {
+            strcat(roma_output, best->roma);
+            p += best_len;
+            continue;
         }
-        
-        if (!matched) {
-            // マッチしない文字はそのままコピー(ASCII)
-            if (*p < 128) {
-                size_t len = strlen(roma_output);
-                roma_output[len] = *p;
-                roma_output[len + 1] = '\0';
-                p++;
-            } else {
-                p++; // スキップ
-            }
+
+        if ((unsigned char)*p < 128) {
+            size_t len = strlen(roma_output);
+            roma_output[len] = *p;
+            roma_output[len + 1] = '\0';
+            p++;
+        } else {
+            p++;
         }
     }
 }
