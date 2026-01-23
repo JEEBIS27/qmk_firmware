@@ -262,7 +262,6 @@ static const verb_entry_t verb_dict[] = {
     {"SU-SU", "すす", 'm', VERB_TYPE_GODAN},       // 進む
     {"TA-NAU", "たの", 'm', VERB_TYPE_GODAN},      // 頼む
     {"TIU-TKNA", "ついば", 'm', VERB_TYPE_GODAN},  // 啄む
-    {"TU-KA", "つか", 'm', VERB_TYPE_GODAN},       // 掴む
     {"TU-TU", "つつ", 'm', VERB_TYPE_GODAN},       // 包む
     {"TU-SKNA", "つま", 'm', VERB_TYPE_GODAN},     // 摘む
     {"NA-YA", "なや", 'm', VERB_TYPE_GODAN},       // 悩む
