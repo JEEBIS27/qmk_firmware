@@ -1,6 +1,7 @@
 #include "mejiro_fifo.h"
 #include "mejiro_commands.h"
 #include "mejiro_transform.h"
+#include "jis_transform.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -172,9 +173,16 @@ static void convert_and_send(void) {
                     }
                     return;
                 
-                case CMD_KEYCODE:
-                    tap_code(mejiro_commands[i].action.keycode);
+                case CMD_KEYCODE: {
+                    uint16_t kc = mejiro_commands[i].action.keycode;
+                    // JISモード時はキーコードを変換
+                    if (is_jis_mode) {
+                        // 記号キーの場合は変換が必要
+                        kc = jis_transform(kc, false);
+                    }
+                    tap_code16(kc);
                     return;
+                }
                 
                 case CMD_STRING: {
                     const char *str = mejiro_commands[i].action.string;
