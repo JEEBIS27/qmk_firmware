@@ -472,7 +472,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     ),
     // NUMBER
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  `  │ 00  │  1  │  2  │  3 ESC -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │ MJR │ 00  │  1  │  2  │  3 ESC -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼─────┼──4──┼──5──┼──6──┼──,──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
     // │ ESC │  0  │  7  │  8  │  9 TAB .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
@@ -685,15 +685,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             return true;
         case KC_INT4:
             update_lang(2); // 日本語へ切り替え
-            if (stn_lang == 2) {
-                default_layer = 1;
-            }
             return false;
         case KC_INT5:
             update_lang(1); // 英語へ切り替え
-            if (stn_lang == 1) {
-                default_layer = 0;
-            }
             return false;
         default:
             break;
