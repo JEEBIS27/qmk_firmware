@@ -27,16 +27,16 @@ static const kana_roma_t kana_roma_table[] = {
     {"や", "ya"}, {"ゆ", "yu"}, {"よ", "yo"},
     {"ら", "ra"}, {"り", "ri"}, {"る", "ru"}, {"れ", "re"}, {"ろ", "ro"},
     {"わ", "wa"}, {"ゐ", "wi"}, {"ゑ", "we"}, {"を", "wo"}, {"ん", "nn"},
-    
+
     // 濁音
     {"が", "ga"}, {"ぎ", "gi"}, {"ぐ", "gu"}, {"げ", "ge"}, {"ご", "go"},
     {"ざ", "za"}, {"じ", "ji"}, {"ず", "zu"}, {"ぜ", "ze"}, {"ぞ", "zo"},
     {"だ", "da"}, {"ぢ", "di"}, {"づ", "du"}, {"で", "de"}, {"ど", "do"},
     {"ば", "ba"}, {"び", "bi"}, {"ぶ", "bu"}, {"べ", "be"}, {"ぼ", "bo"},
-    
+
     // 半濁音
     {"ぱ", "pa"}, {"ぴ", "pi"}, {"ぷ", "pu"}, {"ぺ", "pe"}, {"ぽ", "po"},
-    
+
     // 拗音(きゃ系)
     {"きゃ", "kya"}, {"きゅ", "kyu"}, {"きょ", "kyo"},
     {"しゃ", "sha"}, {"しゅ", "shu"}, {"しょ", "sho"},
@@ -50,25 +50,25 @@ static const kana_roma_t kana_roma_table[] = {
     {"ぢゃ", "dya"}, {"ぢゅ", "dyu"}, {"ぢょ", "dyo"},
     {"びゃ", "bya"}, {"びゅ", "byu"}, {"びょ", "byo"},
     {"ぴゃ", "pya"}, {"ぴゅ", "pyu"}, {"ぴょ", "pyo"},
-    
+
     // 特殊音
     {"ゔ", "vu"}, {"ゔぁ", "va"}, {"ゔぃ", "vi"}, {"ゔぇ", "ve"}, {"ゔぉ", "vo"},
     {"ゔゅ", "vyu"},
     {"うぃ", "wi"}, {"うぇ", "we"}, {"うぉ", "wo"},
     {"ふぁ", "fa"}, {"ふぃ", "fi"}, {"ふぇ", "fe"}, {"ふぉ", "fo"},
     {"ふゃ", "fya"}, {"ふゅ", "fyu"}, {"ふょ", "fyo"},
-    
+
     // 小書き文字
     {"ぁ", "xa"}, {"ぃ", "xi"}, {"ぅ", "xu"}, {"ぇ", "xe"}, {"ぉ", "xo"},
     {"ゃ", "xya"}, {"ゅ", "xyu"}, {"ょ", "xyo"},
     {"っ", "xtu"}, {"ゎ", "xwa"},
-    
+
     // 長音符
     {"ー", "-"},
-    
+
     // 句読点
     {"、", ","}, {"。", "."}, {"!", "!"}, {"!", "!"}, {"?", "?"}, {"?", "?"},
-    
+
     {NULL, NULL}
 };
 
@@ -250,7 +250,7 @@ static const exception_kana_t exception_kana_table[] = {
     {"TNYU", "でゅ"},
     {"TNIU", "ちぇ"},
     {"TNYIAU", "てゅ"},
-    
+
     {"SKYI", "ゐ"},
     {"SKYIU", "ゑ"},
     {"SKYA", "いぇ"},
@@ -259,14 +259,14 @@ static const exception_kana_t exception_kana_table[] = {
     {"SKIU", "ゆい"},
     {"SKIAU", "ゎ"},
     {"SKYIAU", "うぁ"},
-    
+
     {"STKNYI", "ゔぉ"},
     {"STKNYIU", "ゔぇ"},
     {"STKNYA", "しぇ"},
     {"STKNYAU", "じぇ"},
     {"STKNYU", "ゔぃ"},
     {"STKNIU", "ゔぁ"},
-    
+
     {"STNIU", "つぃ"},
     {"STNIAU", "つぉ"},
     {"STNYIAU", "てゃ"},
@@ -321,7 +321,7 @@ static int get_vowel_index(const char *stroke) {
             }
         }
     }
-    
+
     // 基本母音チェック
     for (uint8_t i = 0; i < sizeof(vowel_table)/sizeof(vowel_table[0]); i++) {
         if (strcmp(stroke, vowel_table[i].stroke) == 0) {
@@ -389,13 +389,13 @@ static const char *get_second_sound(const char *particle) {
 static void convert_to_kana(const char *conso, const char *vowel, const char *particle_str,
                            bool include_extra_sound, char *out) {
     out[0] = '\0';  // 初期化
-    
+
     // 例外的なかなのマッピングをチェック
     char conso_vowel[32];
     strcpy(conso_vowel, conso);
     strcat(conso_vowel, vowel);
     const char *exception_kana = check_exception_kana(conso_vowel);
-    
+
     if (exception_kana != NULL) {
         // 例外かなを使用
         strcpy(out, exception_kana);
@@ -411,13 +411,13 @@ static void convert_to_kana(const char *conso, const char *vowel, const char *pa
         const char *first_vowel = NULL;
         const char *suffix = NULL;
         bool is_complex = check_complex_diphthong(vowel_particle, &first_vowel, &suffix);
-        
+
         const char *c_roma = get_conso_roma(conso);
         if (c_roma == NULL) c_roma = "";
-        
+
         int v_idx;
         const char *extra_sound = "";
-        
+
         if (is_complex) {
             // 複雑二重母音の場合、first_vowelからインデックスを取得
             v_idx = -1;
@@ -438,12 +438,12 @@ static void convert_to_kana(const char *conso, const char *vowel, const char *pa
                 extra_sound = get_second_sound(particle_str);
             }
         }
-        
+
         int c_idx = get_roma_index(c_roma);
         if (c_idx < 0) c_idx = 0;
-        
+
         const char *base_kana = kana_table[c_idx][v_idx];
-        
+
         // 英語モードの場合、ち→てぃ、ぢ→でぃに置き換え
         if (is_complex) {
             if (strcmp(base_kana, "ち") == 0) {
@@ -452,7 +452,7 @@ static void convert_to_kana(const char *conso, const char *vowel, const char *pa
                 base_kana = "でぃ";
             }
         }
-        
+
         strcpy(out, base_kana);
         strcat(out, suffix);
         strcat(out, extra_sound);
@@ -464,7 +464,7 @@ static void transform_joshi(const char *left_stroke, const char *right_stroke, c
     // right_strokeからnを除去
     char right_tk[16] = {0};
     bool has_comma = false;
-    
+
     if (strstr(right_stroke, "n") != NULL) {
         has_comma = true;
         // nを除去
@@ -478,19 +478,19 @@ static void transform_joshi(const char *left_stroke, const char *right_stroke, c
     } else {
         strcpy(right_tk, right_stroke);
     }
-    
+
     // インデックス取得
     int l_idx = -1, r_idx = -1;
     for (uint8_t i = 0; i < sizeof(particle_key_list)/sizeof(particle_key_list[0]); i++) {
         if (strcmp(left_stroke, particle_key_list[i]) == 0) l_idx = i;
         if (strcmp(right_tk, particle_key_list[i]) == 0) r_idx = i;
     }
-    
+
     if (l_idx < 0 || r_idx < 0) {
         out[0] = '\0';
         return;
     }
-    
+
     // 助詞組み立て
     if (strcmp(left_stroke, "n") == 0) {
         strcpy(out, r_particle[r_idx]);
@@ -509,16 +509,16 @@ static void transform_joshi(const char *left_stroke, const char *right_stroke, c
 
 mejiro_result_t mejiro_transform(const char *mejiro_id) {
     mejiro_result_t result = {{0}, 0, false};
-    
+
     char left[32] = {0};
     char right[32] = {0};
     parse_mejiro_id(mejiro_id, left, right);
-    
+
     // 左側のパース: 子音(STKN) + 母音(YIAU) + 助詞(ntk)
     char l_conso[16] = {0};
     char l_vowel[16] = {0};
     char l_particle_str[16] = {0};
-    
+
     const char *p = left;
     while (*p && (*p == 'S' || *p == 'T' || *p == 'K' || *p == 'N')) {
         size_t len = strlen(l_conso);
@@ -538,13 +538,13 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
         l_particle_str[len + 1] = '\0';
         p++;
     }
-    
+
     // 右側のパース: 子音(STKN) + 母音(YIAU) + 助詞(ntk) + 末尾のアスタリスク(*)
     char r_conso[16] = {0};
     char r_vowel[16] = {0};
     char r_particle_str[16] = {0};
     bool has_asterisk = false;
-    
+
     p = right;
     while (*p && (*p == 'S' || *p == 'T' || *p == 'K' || *p == 'N')) {
         size_t len = strlen(r_conso);
@@ -568,7 +568,7 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
         has_asterisk = true;
         p++;
     }
-    
+
     // 動詞活用チェック（通常の変換より先に）。Plover版同様、アスタリスクがある場合のみ動詞略語を試行。
     if (has_asterisk) {
         char left_kana_temp[64] = {0};
@@ -581,13 +581,13 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
         if (strlen(r_conso) > 0 || strlen(r_vowel) > 0) {
             convert_to_kana(r_conso, r_vowel, "", false, right_kana_temp);
         }
-        
+
         verb_result_t verb_result = mejiro_verb_conjugate(
             l_conso, l_vowel, l_particle_str,
             r_conso, r_vowel, r_particle_str,
             left_kana_temp, right_kana_temp
         );
-        
+
         if (verb_result.success) {
             // 動詞活用結果をローマ字に変換して返す
             char kana_output[128];
@@ -598,24 +598,24 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
             return result;
         }
     }
-    
+
     // 助詞のみの場合は助詞変換
-    bool is_particle_only = (strlen(l_conso) == 0 && strlen(l_vowel) == 0 && 
+    bool is_particle_only = (strlen(l_conso) == 0 && strlen(l_vowel) == 0 &&
                              strlen(r_conso) == 0 && strlen(r_vowel) == 0 &&
                              (strlen(l_particle_str) > 0 || strlen(r_particle_str) > 0));
-    
+
     // 左+助詞かどうかを先に判定（左側の追加音を除外するため）
     // ただし、ntk-nの場合は除外（これは左側の追加音「ーん」として処理すべき）
     bool is_left_plus_particle = ((strlen(l_conso) > 0 || strlen(l_vowel) > 0) &&
                                   strlen(r_conso) == 0 && strlen(r_vowel) == 0 &&
                                   strlen(r_particle_str) > 0 &&
                                   !(strcmp(l_particle_str, "ntk") == 0 && strcmp(r_particle_str, "n") == 0));
-    
+
     // ntk-nの特殊ケース: 左の追加音と右の助詞として処理
     bool is_ntk_n = (strlen(l_conso) > 0 || strlen(l_vowel) > 0) &&
                    strlen(r_conso) == 0 && strlen(r_vowel) == 0 &&
                    strcmp(l_particle_str, "ntk") == 0 && strcmp(r_particle_str, "n") == 0;
-    
+
     // 母音の補完処理
     // 左側の母音が空で、左側に子音がある場合、前回の母音を使用
     if (strlen(l_vowel) == 0 && strlen(l_conso) > 0) {
@@ -629,14 +629,14 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
             strcpy(r_vowel, last_vowel_stroke);
         }
     }
-    
+
     // 使用した母音を保存（右が優先、なければ左、どちらもなければ保存しない）
     if (strlen(r_vowel) > 0) {
         strcpy(last_vowel_stroke, r_vowel);
     } else if (strlen(l_vowel) > 0) {
         strcpy(last_vowel_stroke, l_vowel);
     }
-    
+
     if (is_particle_only) {
         transform_joshi(l_particle_str, r_particle_str, result.output);
     } else {
@@ -646,17 +646,17 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
             convert_to_kana(l_conso, l_vowel, l_particle_str, !is_left_plus_particle, left_kana);
             strcpy(result.output, left_kana);
         }
-        
+
         // 左+助詞: 左側にかながあり、右側には助詞のみがある場合
         // ただし、左の追加音が「ntk」で右の助詞が「n」の場合（追加音が「ー」+「ん」）は例外
         if (is_left_plus_particle) {
-            
+
             // コマンドテーブルから助詞文字列を検索
             char particle_pattern[32];
             strcpy(particle_pattern, l_particle_str);
             strcat(particle_pattern, "-");
             strcat(particle_pattern, r_particle_str);
-            
+
             bool found_in_commands = false;
             for (uint8_t i = 0; i < mejiro_command_count; i++) {
                 if (strcmp(particle_pattern, mejiro_commands[i].pattern) == 0) {
@@ -667,7 +667,7 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
                     }
                 }
             }
-            
+
             // コマンドテーブルになければ、transform_joshiで助詞を生成
             if (!found_in_commands) {
                 char joshi_output[64] = {0};
@@ -677,13 +677,13 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
         }
         // 左のかながなくても、左の追加音キーがあってかつ右のかながある場合
         // 左の追加音を先に出力
-        if (strlen(l_conso) == 0 && strlen(l_vowel) == 0 && 
-            strlen(l_particle_str) > 0 && 
+        if (strlen(l_conso) == 0 && strlen(l_vowel) == 0 &&
+            strlen(l_particle_str) > 0 &&
             (strlen(r_conso) > 0 || strlen(r_vowel) > 0)) {
             const char *left_extra_sound = get_second_sound(l_particle_str);
             strcat(result.output, left_extra_sound);
         }
-        
+
         // 右側変換
         if (strlen(r_conso) > 0 || strlen(r_vowel) > 0) {
             char right_kana[64] = {0};
@@ -691,19 +691,19 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
             strcat(result.output, right_kana);
         }
     }
-    
+
     // ntk-nの特殊ケース: 右の助詞「n」を「ん」として追加
     if (is_ntk_n) {
         strcat(result.output, "ん");
     }
-    
-    
+
+
     // ひらがな出力をローマ字に変換しつつ、ひらがな文字数を保持
     // 右だけの入力の場合は変換失敗として扱う（ただし右側の助詞単体は除く）
-    bool is_right_only = (strlen(l_conso) == 0 && strlen(l_vowel) == 0 && 
+    bool is_right_only = (strlen(l_conso) == 0 && strlen(l_vowel) == 0 &&
                           strlen(l_particle_str) == 0 &&
                           (strlen(r_conso) > 0 || strlen(r_vowel) > 0));
-    
+
     if (strlen(result.output) > 0 && !is_right_only) {
         char kana_output[128];
         strcpy(kana_output, result.output);
@@ -714,6 +714,6 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
         result.kana_length = 0;
         result.success = false;
     }
-    
+
     return result;
 }
