@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "jis_transform.h"
 #include "combo_fifo.h"
 #include "alt_layout.h"
+#include "mejiro_fifo.h"
 
 enum layer_names {
     _QWERTY = 0,
@@ -39,6 +40,7 @@ enum custom_keycodes {
     TG_JIS,              // JISモード切替キー
     TG_ALT,              // Alternative Layout切替キー
     TG_SBL,              // Mejiro31 Symbol Layout切替キー
+    TG_MJR,              // Mejiro（メジロ式）モード切替キー
 };
 
 #define MT_SPC MT(MOD_LSFT, KC_SPC)
@@ -49,6 +51,7 @@ enum custom_keycodes {
 
 bool is_jis_mode = true;
 bool is_sbl_mode = true;
+bool is_mejiro_mode = true;
 static bool is_mac = false;
 static bool os_detected = false;
 static uint16_t dz_timer = 0;
@@ -60,10 +63,11 @@ typedef struct {
 static toggle_hold_state_t tg_jis_state = {false, 0};
 static toggle_hold_state_t tg_alt_state = {false, 0};
 static toggle_hold_state_t tg_sbl_state = {false, 0};
+static toggle_hold_state_t tg_mjr_state = {false, 0};
 // 0:未使用, 1:英語, 2:日本語, 3:無変更
 static int stn_lang = 2; // ステノ時の言語
 static int kbd_lang = 1; // キーボード時の言語
-static int alt_lang = 3; // Alternative Layoutの言語設定
+static int alt_lang = 1; // Alternative Layoutの言語設定
 
 
 typedef union {
@@ -72,6 +76,7 @@ typedef union {
         bool jis_mode : 1;
         bool alt_mode : 1;
         bool sbl_mode : 1;
+        bool mejiro_mode : 1;
     };
 } user_config_t;
 
@@ -82,6 +87,7 @@ void eeconfig_init_user(void) {
     user_config.jis_mode = true;
     user_config.alt_mode = true;
     user_config.sbl_mode = true;
+    user_config.mejiro_mode = true;
     eeconfig_update_user(user_config.raw);
     steno_set_mode(STENO_MODE_GEMINI);
 }
@@ -93,6 +99,7 @@ void keyboard_post_init_user(void) {
     is_jis_mode = (user_config.jis_mode);
     is_alt_mode = (user_config.alt_mode);
     is_sbl_mode = (user_config.sbl_mode);
+    is_mejiro_mode = (user_config.mejiro_mode);
     default_layer_set((layer_state_t)1UL << _QWERTY);
     layer_clear();
     layer_move(_QWERTY);
@@ -136,7 +143,7 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  `  │ 00  │  1  │  2  │  3  │  -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │ MJR │ 00  │  1  │  2  │  3  │  -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼─────┼──4──┼──5──┼──6──┼──,──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
     // │ ESC │  0  │  7  │  8  │  9  │  .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
@@ -147,7 +154,7 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER Shifted
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  ~  │  %  │  [  │  {  │  (  │  <  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │ MJR │  %  │  [  │  {  │  (  │  <  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼──/──┼──*──┼──=──┼──+──┼──^──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
     // │ ESC │  $  │  ]  │  }  │  )  │  >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
@@ -350,6 +357,12 @@ static void toggle_sbl_mode(void) {
     eeconfig_update_user(user_config.raw);
 }
 
+static void toggle_mejiro_mode(void) {
+    is_mejiro_mode = !is_mejiro_mode;
+    user_config.mejiro_mode = is_mejiro_mode;
+    eeconfig_update_user(user_config.raw);
+}
+
 static bool handle_toggle_on_hold(keyrecord_t *record, toggle_hold_state_t *state, void (*toggle_fn)(void)) {
     if (record->event.pressed) {
         state->pressed = true;
@@ -459,7 +472,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     ),
     // NUMBER
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  `  │ 00  │  1  │  2  │  3 ESC -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │ MJR │ 00  │  1  │  2  │  3 ESC -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼─────┼──4──┼──5──┼──6──┼──,──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
     // │ ESC │  0  │  7  │  8  │  9 TAB .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
@@ -470,7 +483,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER Shifted
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  ~  │ ()← │  !  │  @  │  # ESC _  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │ MJR │ ()← │  !  │  @  │  # ESC _  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼─────┼──$──┼──%──┼──^──┼──<──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
     // │ ESC │  )  │  &  │  *  │  ( TAB >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
@@ -481,7 +494,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER
     [_NUMBER] = LAYOUT(
-        KC_GRV, KC_DZ,  KC_1, KC_2, KC_3,    KC_MINS,   KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_ALT,
+        TG_MJR, KC_DZ,  KC_1, KC_2, KC_3,    KC_MINS,   KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_ALT,
         KC_ESC, KC_0,   KC_7, KC_8, KC_9,    KC_DOT,    KC_PGDN, KC_LEFT, KC_DOWN, KC_RIGHT, KC_LGUI, MO_FUN,
                                      MT_SPC,  KC_TRNS, MT_ENT,
                                      KC_LALT, KC_LCTL, KC_INT5, KC_INT4
@@ -515,6 +528,18 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     uint8_t mods = get_mods();
     bool shifted = (mods & MOD_MASK_SHIFT);
+
+    if (is_mejiro_mode && get_highest_layer(layer_state | default_layer_state) == _GEMINI && is_stn_key(keycode)) {
+        if (record->event.pressed) {
+            mejiro_on_press(keycode);
+        } else {
+            mejiro_on_release(keycode);
+            if (mejiro_should_send_passthrough()) {
+                mejiro_send_passthrough_keys();
+            }
+        }
+        return false;
+    }
 
     if (is_combo_candidate(keycode)) {
         if (keycode == KC_GRV) {
@@ -602,6 +627,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             return handle_toggle_on_hold(record, &tg_alt_state, toggle_alt_mode);
         case TG_SBL:
             return handle_toggle_on_hold(record, &tg_sbl_state, toggle_sbl_mode);
+        case TG_MJR:
+            return handle_toggle_on_hold(record, &tg_mjr_state, toggle_mejiro_mode);
         case KC_DZ:
             if (record->event.pressed) {
                 if (shifted) {
@@ -656,15 +683,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             return true;
         case KC_INT4:
             update_lang(2); // 日本語へ切り替え
-            if (stn_lang == 2) {
-                default_layer = 1;
-            }
             return false;
         case KC_INT5:
             update_lang(1); // 英語へ切り替え
-            if (stn_lang == 1) {
-                default_layer = 0;
-            }
             return false;
         default:
             break;
