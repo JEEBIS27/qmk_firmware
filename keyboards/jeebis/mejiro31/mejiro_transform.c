@@ -9,6 +9,14 @@
 // 前回の母音を保存（省略時に使用）
 static char last_vowel_stroke[8] = "A";  // デフォルトは"A"
 
+// 「っ」の持ち越し状態
+static bool pending_tsu = false;
+
+// 「っ」の持ち越し状態をクリア（外部から呼び出し可能）
+void mejiro_clear_pending_tsu(void) {
+    pending_tsu = false;
+}
+
 // ひらがな→ヘボン式ローマ字変換テーブル
 typedef struct {
     const char *kana;
@@ -104,14 +112,20 @@ void kana_to_roma(const char *kana_input, char *roma_output, size_t output_size)
             }
             if (best && best->roma && best->roma[0] != '\0') {
                 char c = best->roma[0];
-                // 母音頭の場合は重ねない
-                if (c != 'a' && c != 'e' && c != 'i' && c != 'o' && c != 'u') {
+                // 母音頭の場合は重ねられないので「xtu」を出力
+                if (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u') {
+                    strcat(roma_output, "xtu");
+                } else {
+                    // 子音頭の場合は子音を重ねる
                     size_t len = strlen(roma_output);
                     if (len < output_size - 2) {
                         roma_output[len] = c;
                         roma_output[len + 1] = '\0';
                     }
                 }
+            } else {
+                // 次の文字がない場合も「xtu」を出力
+                strcat(roma_output, "xtu");
             }
             p += 3; // 「っ」を消費して続行
             continue;
@@ -396,6 +410,17 @@ static void convert_to_kana(const char *conso, const char *vowel, const char *pa
     strcat(conso_vowel, vowel);
     const char *exception_kana = check_exception_kana(conso_vowel);
     
+    // STN+母音なしは「何も出力しない」特例（追加音のみ必要なケース）
+    if (strlen(conso) > 0 && strlen(vowel) == 0 && strcmp(conso, "STN") == 0) {
+        if (include_extra_sound) {
+            const char *extra = get_second_sound(particle_str);
+            strcpy(out, extra);
+        } else {
+            out[0] = '\0';
+        }
+        return;
+    }
+
     if (exception_kana != NULL) {
         // 例外かなを使用
         strcpy(out, exception_kana);
@@ -513,6 +538,16 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
     char left[32] = {0};
     char right[32] = {0};
     parse_mejiro_id(mejiro_id, left, right);
+
+    // 削除操作（-U、-AU）の場合は持ち越しの「っ」をクリア
+    if (strcmp(mejiro_id, "-U") == 0 || strcmp(mejiro_id, "-AU") == 0) {
+        pending_tsu = false;
+    }
+
+    // 全押し（STKNYIAUntk#-STKNYIAUntk*）は「何も出力しない」ことで誤入力をキャンセル
+    if (strcmp(left, "STKNYIAUntk#") == 0 && strcmp(right, "STKNYIAUntk*") == 0) {
+        return result;  // output is empty, success remains false
+    }
     
     // 左側のパース: 子音(STKN) + 母音(YIAU) + 助詞(ntk)
     char l_conso[16] = {0};
@@ -618,11 +653,11 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
     
     // 母音の補完処理
     // 左側の母音が空で、左側に子音がある場合、前回の母音を使用
-    if (strlen(l_vowel) == 0 && strlen(l_conso) > 0) {
+    if (strlen(l_vowel) == 0 && strlen(l_conso) > 0 && strcmp(l_conso, "STN") != 0) {
         strcpy(l_vowel, last_vowel_stroke);
     }
     // 右側の母音が空で、右側に子音がある場合、左の母音を使用（左も空なら前回の母音）
-    if (strlen(r_vowel) == 0 && strlen(r_conso) > 0) {
+    if (strlen(r_vowel) == 0 && strlen(r_conso) > 0 && strcmp(r_conso, "STN") != 0) {
         if (strlen(l_vowel) > 0) {
             strcpy(r_vowel, l_vowel);
         } else {
@@ -637,14 +672,47 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
         strcpy(last_vowel_stroke, l_vowel);
     }
     
+    // 「っ」の持ち越し判定（左側と右側を別々に判定）
+    bool has_final_tsu_left = ((strlen(l_conso) > 0 || strlen(l_vowel) > 0) &&
+                               strcmp(l_particle_str, "tk") == 0 &&
+                               strlen(r_conso) == 0 && strlen(r_vowel) == 0 && strlen(r_particle_str) == 0);
+    bool has_final_tsu_right = ((strlen(r_conso) > 0 || strlen(r_vowel) > 0) &&
+                                strcmp(r_particle_str, "tk") == 0 &&
+                                !is_left_plus_particle);
+    bool has_final_tsu = has_final_tsu_left || has_final_tsu_right;
+    
     if (is_particle_only) {
         transform_joshi(l_particle_str, r_particle_str, result.output);
     } else {
+        // 前回持ち越しの「っ」を先頭に追加
+        if (pending_tsu) {
+            strcpy(result.output, "っ");
+            pending_tsu = false;
+        } else {
+            result.output[0] = '\0';
+        }
+        
+        // 「っ」の持ち越し判定
+        // 左側のみでtk助詞があり、右側がない場合
+        if ((strlen(l_conso) > 0 || strlen(l_vowel) > 0) &&
+            strcmp(l_particle_str, "tk") == 0 &&
+            strlen(r_conso) == 0 && strlen(r_vowel) == 0 && strlen(r_particle_str) == 0) {
+            has_final_tsu = true;
+        }
+        // 右側にtk助詞がある場合（左+助詞パターンでない）
+        if ((strlen(r_conso) > 0 || strlen(r_vowel) > 0) &&
+            strcmp(r_particle_str, "tk") == 0 &&
+            !is_left_plus_particle) {
+            has_final_tsu = true;
+        }
+        
         // 左側変換
         if (strlen(l_conso) > 0 || strlen(l_vowel) > 0) {
             char left_kana[64] = {0};
-            convert_to_kana(l_conso, l_vowel, l_particle_str, !is_left_plus_particle, left_kana);
-            strcpy(result.output, left_kana);
+            // 左側自体が「っ」で終わる場合のみ追加音を除外
+            bool include_extra = !is_left_plus_particle && !has_final_tsu_left;
+            convert_to_kana(l_conso, l_vowel, l_particle_str, include_extra, left_kana);
+            strcat(result.output, left_kana);
         }
         
         // 左+助詞: 左側にかながあり、右側には助詞のみがある場合
@@ -687,8 +755,28 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
         // 右側変換
         if (strlen(r_conso) > 0 || strlen(r_vowel) > 0) {
             char right_kana[64] = {0};
-            convert_to_kana(r_conso, r_vowel, r_particle_str, true, right_kana);
+            // 右側自体が「っ」で終わる場合のみ追加音を除外
+            bool include_extra = !has_final_tsu_right;
+            convert_to_kana(r_conso, r_vowel, r_particle_str, include_extra, right_kana);
             strcat(result.output, right_kana);
+        }
+    }
+    
+    // 「っ」の持ち越し設定または単体出力
+    if (has_final_tsu) {
+        // STNtkのような母音なしで「っ」単体の場合は「っ」を出力
+        if (strlen(l_conso) > 0 && strlen(l_vowel) == 0 &&
+            strcmp(l_conso, "STN") == 0 && strcmp(l_particle_str, "tk") == 0 &&
+            strlen(r_conso) == 0 && strlen(r_vowel) == 0) {
+            strcpy(result.output, "っ");
+        } else {
+            // それ以外は次回に持ち越し（今回の出力から「っ」を除去）
+            pending_tsu = true;
+            // 出力の末尾の「っ」を削除
+            char *tsu_pos = strstr(result.output, "っ");
+            if (tsu_pos != NULL && tsu_pos[3] == '\0') {  // 末尾の「っ」のみ
+                *tsu_pos = '\0';
+            }
         }
     }
     
@@ -704,11 +792,16 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
                           strlen(l_particle_str) == 0 &&
                           (strlen(r_conso) > 0 || strlen(r_vowel) > 0));
     
+    // 持ち越し状態で出力が空の場合は成功として扱わない
     if (strlen(result.output) > 0 && !is_right_only) {
         char kana_output[128];
         strcpy(kana_output, result.output);
         result.kana_length = utf8_char_count(kana_output);
         kana_to_roma(kana_output, result.output, sizeof(result.output));
+        result.success = true;
+    } else if (pending_tsu) {
+        // 持ち越し中は空出力だが成功扱い
+        result.kana_length = 0;
         result.success = true;
     } else {
         result.kana_length = 0;

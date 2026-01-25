@@ -171,6 +171,8 @@ static void convert_and_send(void) {
                         // 履歴がない場合はデフォルトで2文字削除
                         send_backspace_times(2);
                     }
+                    // 「っ」の持ち越し状態をクリア
+                    mejiro_clear_pending_tsu();
                     return;
                 
                 case CMD_KEYCODE: {
@@ -181,6 +183,10 @@ static void convert_and_send(void) {
                         kc = jis_transform(kc, false);
                     }
                     tap_code16(kc);
+                    // BackspaceまたはDeleteの場合は「っ」の持ち越し状態をクリア
+                    if (kc == KC_BSPC || kc == KC_DEL) {
+                        mejiro_clear_pending_tsu();
+                    }
                     return;
                 }
                 

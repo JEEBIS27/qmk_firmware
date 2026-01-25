@@ -17,3 +17,6 @@ mejiro_result_t mejiro_transform(const char *mejiro_id);
 
 // ひらがなをヘボン式ローマ字に変換
 void kana_to_roma(const char *kana_input, char *roma_output, size_t output_size);
+
+// 「っ」の持ち越し状態をクリア（undo/backspace時に呼び出し）
+void mejiro_clear_pending_tsu(void);
