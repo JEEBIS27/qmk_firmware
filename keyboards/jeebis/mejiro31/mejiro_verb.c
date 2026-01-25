@@ -104,7 +104,7 @@ static char kana_to_gyou(const char *kana) {
 static const char *godan_conjugate[10][10] = {
     // k行
     {"か", "か", "か", "き", "く", "い", "こう", "け", "け", "け"},
-    // g行  
+    // g行
     {"が", "が", "が", "ぎ", "ぐ", "い", "ごう", "げ", "げ", "げ"},
     // s行
     {"さ", "さ", "さ", "し", "す", "し", "そう", "せ", "せ", "せ"},
@@ -392,6 +392,19 @@ static const desu_conjugate_t desu_conjugate[] = {
     {NULL, NULL}
 };
 
+// 助詞の追加音（ん/つ/く/っ/ち/き/ー）を取得
+static const char *get_particle_extra(const char *particle) {
+    static const char *particle_key_list[] = {"", "n", "t", "k", "tk", "nt", "nk", "ntk"};
+    static const char *second_sound_list[] = {"", "ん", "つ", "く", "っ", "ち", "き", "ー"};
+
+    for (size_t i = 0; i < sizeof(particle_key_list) / sizeof(particle_key_list[0]); i++) {
+        if (strcmp(particle, particle_key_list[i]) == 0) {
+            return second_sound_list[i];
+        }
+    }
+    return "";
+}
+
 // 補助動詞・助動詞マップ
 typedef struct {
     const char *pattern;  // left_particle-right_particle
@@ -557,7 +570,13 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
 
     // 「です」処理: right_conso == 'TN' && strlen(right_vowel) == 0
     if (strcmp(right_conso, "TN") == 0 && strlen(right_vowel) == 0) {
-        strcpy(result.output, left_kana);
+        char base[128] = {0};
+        strcat(base, left_kana);
+        // 左側の助詞追加音は含める（例: TAn-TN* → たんです）
+        strcat(base, get_particle_extra(left_particle));
+        // 右側の助詞追加音は含めない（例: -TNk* → でしょう）
+
+        strcpy(result.output, base);
         const char *desu_form = get_desu_conjugate(right_particle);
         if (desu_form != NULL) {
             strcat(result.output, desu_form);
@@ -663,7 +682,7 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
 
     if (strlen(right_conso) > 0 && strlen(right_vowel) == 0 && strlen(right_kana) > 0) {
         char gyou = kana_to_gyou(right_kana);
-        if (gyou != '\0' && (gyou == 'k' || gyou == 'g' || gyou == 's' || gyou == 't' || 
+        if (gyou != '\0' && (gyou == 'k' || gyou == 'g' || gyou == 's' || gyou == 't' ||
                               gyou == 'n' || gyou == 'b' || gyou == 'm' || gyou == 'r' || gyou == 'w')) {
             if (strlen(left_kana) > 0) {
                 strcpy(result.output, left_kana);
@@ -705,7 +724,7 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
             gyou = kana_to_gyou(right_kana);
             if (gyou == '\0') gyou = 'w';
         }
-        if (gyou == 'k' || gyou == 'g' || gyou == 'z' || gyou == 't' || 
+        if (gyou == 'k' || gyou == 'g' || gyou == 'z' || gyou == 't' ||
             gyou == 'n' || gyou == 'b' || gyou == 'm' || gyou == 'r' || gyou == 'w') {
             if (strlen(left_kana) > 0) {
                 strcpy(result.output, left_kana);
@@ -742,8 +761,8 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
             gyou = kana_to_gyou(right_kana);
             if (gyou == '\0') gyou = 'w';
         }
-        if (gyou == 'k' || gyou == 'g' || gyou == 's' || gyou == 'z' || 
-            gyou == 't' || gyou == 'd' || gyou == 'n' || gyou == 'h' || 
+        if (gyou == 'k' || gyou == 'g' || gyou == 's' || gyou == 'z' ||
+            gyou == 't' || gyou == 'd' || gyou == 'n' || gyou == 'h' ||
             gyou == 'b' || gyou == 'm' || gyou == 'r' || gyou == 'w') {
             if (strlen(left_kana) > 0) {
                 strcpy(result.output, left_kana);

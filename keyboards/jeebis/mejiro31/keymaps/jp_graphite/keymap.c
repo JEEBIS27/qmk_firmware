@@ -472,7 +472,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     ),
     // NUMBER
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  `  │ 00  │  1  │  2  │  3 ESC -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │ MJR │ 00  │  1  │  2  │  3 ESC -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼─────┼──4──┼──5──┼──6──┼──,──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
     // │ ESC │  0  │  7  │  8  │  9 TAB .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
@@ -515,7 +515,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [_FUNCTION] = LAYOUT(
         TG_JIS, KC_F1, KC_F2, KC_F3, KC_F4,   KC_F5,   KC_BRIU, KC_MUTE, KC_VOLD, KC_VOLU, KC_PSCR, TG_SBL,
         KC_ESC, KC_F6, KC_F7, KC_F8, KC_F9,   KC_F10,  KC_BRID, KC_MPRV, KC_MPLY, KC_MNXT, KC_LGUI, KC_TRNS,
-                                     TG_MJR,  KC_TRNS, KC_TRNS,
+                                     KC_TRNS, KC_TRNS, KC_TRNS,
                                      KC_TRNS, KC_TRNS, KC_F11,  KC_F12
     ),
 };
@@ -529,13 +529,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     uint8_t mods = get_mods();
     bool shifted = (mods & MOD_MASK_SHIFT);
 
-    // メジロ式：GEMINIレイヤー上のSTN_キーのみ監視し、モードON時はQMK既定処理を抑止
     if (is_mejiro_mode && get_highest_layer(layer_state | default_layer_state) == _GEMINI && is_stn_key(keycode)) {
         if (record->event.pressed) {
             mejiro_on_press(keycode);
         } else {
             mejiro_on_release(keycode);
-            // メジロ変換失敗時はSTN_キーコードをそのまま処理
             if (mejiro_should_send_passthrough()) {
                 mejiro_send_passthrough_keys();
             }
@@ -685,15 +683,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             return true;
         case KC_INT4:
             update_lang(2); // 日本語へ切り替え
-            if (stn_lang == 2) {
-                default_layer = 1;
-            }
             return false;
         case KC_INT5:
             update_lang(1); // 英語へ切り替え
-            if (stn_lang == 1) {
-                default_layer = 0;
-            }
             return false;
         default:
             break;

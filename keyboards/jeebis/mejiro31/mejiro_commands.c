@@ -9,28 +9,13 @@ const mejiro_command_t mejiro_commands[] = {
     {"-U",    CMD_UNDO,   {.keycode = 0}},
 
     // コマンド
-    {"#-S",   CMD_KEYCODE, {.keycode = LCTL(KC_Z)}},
-    {"#-K",  CMD_KEYCODE,  {.keycode = LCTL(KC_X)}},
-    {"#-N",   CMD_KEYCODE, {.keycode = LCTL(KC_C)}},
-    {"#-A",   CMD_KEYCODE, {.keycode = LCTL(KC_V)}},
-    {"#n-A",  CMD_KEYCODE, {.keycode = LCTL(LSFT(KC_V))}},
+    {"Sk#-",   CMD_KEYCODE, {.keycode = LCTL(KC_Z)}},
+    {"Kk#-",   CMD_KEYCODE, {.keycode = LCTL(KC_X)}},
+    {"Nk#-",   CMD_KEYCODE, {.keycode = LCTL(KC_C)}},
+    {"Ak#-",   CMD_KEYCODE, {.keycode = LCTL(KC_V)}},
+    {"Ank#-",  CMD_KEYCODE, {.keycode = LCTL(LSFT(KC_V))}},
 
     // キーコード送信
-    {"-YA",   CMD_KEYCODE, {.keycode = KC_DQUO}},
-    {"-NI",   CMD_KEYCODE, {.keycode = KC_QUOT}},
-    {"-TK",   CMD_KEYCODE, {.keycode = KC_PIPE}},
-    {"-IA",   CMD_KEYCODE, {.keycode = KC_COLN}},
-    {"-NY",   CMD_KEYCODE, {.keycode = KC_SLSH}},
-    {"-TN",   CMD_KEYCODE, {.keycode = KC_ASTR}},
-    {"-TI",   CMD_KEYCODE, {.keycode = KC_TILD}},
-    {"-YI",   CMD_KEYCODE, {.keycode = KC_LPRN}},
-    {"-TY",   CMD_KEYCODE, {.keycode = KC_RPRN}},
-    {"-NA",   CMD_KEYCODE, {.keycode = KC_LBRC}},
-    {"-KN",   CMD_KEYCODE, {.keycode = KC_RBRC}},
-    {"-SNA",  CMD_KEYCODE, {.keycode = KC_LCBR}},
-    {"-SKN",  CMD_KEYCODE, {.keycode = KC_RCBR}},
-    {"-NYIA", CMD_KEYCODE, {.keycode = KC_LABK}},
-    {"-TKNY", CMD_KEYCODE, {.keycode = KC_RABK}},
     {"-AU",   CMD_KEYCODE, {.keycode = KC_BSPC}},
     {"-IU",   CMD_KEYCODE, {.keycode = KC_DEL}},
     {"-S",    CMD_KEYCODE, {.keycode = KC_ESC}},
@@ -41,26 +26,40 @@ const mejiro_command_t mejiro_commands[] = {
     {"-K",    CMD_KEYCODE, {.keycode = KC_RIGHT}},
     {"-I",    CMD_KEYCODE, {.keycode = KC_HOME}},
     {"-T",    CMD_KEYCODE, {.keycode = KC_END}},
-    
+
     {"-An",    CMD_KEYCODE, {.keycode = LSFT(KC_LEFT)}},
     {"-Nn",    CMD_KEYCODE, {.keycode = LSFT(KC_DOWN)}},
     {"-Yn",    CMD_KEYCODE, {.keycode = LSFT(KC_UP)}},
     {"-Kn",    CMD_KEYCODE, {.keycode = LSFT(KC_RIGHT)}},
     {"-In",    CMD_KEYCODE, {.keycode = LSFT(KC_HOME)}},
     {"-Tn",    CMD_KEYCODE, {.keycode = LSFT(KC_END)}},
-    
+
     {"-n",    CMD_KEYCODE, {.keycode = KC_ENTER}},
     {"n-",    CMD_KEYCODE, {.keycode = KC_SPACE}},
     {"n-n",   CMD_KEYCODE, {.keycode = KC_TAB}},
     {"-ntk",  CMD_KEYCODE, {.keycode = KC_F7}},
     {"n-ntk", CMD_KEYCODE, {.keycode = KC_F8}},
-    
+
     // 文字列送信
-    {"-KY",   CMD_STRING,  {.string = "\" "}}, // ※
+    {"-YA",   CMD_STRING,  {.string = "\""}},
+    {"-NI",   CMD_STRING,  {.string = "'"}},
+    {"-TK",   CMD_STRING,  {.string = "|"}},
+    {"-IA",   CMD_STRING,  {.string = ":"}},
+    {"-NY",   CMD_STRING,  {.string = "/"}},
+    {"-TN",   CMD_STRING,  {.string = "*"}},
+    {"-TI",   CMD_STRING,  {.string = "~"}},
+    {"-YI",   CMD_STRING,  {.string = "("}},
+    {"-TY",   CMD_STRING,  {.string = ")"}},
+    {"-NA",   CMD_STRING,  {.string = "["}},
+    {"-KN",   CMD_STRING,  {.string = "]"}},
+    {"-SNA",  CMD_STRING,  {.string = "{"}},
+    {"-SKN",  CMD_STRING,  {.string = "}"}},
+    {"-NYIA", CMD_STRING,  {.string = "<"}},
+    {"-TKNY", CMD_STRING,  {.string = ">"}},
+    {"-SYA",  CMD_STRING,  {.string = "\"\"{#Left}"}},
+    {"-SNI",  CMD_STRING,  {.string = "''{#Left}"}},
     {"-TKIA", CMD_STRING,  {.string = "||"}},
-    {"-KA",   CMD_STRING,  {.string = "/// "}}, // …
-    {"-SYA",  CMD_STRING,  {.string = "@@"}}, // ""
-    {"-SNI",  CMD_STRING,  {.string = "&&"}}, // ''
+    {"-KA",   CMD_STRING,  {.string = "///"}}, // …
     {"-nt",   CMD_STRING,  {.string = "."}},
     {"-nk",   CMD_STRING,  {.string = ","}},
     {"n-nt",  CMD_STRING,  {.string = "?"}},
