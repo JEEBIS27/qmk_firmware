@@ -70,6 +70,7 @@ static uint16_t map_char_to_kc(char c) {
         case '/':  return KC_SLSH;
         case '*':  return KC_ASTR;
         case '~':  return KC_TILD;
+        case '^':  return KC_CIRC;
         case '(':  return KC_LPRN;
         case ')':  return KC_RPRN;
         case '[':  return KC_LBRC;
