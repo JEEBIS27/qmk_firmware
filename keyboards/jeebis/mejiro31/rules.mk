@@ -10,3 +10,4 @@ SRC += $(KEYBOARD_PATH_1)/mejiro_fifo.c
 SRC += $(KEYBOARD_PATH_1)/mejiro_commands.c
 SRC += $(KEYBOARD_PATH_1)/mejiro_transform.c
 SRC += $(KEYBOARD_PATH_1)/mejiro_verb.c
+SRC += $(KEYBOARD_PATH_1)/mejiro_abbreviations.c
