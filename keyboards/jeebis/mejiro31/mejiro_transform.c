@@ -3,6 +3,7 @@
  */
 #include "mejiro_transform.h"
 #include "mejiro_commands.h"
+#include "mejiro_abbreviations.h"
 #include "mejiro_verb.h"
 #include <string.h>
 
@@ -606,6 +607,66 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
 
     // 動詞活用チェック（通常の変換より先に）。Plover版同様、アスタリスクがある場合のみ動詞略語を試行。
     if (has_asterisk) {
+        // 完全なストロークを構築（アスタリスクを除く）
+        char full_stroke[128];
+        snprintf(full_stroke, sizeof(full_stroke), "%s%s%s-%s%s%s",
+                 l_conso, l_vowel, l_particle_str,
+                 r_conso, r_vowel, r_particle_str);
+        
+        // 一般略語用のストローク（助詞なし）
+        char abbr_stroke[128];
+        snprintf(abbr_stroke, sizeof(abbr_stroke), "%s%s-%s%s",
+                 l_conso, l_vowel, r_conso, r_vowel);
+        
+        // ユーザー略語チェック（最優先、助詞込み）
+        abbreviation_result_t user_abbr = mejiro_user_abbreviation(full_stroke);
+        if (user_abbr.success) {
+            result.kana_length = utf8_char_count(user_abbr.output);
+            kana_to_roma(user_abbr.output, result.output, sizeof(result.output));
+            result.success = true;
+            return result;
+        }
+
+        // 一般略語チェック（助詞なし）
+        abbreviation_result_t abstract_abbr = mejiro_abstract_abbreviation(abbr_stroke);
+        if (abstract_abbr.success) {
+            // 一般略語の出力に助詞を追加
+            char kana_output[256] = {0};
+            strcpy(kana_output, abstract_abbr.output);
+            result.kana_length = utf8_char_count(kana_output);
+            
+            // 助詞がある場合は追加
+            if (strlen(l_particle_str) > 0 || strlen(r_particle_str) > 0) {
+                // 助詞パターンを構築
+                char particle_pattern[32];
+                snprintf(particle_pattern, sizeof(particle_pattern), "%s-%s", l_particle_str, r_particle_str);
+                
+                // 特定の助詞パターンに対して語尾に変換
+                if (strcmp(particle_pattern, "n-") == 0) {
+                    strcat(kana_output, "である");
+                } else if (strcmp(particle_pattern, "-n") == 0) {
+                    strcat(kana_output, "だ");
+                } else if (strcmp(particle_pattern, "n-n") == 0) {
+                    strcat(kana_output, "だった");
+                } else if (strcmp(particle_pattern, "-ntk") == 0) {
+                    strcat(kana_output, "です");
+                } else if (strcmp(particle_pattern, "n-ntk") == 0) {
+                    strcat(kana_output, "でした");
+                } else {
+                    // その他の助詞は通常通り処理
+                    char joshi_output[128] = {0};
+                    transform_joshi(l_particle_str, r_particle_str, joshi_output);
+                    strcat(kana_output, joshi_output);
+                }
+                result.kana_length = utf8_char_count(kana_output);
+            }
+            
+            kana_to_roma(kana_output, result.output, sizeof(result.output));
+            result.success = true;
+            return result;
+        }
+
+        // 動詞略語チェック
         char left_kana_temp[64] = {0};
         char right_kana_temp[64] = {0};
         // 左側の仮名を生成（動詞語幹用）
