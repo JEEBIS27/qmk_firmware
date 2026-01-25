@@ -531,17 +531,51 @@ static void get_conjugation_info(const char *left_particle, const char *right_pa
     suffix[0] = '\0';
 }
 
-// 「んて」「んた」を濁音化する（五段 g/n/b/m のて・た形）
-static void apply_godan_te_ta_voicing(char *str) {
-    char *pos = str;
-    while ((pos = strstr(pos, "んて")) != NULL) {
-        memcpy(pos, "んで", 6);
-        pos += 3;  // 1文字進める（UTF-8で3バイト）
+    // 左側補助動詞を付与する共通処理
+    static void append_left_auxiliary(char *out, const left_auxiliary_info_t *left_aux, const right_auxiliary_t *right_aux) {
+        if (left_aux == NULL) return;
+
+        strcat(out, left_aux->stem);
+
+        int aux_conj = (right_aux != NULL) ? right_aux->conj_form : CONJ_JISHO;
+        if (left_aux->verb_type == 1) {
+            int idx_aux = gyou_to_index(left_aux->gyou);
+            strcat(out, godan_conjugate[idx_aux][aux_conj]);
+        } else if (left_aux->verb_type == 2) {
+            int idx_aux = gyou_to_index(left_aux->gyou);
+            strcat(out, kami_conjugate[idx_aux][aux_conj]);
+        } else if (left_aux->verb_type == 3) {
+            int idx_aux = gyou_to_index_simo(left_aux->gyou);
+            strcat(out, simo_conjugate[idx_aux][aux_conj]);
+        }
+
+        if (right_aux != NULL) {
+            strcat(out, right_aux->suffix);
+        }
     }
-    pos = str;
-    while ((pos = strstr(pos, "んた")) != NULL) {
+
+// 撥音便（五段 g/n/b/m のて・た形）
+// stem_len: 語幹の長さ（バイト数）。
+static void apply_godan_te_ta_voicing(char *str, size_t stem_len) {
+    char *pos = str + stem_len;
+    
+    // 語幹直後の「んて」 → 「んで」
+    if (strstr(pos, "んて") == pos) {
+        memcpy(pos, "んで", 6);
+    }
+    // 語幹直後の「いて」 → 「いで」
+    if (strstr(pos, "いて") == pos) {
+        memcpy(pos, "いで", 6);
+    }
+    
+    pos = str + stem_len;
+    // 語幹直後の「んた」 → 「んだ」
+    if (strstr(pos, "んた") == pos) {
         memcpy(pos, "んだ", 6);
-        pos += 3;
+    }
+    // 語幹直後の「いた」 → 「いだ」
+    if (strstr(pos, "いた") == pos) {
+        memcpy(pos, "いだ", 6);
     }
 }
 
@@ -608,9 +642,6 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
             if (verb->type == VERB_TYPE_GODAN) {
                 int idx = gyou_to_index(verb->gyou);
                 strcat(result.output, godan_conjugate[idx][conj_form]);
-                if (conj_form == CONJ_TE_TA && (verb->gyou == 'g' || verb->gyou == 'n' || verb->gyou == 'b' || verb->gyou == 'm')) {
-                    apply_godan_te_ta_voicing(result.output);
-                }
             } else if (verb->type == VERB_TYPE_KAMI) {
                 int idx = gyou_to_index(verb->gyou);
                 strcat(result.output, kami_conjugate[idx][conj_form]);
@@ -623,23 +654,14 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
         }
 
         if (left_aux != NULL) {
-            strcat(result.output, left_aux->stem);
-            int aux_conj = (right_aux != NULL) ? right_aux->conj_form : CONJ_JISHO;
-            if (left_aux->verb_type == 1) {
-                int idx_aux = gyou_to_index(left_aux->gyou);
-                strcat(result.output, godan_conjugate[idx_aux][aux_conj]);
-            } else if (left_aux->verb_type == 2) {
-                int idx_aux = gyou_to_index(left_aux->gyou);
-                strcat(result.output, kami_conjugate[idx_aux][aux_conj]);
-            } else if (left_aux->verb_type == 3) {
-                int idx_aux = gyou_to_index_simo(left_aux->gyou);
-                strcat(result.output, simo_conjugate[idx_aux][aux_conj]);
-            }
-            if (right_aux != NULL) {
-                strcat(result.output, right_aux->suffix);
-            }
+            append_left_auxiliary(result.output, left_aux, right_aux);
         } else {
             strcat(result.output, suffix);
+        }
+        if (conj_form == CONJ_TE_TA) {
+            if (verb != NULL && verb->type == VERB_TYPE_GODAN && (verb->gyou == 'g' || verb->gyou == 'n' || verb->gyou == 'b' || verb->gyou == 'm')) {
+                apply_godan_te_ta_voicing(result.output, strlen(verb->stem));
+            }
         }
         result.success = true;
         return result;
@@ -658,21 +680,7 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
             memcpy(shizu_pos, "せず", 6);
         }
         if (left_aux != NULL) {
-            strcat(result.output, left_aux->stem);
-            int aux_conj = (right_aux != NULL) ? right_aux->conj_form : CONJ_JISHO;
-            if (left_aux->verb_type == 1) {
-                int idx_aux = gyou_to_index(left_aux->gyou);
-                strcat(result.output, godan_conjugate[idx_aux][aux_conj]);
-            } else if (left_aux->verb_type == 2) {
-                int idx_aux = gyou_to_index(left_aux->gyou);
-                strcat(result.output, kami_conjugate[idx_aux][aux_conj]);
-            } else if (left_aux->verb_type == 3) {
-                int idx_aux = gyou_to_index_simo(left_aux->gyou);
-                strcat(result.output, simo_conjugate[idx_aux][aux_conj]);
-            }
-            if (right_aux != NULL) {
-                strcat(result.output, right_aux->suffix);
-            }
+            append_left_auxiliary(result.output, left_aux, right_aux);
         } else {
             strcat(result.output, suffix);
         }
@@ -691,27 +699,13 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
             }
             int idx = gyou_to_index(gyou);
             strcat(result.output, godan_conjugate[idx][conj_form]);
-            if (conj_form == CONJ_TE_TA && (gyou == 'g' || gyou == 'n' || gyou == 'b' || gyou == 'm')) {
-                apply_godan_te_ta_voicing(result.output);
-            }
             if (left_aux != NULL) {
-                strcat(result.output, left_aux->stem);
-                int aux_conj = (right_aux != NULL) ? right_aux->conj_form : CONJ_JISHO;
-                if (left_aux->verb_type == 1) {
-                    int idx_aux = gyou_to_index(left_aux->gyou);
-                    strcat(result.output, godan_conjugate[idx_aux][aux_conj]);
-                } else if (left_aux->verb_type == 2) {
-                    int idx_aux = gyou_to_index(left_aux->gyou);
-                    strcat(result.output, kami_conjugate[idx_aux][aux_conj]);
-                } else if (left_aux->verb_type == 3) {
-                    int idx_aux = gyou_to_index_simo(left_aux->gyou);
-                    strcat(result.output, simo_conjugate[idx_aux][aux_conj]);
-                }
-                if (right_aux != NULL) {
-                    strcat(result.output, right_aux->suffix);
-                }
+                append_left_auxiliary(result.output, left_aux, right_aux);
             } else {
                 strcat(result.output, suffix);
+            }
+            if (conj_form == CONJ_TE_TA && (gyou == 'g' || gyou == 'n' || gyou == 'b' || gyou == 'm')) {
+                apply_godan_te_ta_voicing(result.output, strlen(left_kana));
             }
             result.success = true;
             return result;
@@ -734,19 +728,7 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
             int idx = gyou_to_index(gyou);
             strcat(result.output, kami_conjugate[idx][conj_form]);
             if (left_aux != NULL) {
-                strcat(result.output, left_aux->stem);
-                int aux_conj = (right_aux != NULL) ? right_aux->conj_form : CONJ_JISHO;
-                if (left_aux->verb_type == 1) {
-                    int idx_aux = gyou_to_index(left_aux->gyou);
-                    strcat(result.output, godan_conjugate[idx_aux][aux_conj]);
-                } else if (left_aux->verb_type == 2) {
-                    int idx_aux = gyou_to_index(left_aux->gyou);
-                    strcat(result.output, kami_conjugate[idx_aux][aux_conj]);
-                } else if (left_aux->verb_type == 3) {
-                    int idx_aux = gyou_to_index_simo(left_aux->gyou);
-                    strcat(result.output, simo_conjugate[idx_aux][aux_conj]);
-                }
-                if (right_aux != NULL) strcat(result.output, right_aux->suffix);
+                append_left_auxiliary(result.output, left_aux, right_aux);
             } else {
                 strcat(result.output, suffix);
             }
@@ -772,19 +754,7 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
             int idx = gyou_to_index_simo(gyou);
             strcat(result.output, simo_conjugate[idx][conj_form]);
             if (left_aux != NULL) {
-                strcat(result.output, left_aux->stem);
-                int aux_conj = (right_aux != NULL) ? right_aux->conj_form : CONJ_JISHO;
-                if (left_aux->verb_type == 1) {
-                    int idx_aux = gyou_to_index(left_aux->gyou);
-                    strcat(result.output, godan_conjugate[idx_aux][aux_conj]);
-                } else if (left_aux->verb_type == 2) {
-                    int idx_aux = gyou_to_index(left_aux->gyou);
-                    strcat(result.output, kami_conjugate[idx_aux][aux_conj]);
-                } else if (left_aux->verb_type == 3) {
-                    int idx_aux = gyou_to_index_simo(left_aux->gyou);
-                    strcat(result.output, simo_conjugate[idx_aux][aux_conj]);
-                }
-                if (right_aux != NULL) strcat(result.output, right_aux->suffix);
+                append_left_auxiliary(result.output, left_aux, right_aux);
             } else {
                 strcat(result.output, suffix);
             }
@@ -807,19 +777,7 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
             memcpy(gozari_pos + 6, "い", 3);
         }
         if (left_aux != NULL) {
-            strcat(result.output, left_aux->stem);
-            int aux_conj = (right_aux != NULL) ? right_aux->conj_form : CONJ_JISHO;
-            if (left_aux->verb_type == 1) {
-                int idx_aux = gyou_to_index(left_aux->gyou);
-                strcat(result.output, godan_conjugate[idx_aux][aux_conj]);
-            } else if (left_aux->verb_type == 2) {
-                int idx_aux = gyou_to_index(left_aux->gyou);
-                strcat(result.output, kami_conjugate[idx_aux][aux_conj]);
-            } else if (left_aux->verb_type == 3) {
-                int idx_aux = gyou_to_index_simo(left_aux->gyou);
-                strcat(result.output, simo_conjugate[idx_aux][aux_conj]);
-            }
-            if (right_aux != NULL) strcat(result.output, right_aux->suffix);
+            append_left_auxiliary(result.output, left_aux, right_aux);
         } else {
             strcat(result.output, suffix);
         }
