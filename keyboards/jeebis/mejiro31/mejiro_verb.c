@@ -518,6 +518,20 @@ static void get_conjugation_info(const char *left_particle, const char *right_pa
     suffix[0] = '\0';
 }
 
+// 「んて」「んた」を濁音化する（五段 g/n/b/m のて・た形）
+static void apply_godan_te_ta_voicing(char *str) {
+    char *pos = str;
+    while ((pos = strstr(pos, "んて")) != NULL) {
+        memcpy(pos, "んで", 6);
+        pos += 3;  // 1文字進める（UTF-8で3バイト）
+    }
+    pos = str;
+    while ((pos = strstr(pos, "んた")) != NULL) {
+        memcpy(pos, "んだ", 6);
+        pos += 3;
+    }
+}
+
 // メイン動詞活用関数
 verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vowel,
                                     const char *left_particle,
@@ -576,16 +590,7 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
                 int idx = gyou_to_index(verb->gyou);
                 strcat(result.output, godan_conjugate[idx][conj_form]);
                 if (conj_form == CONJ_TE_TA && (verb->gyou == 'g' || verb->gyou == 'n' || verb->gyou == 'b' || verb->gyou == 'm')) {
-                    char *te_pos = strstr(result.output, "て");
-                    if (te_pos) {
-                        strcpy(te_pos, "で");
-                        strcat(result.output, te_pos + 3);
-                    }
-                    char *ta_pos = strstr(result.output, "た");
-                    if (ta_pos) {
-                        strcpy(ta_pos, "だ");
-                        strcat(result.output, ta_pos + 3);
-                    }
+                    apply_godan_te_ta_voicing(result.output);
                 }
             } else if (verb->type == VERB_TYPE_KAMI) {
                 int idx = gyou_to_index(verb->gyou);
@@ -668,10 +673,7 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
             int idx = gyou_to_index(gyou);
             strcat(result.output, godan_conjugate[idx][conj_form]);
             if (conj_form == CONJ_TE_TA && (gyou == 'g' || gyou == 'n' || gyou == 'b' || gyou == 'm')) {
-                char *te_pos = strstr(result.output, "て");
-                if (te_pos) memcpy(te_pos, "で", 3);
-                char *ta_pos = strstr(result.output, "た");
-                if (ta_pos) memcpy(ta_pos, "だ", 3);
+                apply_godan_te_ta_voicing(result.output);
             }
             if (left_aux != NULL) {
                 strcat(result.output, left_aux->stem);
