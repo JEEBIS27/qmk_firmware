@@ -332,9 +332,10 @@ static const verb_entry_t verb_dict[] = {
     // 上一段活用 (k行)
     {"TN-KI", "で", 'k', VERB_TYPE_KAMI},          // 出来る
     // 上一段活用 (z行)
-    {"SI-SNI", "しん", 'z', VERB_TYPE_KAMI},       // 信じる
+    {"IA-SNI", "えん", 'z', VERB_TYPE_KAMI},       // 演じる
     {"KA-SNI", "かん", 'z', VERB_TYPE_KAMI},       // 感じる
     {"KI-SNI", "きん", 'z', VERB_TYPE_KAMI},       // 禁じる
+    {"SI-SNI", "しん", 'z', VERB_TYPE_KAMI},       // 信じる
     {"TNA-SNI", "だん", 'z', VERB_TYPE_KAMI},      // 断じる
     // 上一段活用 (m行)
     {"KA-SKNI", "かんが", 'm', VERB_TYPE_KAMI},    // 鑑みる
