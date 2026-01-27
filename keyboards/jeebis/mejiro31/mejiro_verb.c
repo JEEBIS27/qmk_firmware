@@ -356,6 +356,7 @@ static const verb_entry_t verb_dict[] = {
     {"TKA-SNI", "はじ", 'm', VERB_TYPE_SIMO},      // 始める
     {"SKNAU-TAU", "もと", 'm', VERB_TYPE_SIMO},    // 求める
     // 下一段活用 (r行)
+
     {"KAU-STIA", "こわ", 'r', VERB_TYPE_SIMO},     // 壊れる
     {"SKA-SU", "わす", 'r', VERB_TYPE_SIMO},       // 忘れる
     // 下一段活用 (w行)

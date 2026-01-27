@@ -734,12 +734,29 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
     }
     
     // 「っ」の持ち越し判定（左側と右側を別々に判定）
+    // ただし、複雑二重母音（母音+助詞）に該当する場合は「っ」を出力しないため、持ち越し対象から除外する
+    char left_vowel_particle[32] = {0};
+    strcpy(left_vowel_particle, l_vowel);
+    strcat(left_vowel_particle, l_particle_str);
+    const char *dummy_first_vowel_left = NULL;
+    const char *dummy_suffix_left = NULL;
+    bool is_complex_left = check_complex_diphthong(left_vowel_particle, &dummy_first_vowel_left, &dummy_suffix_left);
+
+    char right_vowel_particle[32] = {0};
+    strcpy(right_vowel_particle, r_vowel);
+    strcat(right_vowel_particle, r_particle_str);
+    const char *dummy_first_vowel_right = NULL;
+    const char *dummy_suffix_right = NULL;
+    bool is_complex_right = check_complex_diphthong(right_vowel_particle, &dummy_first_vowel_right, &dummy_suffix_right);
+
     bool has_final_tsu_left = ((strlen(l_conso) > 0 || strlen(l_vowel) > 0) &&
                                strcmp(l_particle_str, "tk") == 0 &&
-                               strlen(r_conso) == 0 && strlen(r_vowel) == 0 && strlen(r_particle_str) == 0);
+                               strlen(r_conso) == 0 && strlen(r_vowel) == 0 && strlen(r_particle_str) == 0 &&
+                               !is_complex_left);
     bool has_final_tsu_right = ((strlen(r_conso) > 0 || strlen(r_vowel) > 0) &&
                                 strcmp(r_particle_str, "tk") == 0 &&
-                                !is_left_plus_particle);
+                                !is_left_plus_particle &&
+                                !is_complex_right);
     bool has_final_tsu = has_final_tsu_left || has_final_tsu_right;
     
     if (is_particle_only) {
@@ -754,16 +771,18 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
         }
         
         // 「っ」の持ち越し判定
-        // 左側のみでtk助詞があり、右側がない場合
+        // 左側のみでtk助詞があり、右側がない場合（複雑二重母音は除外）
         if ((strlen(l_conso) > 0 || strlen(l_vowel) > 0) &&
             strcmp(l_particle_str, "tk") == 0 &&
-            strlen(r_conso) == 0 && strlen(r_vowel) == 0 && strlen(r_particle_str) == 0) {
+            strlen(r_conso) == 0 && strlen(r_vowel) == 0 && strlen(r_particle_str) == 0 &&
+            !is_complex_left) {
             has_final_tsu = true;
         }
-        // 右側にtk助詞がある場合（左+助詞パターンでない）
+        // 右側にtk助詞がある場合（左+助詞パターンでない、かつ複雑二重母音は除外）
         if ((strlen(r_conso) > 0 || strlen(r_vowel) > 0) &&
             strcmp(r_particle_str, "tk") == 0 &&
-            !is_left_plus_particle) {
+            !is_left_plus_particle &&
+            !is_complex_right) {
             has_final_tsu = true;
         }
         

@@ -570,3 +570,8 @@ void mejiro_send_passthrough_keys(void) {
         }
     }
 }
+
+void mejiro_reset_state(void) {
+    reset_chord();
+    last_output_was_space = false;
+}

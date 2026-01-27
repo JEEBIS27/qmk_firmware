@@ -11,3 +11,4 @@ void mejiro_on_press(uint16_t kc);
 void mejiro_on_release(uint16_t kc);
 bool mejiro_should_send_passthrough(void);
 void mejiro_send_passthrough_keys(void);
+void mejiro_reset_state(void);
