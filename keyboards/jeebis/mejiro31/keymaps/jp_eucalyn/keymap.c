@@ -297,6 +297,9 @@ static void refresh_force_qwerty_state(void) {
     layer_state_t qwerty_default = (layer_state_t)1UL << _QWERTY;
 
     if (should_force) {
+        if (current_layer == _GEMINI) {
+            mejiro_reset_state();
+        }
         if (!force_qwerty_active || default_layer_state != qwerty_default) {
             default_layer_set(qwerty_default);
             layer_move(_QWERTY);
@@ -358,6 +361,9 @@ static void toggle_sbl_mode(void) {
 }
 
 static void toggle_mejiro_mode(void) {
+    if (is_mejiro_mode) {
+        mejiro_reset_state();
+    }
     is_mejiro_mode = !is_mejiro_mode;
     user_config.mejiro_mode = is_mejiro_mode;
     eeconfig_update_user(user_config.raw);
@@ -612,6 +618,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                         default_layer = 1;
                         update_lang(stn_lang);
                     } else {
+                        mejiro_reset_state();
                         default_layer_set((layer_state_t)1UL << _QWERTY);
                         layer_move(_QWERTY);
                         default_layer = 0;
