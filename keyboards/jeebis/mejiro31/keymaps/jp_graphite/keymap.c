@@ -56,7 +56,7 @@ static bool is_mac = false;
 static bool os_detected = false;
 static uint16_t dz_timer = 0;
 static bool dz_delayed = false;
-// Space/Enter単発発射ロジック
+static uint8_t dz_fifo_len_at_press = 0;  // DZ キー押下時のコンボ FIFO 長
 static uint16_t lshift_timer = 0;      // L_shiftが押される時間
 static uint16_t rshift_timer = 0;      // R_shiftが押される時間
 static bool lshift_has_key = false;    // L_shift押下中に新しいキーが押されたか
@@ -73,6 +73,18 @@ static toggle_hold_state_t tg_mjr_state = {false, 0};
 static int stn_lang = 2; // ステノ時の言語
 static int kbd_lang = 1; // キーボード時の言語
 static int alt_lang = 1; // Alternative Layoutの言語設定
+
+static inline bool is_modifier_keycode(uint16_t keycode) {
+    switch (keycode) {
+        case KC_LCTL: case KC_RCTL:
+        case KC_LALT: case KC_RALT:
+        case KC_LGUI: case KC_RGUI:
+        case KC_LSFT: case KC_RSFT:
+            return true;
+        default:
+            return false;
+    }
+}
 
 
 typedef union {
@@ -112,8 +124,7 @@ void keyboard_post_init_user(void) {
 }
 
 /**
- * JIS モード時に一時的に Shift を有効にしてキーを送信する（tap）
- * @param kc キーコード
+ * @param kc
  */
 void tap_code16_with_shift(uint16_t kc) {
     uint8_t saved_mods      = get_mods();
@@ -132,8 +143,7 @@ void tap_code16_with_shift(uint16_t kc) {
 }
 
 /**
- * JIS モード時に一時的に Shift を有効にしてキーをレジスタする（hold）
- * @param kc キーコード
+ * @param kc
  */
 void register_code16_with_shift(uint16_t kc) {
     add_mods(MOD_LSFT);
@@ -142,8 +152,7 @@ void register_code16_with_shift(uint16_t kc) {
 }
 
 /**
- * レジスタされたキーを解除（restore_code16_with_shift の対）
- * @param kc キーコード
+ * @param kc
  */
 void unregister_code16_with_shift(uint16_t kc) {
     unregister_code16(kc);
@@ -576,6 +585,15 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     uint8_t mods = get_mods();
     bool shifted = (mods & MOD_MASK_SHIFT);
 
+    if (record->event.pressed) {
+        if (lshift_timer != 0 && !is_modifier_keycode(keycode)) {
+            lshift_has_key = true;
+        }
+        if (rshift_timer != 0 && !is_modifier_keycode(keycode)) {
+            rshift_has_key = true;
+        }
+    }
+
     if (is_mejiro_mode && get_highest_layer(layer_state | default_layer_state) == _GEMINI && is_stn_key(keycode)) {
         if (record->event.pressed) {
             mejiro_on_press(keycode);
@@ -612,10 +630,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 }
                 combo_fifo[combo_fifo_len].keycode = base;
                 combo_fifo[combo_fifo_len].layer   = get_highest_layer(layer_state | default_layer_state);
-                combo_fifo[combo_fifo_len].mods    = mods;  // 押された瞬間のmodを保存
+                combo_fifo[combo_fifo_len].mods    = mods;
                 combo_fifo[combo_fifo_len].time_pressed = timer_read();
                 combo_fifo[combo_fifo_len].released = false;
-                // L_shift/R_shift押下中のフラグをセット
                 if ((mods & MOD_LSFT) && lshift_timer != 0) {
                     lshift_has_key = true;
                 }
@@ -705,6 +722,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 } else {
                     dz_timer = timer_read();
                     dz_delayed = true;
+                    dz_fifo_len_at_press = combo_fifo_len;
                 }
             }
             return false;
@@ -713,25 +731,37 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 lshift_timer = timer_read();
                 lshift_has_key = false;
             } else {
-                // L_shiftが押下中に他のキーが押されなかった場合、Spaceを発射
-                if (!lshift_has_key) {
+                bool lshift_in_fifo = false;
+                for (uint8_t i = 0; i < combo_fifo_len; i++) {
+                    if (combo_fifo[i].mods & MOD_LSFT) {
+                        lshift_in_fifo = true;
+                        break;
+                    }
+                }
+                if (!lshift_has_key && !lshift_in_fifo && lshift_timer != 0 && timer_elapsed(lshift_timer) < COMBO_TIMEOUT_MS) {
                     tap_code16(KC_SPC);
                 }
                 lshift_timer = 0;
             }
-            return true;  // デフォルトのシフト処理も実行
+            return true;
         case KC_RSFT:
             if (record->event.pressed) {
                 rshift_timer = timer_read();
                 rshift_has_key = false;
             } else {
-                // R_shiftが押下中に他のキーが押されなかった場合、Enterを発射
-                if (!rshift_has_key) {
+                bool rshift_in_fifo = false;
+                for (uint8_t i = 0; i < combo_fifo_len; i++) {
+                    if (combo_fifo[i].mods & MOD_RSFT) {
+                        rshift_in_fifo = true;
+                        break;
+                    }
+                }
+                if (!rshift_has_key && !rshift_in_fifo && rshift_timer != 0 && timer_elapsed(rshift_timer) < COMBO_TIMEOUT_MS) {
                     tap_code16(KC_ENT);
                 }
                 rshift_timer = 0;
             }
-            return true;  // デフォルトのシフト処理も実行
+            return true;
         case KC_LCTL:
             if (is_mac) {
                 if (record->event.pressed) {
@@ -795,8 +825,16 @@ void matrix_scan_user(void) {
     refresh_force_qwerty_state();
     combo_fifo_service_extended(transform_key_extended);
 
-    if (dz_delayed && timer_elapsed(dz_timer) >= 200) {
-        SEND_STRING("00");
-        dz_delayed = false;
+    if (dz_delayed) {
+        if (dz_fifo_len_at_press == 0) {
+            SEND_STRING("00");
+            dz_delayed = false;
+        } else if (combo_fifo_len < dz_fifo_len_at_press) {
+            SEND_STRING("00");
+            dz_delayed = false;
+        } else if (timer_elapsed(dz_timer) >= COMBO_TIMEOUT_MS) {
+            SEND_STRING("00");
+            dz_delayed = false;
+        }
     }
 }
