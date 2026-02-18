@@ -26,6 +26,7 @@ typedef struct {
     uint16_t keycode;
     uint16_t time_pressed;
     uint8_t  layer;
+    uint8_t  mods;       // キーが押された瞬間のmod状態
     bool     released;
 } combo_event_t;
 
@@ -44,6 +45,7 @@ typedef struct {
     uint16_t source_key_b;
     bool     source_a_pressed;
     bool     source_b_pressed;
+    bool     shift_held;  // shift を含めてホールドしているかどうか
 } hold_state_t;
 
 // グローバル変数の宣言（combo_fifo.cで実装）
@@ -89,6 +91,15 @@ static inline bool is_combo_candidate_default(uint16_t keycode, uint16_t exclude
 // 拡張キー変換時にShift を無効化する関数の宣言（各キーマップファイルで定義 - jp_graphiteなどで使用）
 void tap_code16_unshifted(uint16_t kc);
 
+// 拡張キー変換時に一時的にShift を有効にしてキーを送信する関数の宣言（各キーマップファイルで定義）
+void tap_code16_with_shift(uint16_t kc);
+
+// 拡張キー変換時に一時的にShift を有効にしてキーをレジスタする関数の宣言（各キーマップファイルで定義）
+void register_code16_with_shift(uint16_t kc);
+
+// Shift を有効にしてレジスタされたキーを解除する関数の宣言（各キーマップファイルで定義）
+void unregister_code16_with_shift(uint16_t kc);
+
 // キー変換関数の宣言（各キーマップファイルで定義）
 // @param kc キーコード
 // @return 変換後のキーコード
@@ -100,7 +111,7 @@ typedef struct {
     bool     needs_unshift;
 } transformed_key_t;
 
-typedef transformed_key_t (*key_transform_extended_fn_t)(uint16_t kc, bool shifted);
+typedef transformed_key_t (*key_transform_extended_fn_t)(uint16_t kc, bool shifted, uint8_t layer);
 
 /**
  * コンボ定義を検索する関数
@@ -139,6 +150,11 @@ static inline void fifo_remove(uint8_t idx) {
 static inline void clear_hold_state(void) {
     if (hold_state.is_held) {
         unregister_code16(hold_state.keycode);
+        if (hold_state.shift_held) {
+            del_mods(MOD_LSFT);
+            send_keyboard_report();
+            hold_state.shift_held = false;
+        }
         hold_state.is_held = false;
         hold_state.keycode = 0;
     }
@@ -206,6 +222,7 @@ static inline bool resolve_combo_head_extended(key_transform_extended_fn_t trans
 
     uint16_t head_kc    = combo_fifo[0].keycode;
     uint8_t  head_layer = combo_fifo[0].layer;
+    uint8_t  head_mods  = combo_fifo[0].mods;  // 先頭キーのmodを使用
 
     for (uint8_t i = 1; i < combo_fifo_len; i++) {
         uint16_t other_kc    = combo_fifo[i].keycode;
@@ -218,9 +235,9 @@ static inline bool resolve_combo_head_extended(key_transform_extended_fn_t trans
             combo_pair_t pair;
             memcpy_P(&pair, hit, sizeof(pair));
 
-            uint8_t mods = get_mods();
-            bool shifted = (mods & MOD_MASK_SHIFT);
-            transformed_key_t transformed = transform_fn(pair.out, shifted);
+            // コンボペアの場合は先頭キーが押された瞬間のmodを使用
+            bool shifted = (head_mods & MOD_MASK_SHIFT);
+            transformed_key_t transformed = transform_fn(pair.out, shifted, head_layer);
 
             bool head_pressed  = !combo_fifo[0].released;
             bool other_pressed = !combo_fifo[i].released;
@@ -331,11 +348,14 @@ static inline void combo_fifo_service_extended(key_transform_extended_fn_t trans
         if (combo_fifo_len == 1) {
             if (combo_fifo[0].released) {
                 uint16_t base_kc = combo_fifo[0].keycode;
-                uint8_t mods = get_mods();
+                uint8_t layer = combo_fifo[0].layer;  // 保存されたレイヤーを使用
+                uint8_t mods = combo_fifo[0].mods;  // 保存されたmodを使用
                 bool shifted = (mods & MOD_MASK_SHIFT);
-                transformed_key_t transformed = transform_fn(base_kc, shifted);
+                transformed_key_t transformed = transform_fn(base_kc, shifted, layer);
                 if (transformed.needs_unshift) {
                     tap_code16_unshifted(transformed.keycode);
+                } else if (shifted) {
+                    tap_code16_with_shift(transformed.keycode);
                 } else {
                     tap_code16(transformed.keycode);
                 }
@@ -344,9 +364,10 @@ static inline void combo_fifo_service_extended(key_transform_extended_fn_t trans
             }
             if (timer_elapsed(combo_fifo[0].time_pressed) > COMBO_TIMEOUT_MS) {
                 uint16_t base_kc = combo_fifo[0].keycode;
-                uint8_t mods = get_mods();
+                uint8_t layer = combo_fifo[0].layer;  // 保存されたレイヤーを使用
+                uint8_t mods = combo_fifo[0].mods;  // 保存されたmodを使用
                 bool shifted = (mods & MOD_MASK_SHIFT);
-                transformed_key_t transformed = transform_fn(base_kc, shifted);
+                transformed_key_t transformed = transform_fn(base_kc, shifted, layer);
                 clear_hold_state();
                 // 単要素時は長押し対応のためホールド（needs_unshiftの場合はtap）
                 hold_state.keycode = transformed.keycode;
@@ -356,8 +377,13 @@ static inline void combo_fifo_service_extended(key_transform_extended_fn_t trans
                 hold_state.source_key_b = 0;
                 hold_state.source_a_pressed = true;
                 hold_state.source_b_pressed = false;
+                hold_state.shift_held = false;  // デフォルトは shift を含まない
                 if (transformed.needs_unshift) {
                     tap_code16_unshifted(transformed.keycode);
+                } else if (shifted) {
+                    register_code16_with_shift(transformed.keycode);
+                    hold_state.is_held = true;  // ホールド時はshift込みで登録
+                    hold_state.shift_held = true;  // shift を含めてホールドしている
                 } else {
                     register_code16(transformed.keycode);
                 }
@@ -376,12 +402,15 @@ static inline void combo_fifo_service_extended(key_transform_extended_fn_t trans
                     hold_state.is_held = false;
                 }
                 uint16_t base_kc = combo_fifo[0].keycode;
-                uint8_t mods = get_mods();
+                uint8_t layer = combo_fifo[0].layer;  // 保存されたレイヤーを使用
+                uint8_t mods = combo_fifo[0].mods;  // 保存されたmodを使用
                 bool shifted = (mods & MOD_MASK_SHIFT);
-                transformed_key_t transformed = transform_fn(base_kc, shifted);
+                transformed_key_t transformed = transform_fn(base_kc, shifted, layer);
                 fifo_remove(0);
                 if (transformed.needs_unshift) {
                     tap_code16_unshifted(transformed.keycode);
+                } else if (shifted) {
+                    tap_code16_with_shift(transformed.keycode);
                 } else {
                     tap_code16(transformed.keycode);
                 }
@@ -390,11 +419,14 @@ static inline void combo_fifo_service_extended(key_transform_extended_fn_t trans
                 // 先頭キーの個別タイムアウトをチェック
                 if (timer_elapsed(combo_fifo[0].time_pressed) > COMBO_TIMEOUT_MS) {
                     uint16_t base_kc = combo_fifo[0].keycode;
-                    uint8_t mods = get_mods();
+                    uint8_t layer = combo_fifo[0].layer;  // 保存されたレイヤーを使用
+                    uint8_t mods = combo_fifo[0].mods;  // 保存されたmodを使用
                     bool shifted = (mods & MOD_MASK_SHIFT);
-                    transformed_key_t transformed = transform_fn(base_kc, shifted);
+                    transformed_key_t transformed = transform_fn(base_kc, shifted, layer);
                     if (transformed.needs_unshift) {
                         tap_code16_unshifted(transformed.keycode);
+                    } else if (shifted) {
+                        tap_code16_with_shift(transformed.keycode);
                     } else {
                         tap_code16(transformed.keycode);
                     }

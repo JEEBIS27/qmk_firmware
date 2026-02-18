@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // グローバル変数の実装
 combo_event_t combo_fifo[COMBO_FIFO_LEN];
 uint8_t combo_fifo_len = 0;
-hold_state_t hold_state = {0, 0, false, 0, 0, false, false};
+hold_state_t hold_state = {0, 0, false, 0, 0, false, false, false};
 
 // コンボペアの定義と個数（各キーマップで定義される）
 // extern const combo_pair_t combo_pairs[];

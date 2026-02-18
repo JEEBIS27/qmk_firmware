@@ -43,8 +43,8 @@ enum custom_keycodes {
     TG_MJR,              // Mejiro（メジロ式）モード切替キー
 };
 
-#define MT_SPC MT(MOD_LSFT, KC_SPC)
-#define MT_ENT MT(MOD_LSFT, KC_ENT)
+#define MT_SPC KC_LSFT
+#define MT_ENT KC_RSFT
 #define MT_ESC MT(MOD_LGUI, KC_ESC)
 #define MO_FUN MO(_FUNCTION)
 #define MT_TGL LT(_NUMBER, KC_F24)
@@ -56,6 +56,11 @@ static bool is_mac = false;
 static bool os_detected = false;
 static uint16_t dz_timer = 0;
 static bool dz_delayed = false;
+// Space/Enter単発発射ロジック
+static uint16_t lshift_timer = 0;      // L_shiftが押される時間
+static uint16_t rshift_timer = 0;      // R_shiftが押される時間
+static bool lshift_has_key = false;    // L_shift押下中に新しいキーが押されたか
+static bool rshift_has_key = false;    // R_shift押下中に新しいキーが押されたか
 typedef struct {
     bool pressed;
     uint16_t timer;
@@ -104,6 +109,46 @@ void keyboard_post_init_user(void) {
     layer_clear();
     layer_move(_QWERTY);
     default_layer = 0;
+}
+
+/**
+ * JIS モード時に一時的に Shift を有効にしてキーを送信する（tap）
+ * @param kc キーコード
+ */
+void tap_code16_with_shift(uint16_t kc) {
+    uint8_t saved_mods      = get_mods();
+    uint8_t saved_weak_mods = get_weak_mods();
+    uint8_t saved_osm       = get_oneshot_mods();
+
+    add_mods(MOD_LSFT);
+    send_keyboard_report();
+
+    tap_code16(kc);
+
+    set_mods(saved_mods);
+    set_weak_mods(saved_weak_mods);
+    set_oneshot_mods(saved_osm);
+    send_keyboard_report();
+}
+
+/**
+ * JIS モード時に一時的に Shift を有効にしてキーをレジスタする（hold）
+ * @param kc キーコード
+ */
+void register_code16_with_shift(uint16_t kc) {
+    add_mods(MOD_LSFT);
+    send_keyboard_report();
+    register_code16(kc);
+}
+
+/**
+ * レジスタされたキーを解除（restore_code16_with_shift の対）
+ * @param kc キーコード
+ */
+void unregister_code16_with_shift(uint16_t kc) {
+    unregister_code16(kc);
+    del_mods(MOD_LSFT);
+    send_keyboard_report();
 }
 
 /*---------------------------------------------------------------------------------------------------*/
@@ -185,15 +230,13 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     {KC_DOT,  KC_DOT,  KC_RABK,    _NUMBER},  // . / . / >
 };
 
-uint16_t sbl_transform(uint16_t kc, bool shifted) {
+uint16_t sbl_transform(uint16_t kc, bool shifted, uint8_t layer) {
     if (!is_sbl_mode || force_qwerty_active) return kc;
-
-    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
 
     for (uint8_t i = 0; i < sizeof(sbl_mappings) / sizeof(sbl_mappings[0]); i++) {
         sbl_mapping_t mapping;
         memcpy_P(&mapping, &sbl_mappings[i], sizeof(mapping));
-        if (mapping.layer != current_layer) continue;
+        if (mapping.layer != layer) continue;
         if (mapping.base == kc) {
             return shifted ? mapping.shifted : mapping.unshifted;
         }
@@ -250,11 +293,10 @@ static const alt_mapping_t alt_mappings[] PROGMEM = {
     {KC_BSLS, KC_BSLS, KC_PIPE},
 };
 
-uint16_t alt_transform(uint16_t kc, bool shifted) {
+uint16_t alt_transform(uint16_t kc, bool shifted, uint8_t layer) {
     if (!is_alt_mode || force_qwerty_active) return kc;
 
-    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-    if (current_layer != _QWERTY) return kc;
+    if (layer != _QWERTY) return kc;
 
     for (uint8_t i = 0; i < sizeof(alt_mappings) / sizeof(alt_mappings[0]); i++) {
         alt_mapping_t mapping;
@@ -267,15 +309,14 @@ uint16_t alt_transform(uint16_t kc, bool shifted) {
     return kc;
 }
 
-static inline transformed_key_t transform_key_extended(uint16_t kc, bool shifted) {
-    uint16_t sbl_kc = sbl_transform(kc, shifted);
-    uint16_t alt_kc = alt_transform(sbl_kc, shifted);
+static inline transformed_key_t transform_key_extended(uint16_t kc, bool shifted, uint8_t layer) {
+    uint16_t sbl_kc = sbl_transform(kc, shifted, layer);
+    uint16_t alt_kc = alt_transform(sbl_kc, shifted, layer);
 
     bool needs_unshift = is_jis_shift_target(alt_kc, shifted);
 
     if (!needs_unshift && shifted && is_sbl_mode && !force_qwerty_active) {
-        uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-        if (current_layer == _NUMBER || current_layer == _QWERTY) {
+        if (layer == _NUMBER || layer == _QWERTY) {
             if (sbl_kc != kc) {
                 needs_unshift = true;
             }
@@ -562,15 +603,29 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 uint16_t base = keycode;
                 if (hold_state.is_held && combo_fifo_len > 0) {
                     unregister_code16(hold_state.keycode);
+                    if (hold_state.shift_held) {
+                        del_mods(MOD_LSFT);
+                        send_keyboard_report();
+                        hold_state.shift_held = false;
+                    }
                     hold_state.is_held = false;
                 }
                 combo_fifo[combo_fifo_len].keycode = base;
                 combo_fifo[combo_fifo_len].layer   = get_highest_layer(layer_state | default_layer_state);
+                combo_fifo[combo_fifo_len].mods    = mods;  // 押された瞬間のmodを保存
                 combo_fifo[combo_fifo_len].time_pressed = timer_read();
                 combo_fifo[combo_fifo_len].released = false;
+                // L_shift/R_shift押下中のフラグをセット
+                if ((mods & MOD_LSFT) && lshift_timer != 0) {
+                    lshift_has_key = true;
+                }
+                if ((mods & MOD_RSFT) && rshift_timer != 0) {
+                    rshift_has_key = true;
+                }
                 combo_fifo_len++;
             } else {
-                transformed_key_t transformed = transform_key_extended(keycode, shifted);
+                uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+                transformed_key_t transformed = transform_key_extended(keycode, shifted, current_layer);
                 if (transformed.needs_unshift) {
                     tap_code16_unshifted(transformed.keycode);
                 } else {
@@ -588,6 +643,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 }
                 if (!hold_state.source_a_pressed || !hold_state.source_b_pressed) {
                     unregister_code16(hold_state.keycode);
+                    if (hold_state.shift_held) {
+                        del_mods(MOD_LSFT);
+                        send_keyboard_report();
+                        hold_state.shift_held = false;
+                    }
                     hold_state.is_held = false;
                     hold_state.keycode = 0;
                 }
@@ -648,6 +708,30 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 }
             }
             return false;
+        case KC_LSFT:
+            if (record->event.pressed) {
+                lshift_timer = timer_read();
+                lshift_has_key = false;
+            } else {
+                // L_shiftが押下中に他のキーが押されなかった場合、Spaceを発射
+                if (!lshift_has_key) {
+                    tap_code16(KC_SPC);
+                }
+                lshift_timer = 0;
+            }
+            return true;  // デフォルトのシフト処理も実行
+        case KC_RSFT:
+            if (record->event.pressed) {
+                rshift_timer = timer_read();
+                rshift_has_key = false;
+            } else {
+                // R_shiftが押下中に他のキーが押されなかった場合、Enterを発射
+                if (!rshift_has_key) {
+                    tap_code16(KC_ENT);
+                }
+                rshift_timer = 0;
+            }
+            return true;  // デフォルトのシフト処理も実行
         case KC_LCTL:
             if (is_mac) {
                 if (record->event.pressed) {
