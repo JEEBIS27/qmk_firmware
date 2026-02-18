@@ -38,8 +38,8 @@ enum custom_keycodes {
     TG_SBL,              // Mejiro31 Symbol Layout toggle key
 };
 
-#define MT_SPC MT(MOD_LSFT, KC_SPC)
-#define MT_ENT MT(MOD_LSFT, KC_ENT)
+#define MT_SPC KC_LSFT
+#define MT_ENT KC_RSFT
 #define MT_ESC MT(MOD_LGUI, KC_ESC)
 #define MO_FUN MO(_FUNCTION)
 #define MT_TGL LT(_NUMBER, KC_F24)
@@ -50,6 +50,11 @@ static bool os_detected = false;
 
 static uint16_t dz_timer = 0;
 static bool dz_delayed = false;
+static uint8_t dz_fifo_len_at_press = 0;  // DZ key press time combo FIFO length
+static uint16_t lshift_timer = 0;      // L_shift press time
+static uint16_t rshift_timer = 0;      // R_shift press time
+static bool lshift_has_key = false;    // Whether a new key was pressed during L_shift hold
+static bool rshift_has_key = false;    // Whether a new key was pressed during R_shift hold
 
 typedef struct {
     bool pressed;
@@ -98,6 +103,43 @@ void tap_code16_unshifted(uint16_t keycode) {
     if (shift_mods) {
         register_mods(shift_mods);
     }
+}
+
+/**
+ * @param kc
+ */
+void tap_code16_with_shift(uint16_t kc) {
+    uint8_t saved_mods      = get_mods();
+    uint8_t saved_weak_mods = get_weak_mods();
+    uint8_t saved_osm       = get_oneshot_mods();
+
+    add_mods(MOD_LSFT);
+    send_keyboard_report();
+
+    tap_code16(kc);
+
+    set_mods(saved_mods);
+    set_weak_mods(saved_weak_mods);
+    set_oneshot_mods(saved_osm);
+    send_keyboard_report();
+}
+
+/**
+ * @param kc
+ */
+void register_code16_with_shift(uint16_t kc) {
+    add_mods(MOD_LSFT);
+    send_keyboard_report();
+    register_code16(kc);
+}
+
+/**
+ * @param kc
+ */
+void unregister_code16_with_shift(uint16_t kc) {
+    unregister_code16(kc);
+    del_mods(MOD_LSFT);
+    send_keyboard_report();
 }
 
 /*---------------------------------------------------------------------------------------------------*/
@@ -183,15 +225,13 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     {KC_DOT,  KC_DOT,  KC_RABK,    _NUMBER},  // . / . / >
 };
 
-uint16_t sbl_transform(uint16_t kc, bool shifted) {
+uint16_t sbl_transform(uint16_t kc, bool shifted, uint8_t layer) {
     if (!is_sbl_mode || force_qwerty_active) return kc;
-
-    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
 
     for (uint8_t i = 0; i < sizeof(sbl_mappings) / sizeof(sbl_mappings[0]); i++) {
         sbl_mapping_t mapping;
         memcpy_P(&mapping, &sbl_mappings[i], sizeof(mapping));
-        if (mapping.layer != current_layer) continue;
+        if (mapping.layer != layer) continue;
         if (mapping.base == kc) {
             return shifted ? mapping.shifted : mapping.unshifted;
         }
@@ -248,11 +288,10 @@ static const alt_mapping_t alt_mappings[] PROGMEM = {
     {KC_BSLS, KC_SLSH, KC_BSLS},
 };
 
-uint16_t alt_transform(uint16_t kc, bool shifted) {
+uint16_t alt_transform(uint16_t kc, bool shifted, uint8_t layer) {
     if (!is_alt_mode || force_qwerty_active) return kc;
 
-    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-    if (current_layer != _QWERTY) return kc;
+    if (layer != _QWERTY) return kc;
 
     for (uint8_t i = 0; i < sizeof(alt_mappings) / sizeof(alt_mappings[0]); i++) {
         alt_mapping_t mapping;
@@ -265,14 +304,13 @@ uint16_t alt_transform(uint16_t kc, bool shifted) {
     return kc;
 }
 
-static inline transformed_key_t transform_key_extended(uint16_t kc, bool shifted) {
-    uint16_t sbl_kc = sbl_transform(kc, shifted);
-    uint16_t alt_kc = alt_transform(sbl_kc, shifted);
+static inline transformed_key_t transform_key_extended(uint16_t kc, bool shifted, uint8_t layer) {
+    uint16_t sbl_kc = sbl_transform(kc, shifted, layer);
+    uint16_t alt_kc = alt_transform(sbl_kc, shifted, layer);
 
     bool needs_unshift = false;
     if (shifted && is_sbl_mode && !force_qwerty_active) {
-        uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-        if (current_layer == _NUMBER || current_layer == _QWERTY) {
+        if (layer == _NUMBER || layer == _QWERTY) {
             if (sbl_kc != kc) {
                 needs_unshift = true;
             }
@@ -285,6 +323,8 @@ static inline transformed_key_t transform_key_extended(uint16_t kc, bool shifted
     };
     return result;
 }
+
+
 
 static void refresh_force_qwerty_state(void) {
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
@@ -482,22 +522,48 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     uint8_t mods = get_mods();
     bool shifted = (mods & MOD_MASK_SHIFT);
 
+    if (record->event.pressed) {
+        if (lshift_timer != 0 && !IS_MODIFIER_KEYCODE(keycode)) {
+            lshift_has_key = true;
+        }
+        if (rshift_timer != 0 && !IS_MODIFIER_KEYCODE(keycode)) {
+            rshift_has_key = true;
+        }
+    }
+
     if (is_combo_candidate(keycode)) {
         if (record->event.pressed) {
             if (combo_fifo_len < COMBO_FIFO_LEN) {
                 uint16_t base = keycode;
                 if (hold_state.is_held && combo_fifo_len > 0) {
                     unregister_code16(hold_state.keycode);
+                    if (hold_state.shift_held) {
+                        del_mods(MOD_LSFT);
+                        send_keyboard_report();
+                        hold_state.shift_held = false;
+                    }
                     hold_state.is_held = false;
                 }
                 combo_fifo[combo_fifo_len].keycode = base;
                 combo_fifo[combo_fifo_len].layer   = get_highest_layer(layer_state | default_layer_state);
+                combo_fifo[combo_fifo_len].mods    = mods;
                 combo_fifo[combo_fifo_len].time_pressed = timer_read();
                 combo_fifo[combo_fifo_len].released = false;
+                if ((mods & MOD_LSFT) && lshift_timer != 0) {
+                    lshift_has_key = true;
+                }
+                if ((mods & MOD_RSFT) && rshift_timer != 0) {
+                    rshift_has_key = true;
+                }
                 combo_fifo_len++;
             } else {
-                transformed_key_t transformed = transform_key_extended(keycode, shifted);
-                tap_code16(transformed.keycode);
+                uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+                transformed_key_t transformed = transform_key_extended(keycode, shifted, current_layer);
+                if (transformed.needs_unshift) {
+                    tap_code16_unshifted(transformed.keycode);
+                } else {
+                    tap_code16(transformed.keycode);
+                }
             }
         } else {
             uint16_t base = keycode;
@@ -510,6 +576,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 }
                 if (!hold_state.source_a_pressed || !hold_state.source_b_pressed) {
                     unregister_code16(hold_state.keycode);
+                    if (hold_state.shift_held) {
+                        del_mods(MOD_LSFT);
+                        send_keyboard_report();
+                        hold_state.shift_held = false;
+                    }
                     hold_state.is_held = false;
                     hold_state.keycode = 0;
                 }
@@ -560,9 +631,46 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 } else {
                     dz_timer = timer_read();
                     dz_delayed = true;
+                    dz_fifo_len_at_press = combo_fifo_len;
                 }
             }
             return false;
+        case KC_LSFT:
+            if (record->event.pressed) {
+                lshift_timer = timer_read();
+                lshift_has_key = false;
+            } else {
+                bool lshift_in_fifo = false;
+                for (uint8_t i = 0; i < combo_fifo_len; i++) {
+                    if (combo_fifo[i].mods & MOD_LSFT) {
+                        lshift_in_fifo = true;
+                        break;
+                    }
+                }
+                if (!lshift_has_key && !lshift_in_fifo && lshift_timer != 0 && timer_elapsed(lshift_timer) < COMBO_TIMEOUT_MS) {
+                    tap_code16(KC_SPC);
+                }
+                lshift_timer = 0;
+            }
+            return true;
+        case KC_RSFT:
+            if (record->event.pressed) {
+                rshift_timer = timer_read();
+                rshift_has_key = false;
+            } else {
+                bool rshift_in_fifo = false;
+                for (uint8_t i = 0; i < combo_fifo_len; i++) {
+                    if (combo_fifo[i].mods & MOD_RSFT) {
+                        rshift_in_fifo = true;
+                        break;
+                    }
+                }
+                if (!rshift_has_key && !rshift_in_fifo && rshift_timer != 0 && timer_elapsed(rshift_timer) < COMBO_TIMEOUT_MS) {
+                    tap_code16(KC_ENT);
+                }
+                rshift_timer = 0;
+            }
+            return true;
         case KC_LCTL:
             if (is_mac) {
                 if (record->event.pressed) {
@@ -620,8 +728,16 @@ void matrix_scan_user(void) {
     refresh_force_qwerty_state();
     combo_fifo_service_extended(transform_key_extended);
 
-    if (dz_delayed && timer_elapsed(dz_timer) >= 200) {
-        SEND_STRING("00");
-        dz_delayed = false;
+    if (dz_delayed) {
+        if (dz_fifo_len_at_press == 0) {
+            SEND_STRING("00");
+            dz_delayed = false;
+        } else if (combo_fifo_len < dz_fifo_len_at_press) {
+            SEND_STRING("00");
+            dz_delayed = false;
+        } else if (timer_elapsed(dz_timer) >= COMBO_TIMEOUT_MS) {
+            SEND_STRING("00");
+            dz_delayed = false;
+        }
     }
 }
