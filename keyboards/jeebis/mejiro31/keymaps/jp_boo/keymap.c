@@ -739,7 +739,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                     }
                 }
                 if (!lshift_has_key && !lshift_in_fifo && lshift_timer != 0 && timer_elapsed(lshift_timer) < COMBO_TIMEOUT_MS) {
-                    tap_code16(KC_SPC);
+                    unregister_mods(MOD_LSFT);
+                    if (rshift_timer != 0) {
+                        tap_code16(KC_SPC);
+                    } else {
+                        tap_code16_unshifted(KC_SPC);
+                    }
                 }
                 lshift_timer = 0;
             }
@@ -757,7 +762,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                     }
                 }
                 if (!rshift_has_key && !rshift_in_fifo && rshift_timer != 0 && timer_elapsed(rshift_timer) < COMBO_TIMEOUT_MS) {
-                    tap_code16(KC_ENT);
+                    unregister_mods(MOD_RSFT);
+                    if (lshift_timer != 0) {
+                        tap_code16(KC_ENT);
+                    } else {
+                        tap_code16_unshifted(KC_ENT);
+                    }
                 }
                 rshift_timer = 0;
             }
