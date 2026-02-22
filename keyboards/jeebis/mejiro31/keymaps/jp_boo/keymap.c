@@ -57,8 +57,8 @@ static bool os_detected = false;
 static uint16_t dz_timer = 0;
 static bool dz_delayed = false;
 static uint8_t dz_fifo_len_at_press = 0;  // DZ キー押下時のコンボ FIFO 長
-static uint16_t lshift_timer = 0;      // L_shiftが押される時間
-static uint16_t rshift_timer = 0;      // R_shiftが押される時間
+uint16_t lshift_timer = 0;      // L_shiftが押される時間
+uint16_t rshift_timer = 0;      // R_shiftが押される時間
 static bool lshift_has_key = false;    // L_shift押下中に新しいキーが押されたか
 static bool rshift_has_key = false;    // R_shift押下中に新しいキーが押されたか
 typedef struct {
@@ -160,6 +160,50 @@ void unregister_code16_with_shift(uint16_t kc) {
     send_keyboard_report();
 }
 
+/**
+ * Shift が押されている状態でも、一時的に解除してキーをレジスタする
+ * @param kc キーコード
+ */
+void register_code16_without_shift(uint16_t kc) {
+    uint8_t saved_mods      = get_mods();
+    uint8_t saved_weak_mods = get_weak_mods();
+    uint8_t saved_osm       = get_oneshot_mods();
+
+    del_mods(MOD_MASK_SHIFT);
+    del_weak_mods(MOD_MASK_SHIFT);
+    clear_oneshot_mods();
+    send_keyboard_report();
+
+    register_code16(kc);
+
+    set_mods(saved_mods);
+    set_weak_mods(saved_weak_mods);
+    set_oneshot_mods(saved_osm);
+    send_keyboard_report();
+}
+
+/**
+ * Shift が押されている状態でも、一時的に解除してキーをアンレジスタする
+ * @param kc キーコード
+ */
+void unregister_code16_without_shift(uint16_t kc) {
+    uint8_t saved_mods      = get_mods();
+    uint8_t saved_weak_mods = get_weak_mods();
+    uint8_t saved_osm       = get_oneshot_mods();
+
+    del_mods(MOD_MASK_SHIFT);
+    del_weak_mods(MOD_MASK_SHIFT);
+    clear_oneshot_mods();
+    send_keyboard_report();
+
+    unregister_code16(kc);
+
+    set_mods(saved_mods);
+    set_weak_mods(saved_weak_mods);
+    set_oneshot_mods(saved_osm);
+    send_keyboard_report();
+}
+
 /*---------------------------------------------------------------------------------------------------*/
 /*-------------------------------------Mejiro31 Symbol Layout----------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
@@ -204,7 +248,7 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │INT5 │INT4 │
+    //                         │ ALT │ CTL │   │MT_TG│   │LANG2│LANG1│
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER Shifted
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
@@ -215,7 +259,7 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │INT5 │INT4 │
+    //                         │ ALT │ CTL │   │MT_TG│   │LANG2│LANG1│
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
 
     {KC_LBRC, KC_EXLM, KC_AMPR,    _QWERTY},  // [ / ! / &
@@ -258,11 +302,11 @@ uint16_t sbl_transform(uint16_t kc, bool shifted, uint8_t layer) {
 /*----------------------------------------Alternative Layout-----------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
 
-// 配列：Boo
+// 配列：Graphite
 // ┌─────┬─────┬─────┬─────┬─────┐┌─────┬─────┬─────┬─────┬─────┬─────┐
-// │  ,  │  .  │  u  │  c  │  v  ││  q  │  f  │  d  │  l  │  y  │  /  │
-// ├──a──┼──o──┼──e──┼──s──┼──g──┤├──b──┼──n──┼──t──┼──r──┼──i──┼──-──┤
-// │  ;  │  x  │  '  │  w  │  z  ││  p  │  h  │  m  │  k  │  j  │  \  │
+// │  b  │  l  │  d  │  w  │  z  ││ ' _ │  f  │  o  │  u  │  j  │ ; : │
+// ├──n──┼──r──┼──t──┼──s──┼──g──┤├──y──┼──h──┼──a──┼──e──┼──i──┼──,──┤
+// │  q  │  x  │  m  │  c  │  v  ││  k  │  p  │ . > │ - " │ / < │ \ | │
 // └─────┴─────┴─────┴─────┴─────┘└─────┴─────┴─────┴─────┴─────┴─────┘
 static const alt_mapping_t alt_mappings[] PROGMEM = {
     {KC_Q,    KC_COMM, KC_LABK},
@@ -380,10 +424,10 @@ static void update_lang(uint8_t lang) {
     }
     switch (lang) {
         case 1:
-            tap_code16(is_mac ? KC_LNG2 : KC_INT5); // Mac: 英数 / Win: 無変換
+            tap_code16(KC_LNG2);
             break;
         case 2:
-            tap_code16(is_mac ? KC_LNG1 : KC_INT4); // Mac: かな / Win: 変換
+            tap_code16(KC_LNG1);
             break;
         default:
             break;
@@ -474,11 +518,17 @@ uint8_t combo_pair_count = sizeof(combo_pairs) / sizeof(combo_pairs[0]);
 bool is_combo_candidate(uint16_t keycode) {
     uint8_t mods = get_mods();
     bool shifted = (mods & MOD_MASK_SHIFT);
-    if (keycode == KC_INT4) return false;
-    if (keycode == KC_INT5) return false;
+    if (keycode == KC_LNG1) return false;
+    if (keycode == KC_LNG2) return false;
     if (keycode == KC_GRV) return true;
     if (keycode == KC_DZ) return is_sbl_mode && shifted;
     if (keycode == KC_TZ) return is_sbl_mode && shifted;
+    if (keycode == KC_DOWN) return true;
+    if (keycode == KC_UP) return true;
+    if (keycode == KC_RIGHT) return true;
+    if (keycode == KC_CAPS) return true;
+    if (keycode == KC_LNG1) return true;
+    if (keycode == KC_LNG2) return true;
     return is_combo_candidate_default(keycode, 0);
 }
 
@@ -535,7 +585,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │INT5 │INT4 │
+    //                         │ ALT │ CTL │   │MT_TG│   │LANG2│LANG1│
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER Shifted
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
@@ -546,14 +596,14 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │INT5 │INT4 │
+    //                         │ ALT │ CTL │   │MT_TG│   │LANG2│LANG1│
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER
     [_NUMBER] = LAYOUT(
         TG_MJR, KC_DZ,  KC_1, KC_2, KC_3,    KC_MINS,   KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_ALT,
         KC_ESC, KC_0,   KC_7, KC_8, KC_9,    KC_DOT,    KC_PGDN, KC_LEFT, KC_DOWN, KC_RIGHT, KC_LGUI, MO_FUN,
-                                     MT_SPC,  KC_TRNS, MT_ENT,
-                                     KC_LALT, KC_LCTL, KC_INT5, KC_INT4
+                                     MT_SPC,  KC_TRNS,  MT_ENT,
+                                     KC_LALT, KC_LCTL,  KC_LNG2, KC_LNG1
     ),
 
     // FUNCTION
@@ -730,46 +780,66 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             if (record->event.pressed) {
                 lshift_timer = timer_read();
                 lshift_has_key = false;
+
+                // FIFO に KC_LSFT を追加
+                if (combo_fifo_len < COMBO_FIFO_LEN) {
+                    combo_fifo[combo_fifo_len].keycode = KC_LSFT;
+                    combo_fifo[combo_fifo_len].layer = get_highest_layer(layer_state | default_layer_state);
+                    combo_fifo[combo_fifo_len].mods = get_mods();
+                    combo_fifo[combo_fifo_len].time_pressed = timer_read();
+                    combo_fifo[combo_fifo_len].released = false;
+                    combo_fifo_len++;
+                }
             } else {
-                bool lshift_in_fifo = false;
+                lshift_timer = 0;
+
+                // FIFO 内の KC_LSFT に released=true を設定
+                bool lshift_found = false;
                 for (uint8_t i = 0; i < combo_fifo_len; i++) {
-                    if (combo_fifo[i].mods & MOD_LSFT) {
-                        lshift_in_fifo = true;
+                    if (combo_fifo[i].keycode == KC_LSFT && !combo_fifo[i].released) {
+                        combo_fifo[i].released = true;
+                        lshift_found = true;
                         break;
                     }
                 }
-                if (!lshift_has_key && !lshift_in_fifo && lshift_timer != 0 && timer_elapsed(lshift_timer) < COMBO_TIMEOUT_MS) {
-                    unregister_mods(MOD_LSFT);
-                    if (rshift_timer != 0) {
-                        tap_code16(KC_SPC);
-                    } else {
-                        tap_code16_unshifted(KC_SPC);
-                    }
+
+                // コンボ処理を実行
+                if (lshift_found) {
+                    combo_fifo_service_extended(transform_key_extended);
                 }
-                lshift_timer = 0;
             }
             return true;
         case KC_RSFT:
             if (record->event.pressed) {
                 rshift_timer = timer_read();
                 rshift_has_key = false;
+
+                // FIFO に KC_RSFT を追加
+                if (combo_fifo_len < COMBO_FIFO_LEN) {
+                    combo_fifo[combo_fifo_len].keycode = KC_RSFT;
+                    combo_fifo[combo_fifo_len].layer = get_highest_layer(layer_state | default_layer_state);
+                    combo_fifo[combo_fifo_len].mods = get_mods();
+                    combo_fifo[combo_fifo_len].time_pressed = timer_read();
+                    combo_fifo[combo_fifo_len].released = false;
+                    combo_fifo_len++;
+                }
             } else {
-                bool rshift_in_fifo = false;
+                rshift_timer = 0;
+
+                // FIFO 内の KC_RSFT に released=true を設定
+                bool rshift_found = false;
                 for (uint8_t i = 0; i < combo_fifo_len; i++) {
-                    if (combo_fifo[i].mods & MOD_RSFT) {
-                        rshift_in_fifo = true;
+                    if (combo_fifo[i].keycode == KC_RSFT && !combo_fifo[i].released) {
+                        combo_fifo[i].released = true;
+                        rshift_found = true;
                         break;
                     }
                 }
-                if (!rshift_has_key && !rshift_in_fifo && rshift_timer != 0 && timer_elapsed(rshift_timer) < COMBO_TIMEOUT_MS) {
-                    unregister_mods(MOD_RSFT);
-                    if (lshift_timer != 0) {
-                        tap_code16(KC_ENT);
-                    } else {
-                        tap_code16_unshifted(KC_ENT);
-                    }
+
+                // コンボ処理を実行
+                if (rshift_found) {
+                    combo_fifo_service_extended(transform_key_extended);
                 }
-                rshift_timer = 0;
             }
             return true;
         case KC_LCTL:
@@ -812,11 +882,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 return false;
             }
             return true;
-        case KC_INT4:
-            update_lang(2); // 日本語へ切り替え
+        case KC_LNG1:
+            update_lang(2);  // 日本語へ切り替え
             return false;
-        case KC_INT5:
-            update_lang(1); // 英語へ切り替え
+        case KC_LNG2:
+            update_lang(1);  // 英語へ切り替え
             return false;
         default:
             break;

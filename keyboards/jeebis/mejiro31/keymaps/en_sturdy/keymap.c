@@ -16,13 +16,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /*---------------------------------------------------------------------------------------------------*/
-/*----------------------------------------------Initial Setup----------------------------------------*/
+/*----------------------------------------------初期設定----------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
 
 #include QMK_KEYBOARD_H
 #include "os_detection.h"
+#include "keymap_japanese.h"
+#include "jis_transform.h"
 #include "combo_fifo.h"
 #include "alt_layout.h"
+#include "mejiro_fifo.h"
 
 enum layer_names {
     _QWERTY = 0,
@@ -32,10 +35,12 @@ enum layer_names {
 };
 
 enum custom_keycodes {
-    KC_DZ = SAFE_RANGE,  // 00 key
-    KC_TZ,               // 000 key
-    TG_ALT,              // Alternative Layout toggle key
-    TG_SBL,              // Mejiro31 Symbol Layout toggle key
+    KC_DZ = SAFE_RANGE,  // 00キー
+    KC_TZ,               // 000キー
+    TG_JIS,              // JISモード切替キー
+    TG_ALT,              // Alternative Layout切替キー
+    TG_SBL,              // Mejiro31 Symbol Layout切替キー
+    TG_MJR,              // Mejiro（メジロ式）モード切替キー
 };
 
 #define MT_SPC KC_LSFT
@@ -44,30 +49,51 @@ enum custom_keycodes {
 #define MO_FUN MO(_FUNCTION)
 #define MT_TGL LT(_NUMBER, KC_F24)
 
+bool is_jis_mode = false;
 bool is_sbl_mode = true;
+bool is_mejiro_mode = false;
 static bool is_mac = false;
 static bool os_detected = false;
-
 static uint16_t dz_timer = 0;
 static bool dz_delayed = false;
-static uint8_t dz_fifo_len_at_press = 0;  // DZ key press time combo FIFO length
-static uint16_t lshift_timer = 0;      // L_shift press time
-static uint16_t rshift_timer = 0;      // R_shift press time
-static bool lshift_has_key = false;    // Whether a new key was pressed during L_shift hold
-static bool rshift_has_key = false;    // Whether a new key was pressed during R_shift hold
-
+static uint8_t dz_fifo_len_at_press = 0;  // DZ キー押下時のコンボ FIFO 長
+uint16_t lshift_timer = 0;      // L_shiftが押される時間
+uint16_t rshift_timer = 0;      // R_shiftが押される時間
+static bool lshift_has_key = false;    // L_shift押下中に新しいキーが押されたか
+static bool rshift_has_key = false;    // R_shift押下中に新しいキーが押されたか
 typedef struct {
     bool pressed;
     uint16_t timer;
 } toggle_hold_state_t;
+static toggle_hold_state_t tg_jis_state = {false, 0};
 static toggle_hold_state_t tg_alt_state = {false, 0};
 static toggle_hold_state_t tg_sbl_state = {false, 0};
+static toggle_hold_state_t tg_mjr_state = {false, 0};
+// 0:未使用, 1:英語, 2:日本語, 3:無変更
+static int stn_lang = 3; // ステノ時の言語
+static int kbd_lang = 3; // キーボード時の言語
+static int alt_lang = 3; // Alternative Layoutの言語設定
+
+static inline bool is_modifier_keycode(uint16_t keycode) {
+    switch (keycode) {
+        case KC_LCTL: case KC_RCTL:
+        case KC_LALT: case KC_RALT:
+        case KC_LGUI: case KC_RGUI:
+        case KC_LSFT: case KC_RSFT:
+            return true;
+        default:
+            return false;
+    }
+}
+
 
 typedef union {
     uint32_t raw;
     struct {
+        bool jis_mode : 1;
         bool alt_mode : 1;
         bool sbl_mode : 1;
+        bool mejiro_mode : 1;
     };
 } user_config_t;
 
@@ -75,8 +101,10 @@ static user_config_t user_config;
 
 void eeconfig_init_user(void) {
     user_config.raw = 0;
+    user_config.jis_mode = false;
     user_config.alt_mode = true;
     user_config.sbl_mode = true;
+    user_config.mejiro_mode = false;
     eeconfig_update_user(user_config.raw);
     steno_set_mode(STENO_MODE_GEMINI);
 }
@@ -85,24 +113,14 @@ void keyboard_post_init_user(void) {
     os_variant_t os = detected_host_os();
     is_mac = (os == OS_MACOS || os == OS_IOS);
     user_config.raw = eeconfig_read_user();
+    is_jis_mode = (user_config.jis_mode);
     is_alt_mode = (user_config.alt_mode);
     is_sbl_mode = (user_config.sbl_mode);
+    is_mejiro_mode = (user_config.mejiro_mode);
     default_layer_set((layer_state_t)1UL << _QWERTY);
     layer_clear();
     layer_move(_QWERTY);
     default_layer = 0;
-}
-
-void tap_code16_unshifted(uint16_t keycode) {
-    uint8_t mods = get_mods();
-    uint8_t shift_mods = mods & MOD_MASK_SHIFT;
-    if (shift_mods) {
-        unregister_mods(shift_mods);
-    }
-    tap_code16(keycode);
-    if (shift_mods) {
-        register_mods(shift_mods);
-    }
 }
 
 /**
@@ -139,6 +157,50 @@ void register_code16_with_shift(uint16_t kc) {
 void unregister_code16_with_shift(uint16_t kc) {
     unregister_code16(kc);
     del_mods(MOD_LSFT);
+    send_keyboard_report();
+}
+
+/**
+ * Shift が押されている状態でも、一時的に解除してキーをレジスタする
+ * @param kc キーコード
+ */
+void register_code16_without_shift(uint16_t kc) {
+    uint8_t saved_mods      = get_mods();
+    uint8_t saved_weak_mods = get_weak_mods();
+    uint8_t saved_osm       = get_oneshot_mods();
+
+    del_mods(MOD_MASK_SHIFT);
+    del_weak_mods(MOD_MASK_SHIFT);
+    clear_oneshot_mods();
+    send_keyboard_report();
+
+    register_code16(kc);
+
+    set_mods(saved_mods);
+    set_weak_mods(saved_weak_mods);
+    set_oneshot_mods(saved_osm);
+    send_keyboard_report();
+}
+
+/**
+ * Shift が押されている状態でも、一時的に解除してキーをアンレジスタする
+ * @param kc キーコード
+ */
+void unregister_code16_without_shift(uint16_t kc) {
+    uint8_t saved_mods      = get_mods();
+    uint8_t saved_weak_mods = get_weak_mods();
+    uint8_t saved_osm       = get_oneshot_mods();
+
+    del_mods(MOD_MASK_SHIFT);
+    del_weak_mods(MOD_MASK_SHIFT);
+    clear_oneshot_mods();
+    send_keyboard_report();
+
+    unregister_code16(kc);
+
+    set_mods(saved_mods);
+    set_weak_mods(saved_weak_mods);
+    set_oneshot_mods(saved_osm);
     send_keyboard_report();
 }
 
@@ -179,34 +241,30 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  `  │ 00  │  1  │  2  │  3  │  -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │ MJR │ 00  │  1  │  2  │  3  │  -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼─────┼──4──┼──5──┼──6──┼──,──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
     // │ ESC │  0  │  7  │  8  │  9  │  .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │  !  #  ?  │
+    //                         │ ALT │ CTL │   │MT_TG│   │LANG2│LANG1│
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER Shifted
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  ~  │  %  │  {  │  [  │  (  │  <  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │ MJR │  %  │  [  │  {  │  (  │  <  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼──/──┼──*──┼──=──┼──+──┼──^──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
-    // │ ESC │  $  │  }  │  ]  │  )  │  >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // │ ESC │  $  │  ]  │  }  │  )  │  >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │  &  @  |  │
+    //                         │ ALT │ CTL │   │MT_TG│   │LANG2│LANG1│
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
 
     {KC_LBRC, KC_EXLM, KC_AMPR,    _QWERTY},  // [ / ! / &
     {KC_RBRC, KC_QUES, KC_PIPE,    _QWERTY},  // ] / ? / |
     {KC_EQL,  KC_HASH, KC_AT,      _QWERTY},  // = / # / @
-
-    {KC_LBRC, KC_EXLM, KC_AMPR,    _NUMBER},  // [ / ! / &
-    {KC_RBRC, KC_QUES, KC_PIPE,    _NUMBER},  // ] / ? / |
-    {KC_EQL,  KC_HASH, KC_AT,      _NUMBER},  // = / # / @
 
     {KC_DZ,   KC_DZ,   KC_PERC,    _NUMBER},  // 00 / 00 / %
     {KC_1,    KC_1,    KC_LCBR,    _NUMBER},  // 1 / 1 / {
@@ -244,11 +302,11 @@ uint16_t sbl_transform(uint16_t kc, bool shifted, uint8_t layer) {
 /*----------------------------------------Alternative Layout-----------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
 
-// Layout: Sturdy
+// 配列：Graphite
 // ┌─────┬─────┬─────┬─────┬─────┐┌─────┬─────┬─────┬─────┬─────┬─────┐
-// │  v  │  m  │  l  │  c  │  p  ││  x  │  f  │  o  │  u  │  j  │  -  │
-// ├──s──┼──t──┼──r──┼──d──┼──y──┤├──.──┼──n──┼──a──┼──e──┼──i──┼──/──┤
-// │  z  │  k  │  q  │  g  │  w  ││  b  │  h  │  '  │  ;  │  ,  │  \  │
+// │  b  │  l  │  d  │  w  │  z  ││ ' _ │  f  │  o  │  u  │  j  │ ; : │
+// ├──n──┼──r──┼──t──┼──s──┼──g──┤├──y──┼──h──┼──a──┼──e──┼──i──┼──,──┤
+// │  q  │  x  │  m  │  c  │  v  ││  k  │  p  │ . > │ - " │ / < │ \ | │
 // └─────┴─────┴─────┴─────┴─────┘└─────┴─────┴─────┴─────┴─────┴─────┘
 static const alt_mapping_t alt_mappings[] PROGMEM = {
     {KC_Q,    KC_V,    KC_V},
@@ -308,8 +366,9 @@ static inline transformed_key_t transform_key_extended(uint16_t kc, bool shifted
     uint16_t sbl_kc = sbl_transform(kc, shifted, layer);
     uint16_t alt_kc = alt_transform(sbl_kc, shifted, layer);
 
-    bool needs_unshift = false;
-    if (shifted && is_sbl_mode && !force_qwerty_active) {
+    bool needs_unshift = is_jis_shift_target(alt_kc, shifted);
+
+    if (!needs_unshift && shifted && is_sbl_mode && !force_qwerty_active) {
         if (layer == _NUMBER || layer == _QWERTY) {
             if (sbl_kc != kc) {
                 needs_unshift = true;
@@ -318,13 +377,11 @@ static inline transformed_key_t transform_key_extended(uint16_t kc, bool shifted
     }
 
     transformed_key_t result = {
-        .keycode = alt_kc,
+        .keycode = jis_transform(alt_kc, shifted),
         .needs_unshift = needs_unshift,
     };
     return result;
 }
-
-
 
 static void refresh_force_qwerty_state(void) {
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
@@ -334,6 +391,9 @@ static void refresh_force_qwerty_state(void) {
     layer_state_t qwerty_default = (layer_state_t)1UL << _QWERTY;
 
     if (should_force) {
+        if (current_layer == _GEMINI) {
+            mejiro_reset_state();
+        }
         if (!force_qwerty_active || default_layer_state != qwerty_default) {
             default_layer_set(qwerty_default);
             layer_move(_QWERTY);
@@ -347,6 +407,41 @@ static void refresh_force_qwerty_state(void) {
     }
 }
 
+// lang : 0=なし, 1=英語, 2=日本語
+static void update_lang(uint8_t lang) {
+    switch (alt_lang) {
+        case 0:
+            is_alt_mode = false;
+            break;
+        case 1:
+            is_alt_mode = (lang == 1);
+            break;
+        case 2:
+            is_alt_mode = (lang == 2);
+            break;
+        default:
+            break;
+    }
+    switch (lang) {
+        case 1:
+            tap_code16(KC_LNG2);
+            break;
+        case 2:
+            tap_code16(KC_LNG1);
+            break;
+        default:
+            break;
+    }
+    user_config.alt_mode = is_alt_mode;
+    eeconfig_update_user(user_config.raw);
+}
+
+static void toggle_jis_mode(void) {
+    is_jis_mode = !is_jis_mode;
+    user_config.jis_mode = is_jis_mode;
+    eeconfig_update_user(user_config.raw);
+}
+
 static void toggle_alt_mode(void) {
     is_alt_mode = !is_alt_mode;
     user_config.alt_mode = is_alt_mode;
@@ -356,6 +451,15 @@ static void toggle_alt_mode(void) {
 static void toggle_sbl_mode(void) {
     is_sbl_mode = !is_sbl_mode;
     user_config.sbl_mode = is_sbl_mode;
+    eeconfig_update_user(user_config.raw);
+}
+
+static void toggle_mejiro_mode(void) {
+    if (is_mejiro_mode) {
+        mejiro_reset_state();
+    }
+    is_mejiro_mode = !is_mejiro_mode;
+    user_config.mejiro_mode = is_mejiro_mode;
     eeconfig_update_user(user_config.raw);
 }
 
@@ -376,10 +480,10 @@ static bool handle_toggle_on_hold(keyrecord_t *record, toggle_hold_state_t *stat
 }
 
 /*---------------------------------------------------------------------------------------------------*/
-/*---------------------------------------------FIFO Combo--------------------------------------------*/
+/*--------------------------------------------FIFOコンボ----------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
 
-// Combo definitions (unordered)
+// コンボ定義（順不同）
 const combo_pair_t combo_pairs[] PROGMEM = {
 
     {KC_Q,    KC_Z,    KC_A,    _QWERTY},
@@ -414,8 +518,17 @@ uint8_t combo_pair_count = sizeof(combo_pairs) / sizeof(combo_pairs[0]);
 bool is_combo_candidate(uint16_t keycode) {
     uint8_t mods = get_mods();
     bool shifted = (mods & MOD_MASK_SHIFT);
+    if (keycode == KC_LNG1) return false;
+    if (keycode == KC_LNG2) return false;
+    if (keycode == KC_GRV) return true;
     if (keycode == KC_DZ) return is_sbl_mode && shifted;
     if (keycode == KC_TZ) return is_sbl_mode && shifted;
+    if (keycode == KC_DOWN) return true;
+    if (keycode == KC_UP) return true;
+    if (keycode == KC_RIGHT) return true;
+    if (keycode == KC_CAPS) return true;
+    if (keycode == KC_LNG1) return true;
+    if (keycode == KC_LNG2) return true;
     return is_combo_candidate_default(keycode, 0);
 }
 
@@ -514,7 +627,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 };
 
 /*---------------------------------------------------------------------------------------------------*/
-/*--------------------------------------------Main Processing--------------------------------------*/
+/*--------------------------------------------メイン処理----------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
 
 
@@ -523,15 +636,36 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     bool shifted = (mods & MOD_MASK_SHIFT);
 
     if (record->event.pressed) {
-        if (lshift_timer != 0 && !IS_MODIFIER_KEYCODE(keycode)) {
+        if (lshift_timer != 0 && !is_modifier_keycode(keycode)) {
             lshift_has_key = true;
         }
-        if (rshift_timer != 0 && !IS_MODIFIER_KEYCODE(keycode)) {
+        if (rshift_timer != 0 && !is_modifier_keycode(keycode)) {
             rshift_has_key = true;
         }
     }
 
+    if (is_mejiro_mode && get_highest_layer(layer_state | default_layer_state) == _GEMINI && is_stn_key(keycode)) {
+        if (record->event.pressed) {
+            mejiro_on_press(keycode);
+        } else {
+            mejiro_on_release(keycode);
+            if (mejiro_should_send_passthrough()) {
+                mejiro_send_passthrough_keys();
+            }
+        }
+        return false;
+    }
+
     if (is_combo_candidate(keycode)) {
+        if (keycode == KC_GRV) {
+            if (is_jis_mode && (mods & MOD_MASK_ALT)) {
+                if (record->event.pressed) {
+                    tap_code16(KC_GRV); // 全角半角
+                }
+                return false;
+            }
+        }
+
         if (record->event.pressed) {
             if (combo_fifo_len < COMBO_FIFO_LEN) {
                 uint16_t base = keycode;
@@ -609,24 +743,31 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                         default_layer_set((layer_state_t)1UL << _GEMINI);
                         layer_move(_GEMINI);
                         default_layer = 1;
+                        update_lang(stn_lang);
                     } else {
+                        mejiro_reset_state();
                         default_layer_set((layer_state_t)1UL << _QWERTY);
                         layer_move(_QWERTY);
                         default_layer = 0;
+                        update_lang(kbd_lang);
                     }
                 }
                 return false;
             }
             return true;
+        case TG_JIS:
+            return handle_toggle_on_hold(record, &tg_jis_state, toggle_jis_mode);
         case TG_ALT:
             return handle_toggle_on_hold(record, &tg_alt_state, toggle_alt_mode);
         case TG_SBL:
             return handle_toggle_on_hold(record, &tg_sbl_state, toggle_sbl_mode);
+        case TG_MJR:
+            return handle_toggle_on_hold(record, &tg_mjr_state, toggle_mejiro_mode);
         case KC_DZ:
             if (record->event.pressed) {
                 if (shifted) {
-                    tap_code16(KC_LPRN);
-                    tap_code16(KC_RPRN);
+                    tap_code16(is_jis_mode ? JP_LPRN : KC_LPRN);
+                    tap_code16(is_jis_mode ? JP_RPRN : KC_RPRN);
                     tap_code16_unshifted(KC_LEFT);
                 } else {
                     dz_timer = timer_read();
@@ -639,46 +780,66 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             if (record->event.pressed) {
                 lshift_timer = timer_read();
                 lshift_has_key = false;
+
+                // FIFO に KC_LSFT を追加
+                if (combo_fifo_len < COMBO_FIFO_LEN) {
+                    combo_fifo[combo_fifo_len].keycode = KC_LSFT;
+                    combo_fifo[combo_fifo_len].layer = get_highest_layer(layer_state | default_layer_state);
+                    combo_fifo[combo_fifo_len].mods = get_mods();
+                    combo_fifo[combo_fifo_len].time_pressed = timer_read();
+                    combo_fifo[combo_fifo_len].released = false;
+                    combo_fifo_len++;
+                }
             } else {
-                bool lshift_in_fifo = false;
+                lshift_timer = 0;
+
+                // FIFO 内の KC_LSFT に released=true を設定
+                bool lshift_found = false;
                 for (uint8_t i = 0; i < combo_fifo_len; i++) {
-                    if (combo_fifo[i].mods & MOD_LSFT) {
-                        lshift_in_fifo = true;
+                    if (combo_fifo[i].keycode == KC_LSFT && !combo_fifo[i].released) {
+                        combo_fifo[i].released = true;
+                        lshift_found = true;
                         break;
                     }
                 }
-                if (!lshift_has_key && !lshift_in_fifo && lshift_timer != 0 && timer_elapsed(lshift_timer) < COMBO_TIMEOUT_MS) {
-                    unregister_mods(MOD_LSFT);
-                    if (rshift_timer != 0) {
-                        tap_code16(KC_SPC);
-                    } else {
-                        tap_code16_unshifted(KC_SPC);
-                    }
+
+                // コンボ処理を実行
+                if (lshift_found) {
+                    combo_fifo_service_extended(transform_key_extended);
                 }
-                lshift_timer = 0;
             }
             return true;
         case KC_RSFT:
             if (record->event.pressed) {
                 rshift_timer = timer_read();
                 rshift_has_key = false;
+
+                // FIFO に KC_RSFT を追加
+                if (combo_fifo_len < COMBO_FIFO_LEN) {
+                    combo_fifo[combo_fifo_len].keycode = KC_RSFT;
+                    combo_fifo[combo_fifo_len].layer = get_highest_layer(layer_state | default_layer_state);
+                    combo_fifo[combo_fifo_len].mods = get_mods();
+                    combo_fifo[combo_fifo_len].time_pressed = timer_read();
+                    combo_fifo[combo_fifo_len].released = false;
+                    combo_fifo_len++;
+                }
             } else {
-                bool rshift_in_fifo = false;
+                rshift_timer = 0;
+
+                // FIFO 内の KC_RSFT に released=true を設定
+                bool rshift_found = false;
                 for (uint8_t i = 0; i < combo_fifo_len; i++) {
-                    if (combo_fifo[i].mods & MOD_RSFT) {
-                        rshift_in_fifo = true;
+                    if (combo_fifo[i].keycode == KC_RSFT && !combo_fifo[i].released) {
+                        combo_fifo[i].released = true;
+                        rshift_found = true;
                         break;
                     }
                 }
-                if (!rshift_has_key && !rshift_in_fifo && rshift_timer != 0 && timer_elapsed(rshift_timer) < COMBO_TIMEOUT_MS) {
-                    unregister_mods(MOD_RSFT);
-                    if (lshift_timer != 0) {
-                        tap_code16(KC_ENT);
-                    } else {
-                        tap_code16_unshifted(KC_ENT);
-                    }
+
+                // コンボ処理を実行
+                if (rshift_found) {
+                    combo_fifo_service_extended(transform_key_extended);
                 }
-                rshift_timer = 0;
             }
             return true;
         case KC_LCTL:
@@ -721,6 +882,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 return false;
             }
             return true;
+        case KC_LNG1:
+            update_lang(2);  // 日本語へ切り替え
+            return false;
+        case KC_LNG2:
+            update_lang(1);  // 英語へ切り替え
+            return false;
         default:
             break;
     }
