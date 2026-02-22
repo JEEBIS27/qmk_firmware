@@ -47,6 +47,7 @@ typedef struct {
     bool     source_a_pressed;
     bool     source_b_pressed;
     bool     shift_held;  // shift を含めてホールドしているかどうか
+    bool     shift_injected;  // 物理Shiftなしで一時的に追加したか
 } hold_state_t;
 
 // グローバル変数の宣言（combo_fifo.cで実装）
@@ -154,8 +155,13 @@ static inline void fifo_remove(uint8_t idx) {
 static inline void clear_hold_state(void) {
     if (hold_state.is_held) {
         if (hold_state.shift_held) {
-            unregister_code16_with_shift(hold_state.keycode);
+            if (hold_state.shift_injected) {
+                unregister_code16_with_shift(hold_state.keycode);
+            } else {
+                unregister_code16_without_shift(hold_state.keycode);
+            }
             hold_state.shift_held = false;
+            hold_state.shift_injected = false;
         } else {
             unregister_code16_without_shift(hold_state.keycode);
         }
@@ -206,8 +212,10 @@ static inline bool resolve_combo_head_basic(key_transform_fn_t transform_fn) {
             hold_state.source_key_b = other_kc;
             hold_state.source_a_pressed = head_pressed;
             hold_state.source_b_pressed = other_pressed;
+            hold_state.shift_held = false;
+            hold_state.shift_injected = false;
 
-            register_code16(out_kc);
+            register_code16_without_shift(out_kc);
             fifo_remove(i);
             fifo_remove(0);
             return true;
@@ -272,12 +280,15 @@ static inline bool resolve_combo_head_extended(key_transform_extended_fn_t trans
                 tap_code16_unshifted(transformed.keycode);
                 hold_state.is_held = false;
             } else {
-                // コンボペアの場合、保存されたshift状態に基づいて登録
                 if (shifted) {
+                    bool physical_lshift = (get_mods() & MOD_LSFT);
                     register_code16_with_shift(transformed.keycode);
                     hold_state.shift_held = true;
+                    hold_state.shift_injected = !physical_lshift;
                 } else {
                     register_code16_without_shift(transformed.keycode);
+                    hold_state.shift_held = false;
+                    hold_state.shift_injected = false;
                 }
             }
             fifo_remove(i);
@@ -313,7 +324,9 @@ static inline void combo_fifo_service_basic(key_transform_fn_t transform_fn) {
                 hold_state.source_key_b = 0;
                 hold_state.source_a_pressed = true;
                 hold_state.source_b_pressed = false;
-                register_code16(out_kc);
+                hold_state.shift_held = false;
+                hold_state.shift_injected = false;
+                register_code16_without_shift(out_kc);
                 fifo_remove(0);
                 continue;
             }
@@ -324,10 +337,7 @@ static inline void combo_fifo_service_basic(key_transform_fn_t transform_fn) {
                 continue;
             }
             if (combo_fifo[0].released) {
-                if (hold_state.is_held) {
-                    unregister_code16(hold_state.keycode);
-                    hold_state.is_held = false;
-                }
+                clear_hold_state();
                 uint16_t base_kc = combo_fifo[0].keycode;
                 uint16_t out_kc = transform_fn(base_kc);
                 fifo_remove(0);
@@ -415,14 +425,19 @@ static inline void combo_fifo_service_extended(key_transform_extended_fn_t trans
                 hold_state.source_a_pressed = true;
                 hold_state.source_b_pressed = false;
                 hold_state.shift_held = false;  // デフォルトは shift を含まない
+                hold_state.shift_injected = false;
                 if (transformed.needs_unshift) {
                     tap_code16_unshifted(transformed.keycode);
                 } else if (shifted) {
+                    bool physical_lshift = (get_mods() & MOD_LSFT);
                     register_code16_with_shift(transformed.keycode);
-                    hold_state.is_held = true;  // ホールド時はshift込みで登録
-                    hold_state.shift_held = true;  // shift を含めてホールドしている
+                    hold_state.shift_held = true;
+                    hold_state.shift_injected = !physical_lshift;
+                    hold_state.is_held = true;
                 } else {
                     register_code16_without_shift(transformed.keycode);
+                    hold_state.shift_held = false;
+                    hold_state.shift_injected = false;
                     hold_state.is_held = true;
                 }
                 fifo_remove(0);
@@ -435,10 +450,7 @@ static inline void combo_fifo_service_extended(key_transform_extended_fn_t trans
                 continue;
             }
             if (combo_fifo[0].released) {
-                if (hold_state.is_held) {
-                    unregister_code16(hold_state.keycode);
-                    hold_state.is_held = false;
-                }
+                clear_hold_state();
                 uint16_t base_kc = combo_fifo[0].keycode;
                 uint8_t layer = combo_fifo[0].layer;  // 保存されたレイヤーを使用
                 uint8_t mods = combo_fifo[0].mods;  // 保存されたmodを使用

@@ -86,6 +86,20 @@ static inline bool is_modifier_keycode(uint16_t keycode) {
     }
 }
 
+static inline bool mt_tgl_can_toggle(const keyrecord_t *record) {
+    if (combo_fifo_len != 0) return false;
+    if (get_mods() != 0 || get_weak_mods() != 0 || get_oneshot_mods() != 0) return false;
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        matrix_row_t row_state = matrix_get_row(row);
+        if (row == record->event.key.row) {
+            matrix_row_t mask = ((matrix_row_t)1) << record->event.key.col;
+            row_state &= ~mask;
+        }
+        if (row_state != 0) return false;
+    }
+    return true;
+}
+
 
 typedef union {
     uint32_t raw;
@@ -670,13 +684,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             if (combo_fifo_len < COMBO_FIFO_LEN) {
                 uint16_t base = keycode;
                 if (hold_state.is_held && combo_fifo_len > 0) {
-                    unregister_code16(hold_state.keycode);
-                    if (hold_state.shift_held) {
-                        del_mods(MOD_LSFT);
-                        send_keyboard_report();
-                        hold_state.shift_held = false;
-                    }
-                    hold_state.is_held = false;
+                    clear_hold_state();
                 }
                 combo_fifo[combo_fifo_len].keycode = base;
                 combo_fifo[combo_fifo_len].layer   = get_highest_layer(layer_state | default_layer_state);
@@ -709,14 +717,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                     hold_state.source_b_pressed = false;
                 }
                 if (!hold_state.source_a_pressed || !hold_state.source_b_pressed) {
-                    unregister_code16(hold_state.keycode);
-                    if (hold_state.shift_held) {
-                        del_mods(MOD_LSFT);
-                        send_keyboard_report();
-                        hold_state.shift_held = false;
-                    }
-                    hold_state.is_held = false;
-                    hold_state.keycode = 0;
+                    clear_hold_state();
                 }
             }
 
@@ -737,24 +738,21 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
     switch (keycode) {
         case MT_TGL:
-            if (record->tap.count > 0) {
-                if (record->event.pressed) {
-                    if (default_layer == 0) {
-                        default_layer_set((layer_state_t)1UL << _GEMINI);
-                        layer_move(_GEMINI);
-                        default_layer = 1;
-                        update_lang(stn_lang);
-                    } else {
-                        mejiro_reset_state();
-                        default_layer_set((layer_state_t)1UL << _QWERTY);
-                        layer_move(_QWERTY);
-                        default_layer = 0;
-                        update_lang(kbd_lang);
-                    }
+            if (record->tap.count > 0 && record->event.pressed && mt_tgl_can_toggle(record)) {
+                if (default_layer == 0) {
+                    default_layer_set((layer_state_t)1UL << _GEMINI);
+                    layer_move(_GEMINI);
+                    default_layer = 1;
+                    update_lang(stn_lang);
+                } else {
+                    mejiro_reset_state();
+                    default_layer_set((layer_state_t)1UL << _QWERTY);
+                    layer_move(_QWERTY);
+                    default_layer = 0;
+                    update_lang(kbd_lang);
                 }
-                return false;
             }
-            return true;
+            return record->tap.count == 0;
         case TG_JIS:
             return handle_toggle_on_hold(record, &tg_jis_state, toggle_jis_mode);
         case TG_ALT:
