@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include QMK_KEYBOARD_H
+#include "jis_transform.h"
 
 #define COMBO_FIFO_LEN       30  // FIFOの長さ
 #define COMBO_TIMEOUT_MS     200 // コンボ待機のタイムアウト時間(ms) ※ QMKコンボでいうところのCOMBO_TERM
@@ -88,9 +89,6 @@ static inline bool is_combo_candidate_default(uint16_t keycode, uint16_t exclude
     return false;
 }
 
-// 拡張キー変換時にShift を無効化する関数の宣言（各キーマップファイルで定義 - jp_graphiteなどで使用）
-void tap_code16_unshifted(uint16_t kc);
-
 // 拡張キー変換時に一時的にShift を有効にしてキーを送信する関数の宣言（各キーマップファイルで定義）
 void tap_code16_with_shift(uint16_t kc);
 
@@ -99,6 +97,12 @@ void register_code16_with_shift(uint16_t kc);
 
 // Shift を有効にしてレジスタされたキーを解除する関数の宣言（各キーマップファイルで定義）
 void unregister_code16_with_shift(uint16_t kc);
+
+// Shift が押されている状態でも、一時的に解除してキーをレジスタする関数の宣言（各キーマップファイルで定義）
+void register_code16_without_shift(uint16_t kc);
+
+// Shift が押されている状態でも、一時的に解除してキーをアンレジスタする関数の宣言（各キーマップファイルで定義）
+void unregister_code16_without_shift(uint16_t kc);
 
 // キー変換関数の宣言（各キーマップファイルで定義）
 // @param kc キーコード
@@ -149,11 +153,11 @@ static inline void fifo_remove(uint8_t idx) {
  */
 static inline void clear_hold_state(void) {
     if (hold_state.is_held) {
-        unregister_code16(hold_state.keycode);
         if (hold_state.shift_held) {
-            del_mods(MOD_LSFT);
-            send_keyboard_report();
+            unregister_code16_with_shift(hold_state.keycode);
             hold_state.shift_held = false;
+        } else {
+            unregister_code16_without_shift(hold_state.keycode);
         }
         hold_state.is_held = false;
         hold_state.keycode = 0;
@@ -213,7 +217,6 @@ static inline bool resolve_combo_head_basic(key_transform_fn_t transform_fn) {
 }
 
 /**
- * 拡張コンボ解決処理（Shift状態を考慮した変換用）
  * @param transform_fn 拡張キー変換関数
  * @return コンボが解決された場合はtrue
  */
@@ -246,8 +249,10 @@ static inline bool resolve_combo_head_extended(key_transform_extended_fn_t trans
                 clear_hold_state();
                 if (transformed.needs_unshift) {
                     tap_code16_unshifted(transformed.keycode);
+                } else if (shifted) {
+                    tap_code16_with_shift(transformed.keycode);
                 } else {
-                    tap_code16(transformed.keycode);
+                    tap_code16_unshifted(transformed.keycode);
                 }
                 fifo_remove(i);
                 fifo_remove(0);
@@ -267,7 +272,13 @@ static inline bool resolve_combo_head_extended(key_transform_extended_fn_t trans
                 tap_code16_unshifted(transformed.keycode);
                 hold_state.is_held = false;
             } else {
-                register_code16(transformed.keycode);
+                // コンボペアの場合、保存されたshift状態に基づいて登録
+                if (shifted) {
+                    register_code16_with_shift(transformed.keycode);
+                    hold_state.shift_held = true;
+                } else {
+                    register_code16_without_shift(transformed.keycode);
+                }
             }
             fifo_remove(i);
             fifo_remove(0);
@@ -278,7 +289,6 @@ static inline bool resolve_combo_head_extended(key_transform_extended_fn_t trans
 }
 
 /**
- * タイムアウト処理とコンボ解決を行う関数（シンプルなキー変換用）
  * @param transform_fn キー変換関数
  */
 static inline void combo_fifo_service_basic(key_transform_fn_t transform_fn) {
@@ -340,7 +350,6 @@ static inline void combo_fifo_service_basic(key_transform_fn_t transform_fn) {
 }
 
 /**
- * タイムアウト処理とコンボ解決を行う関数（拡張キー変換用）
  * @param transform_fn 拡張キー変換関数
  */
 static inline void combo_fifo_service_extended(key_transform_extended_fn_t transform_fn) {
@@ -348,6 +357,28 @@ static inline void combo_fifo_service_extended(key_transform_extended_fn_t trans
         if (combo_fifo_len == 1) {
             if (combo_fifo[0].released) {
                 uint16_t base_kc = combo_fifo[0].keycode;
+
+                // KC_LSFT/KC_RSFT の特別な処理
+                if (base_kc == KC_LSFT) {
+                    extern uint16_t rshift_timer;
+                    if (rshift_timer != 0) {
+                        tap_code16(KC_SPC);
+                    } else {
+                        tap_code16_unshifted(KC_SPC);
+                    }
+                    fifo_remove(0);
+                    continue;
+                } else if (base_kc == KC_RSFT) {
+                    extern uint16_t lshift_timer;
+                    if (lshift_timer != 0) {
+                        tap_code16(KC_ENT);
+                    } else {
+                        tap_code16_unshifted(KC_ENT);
+                    }
+                    fifo_remove(0);
+                    continue;
+                }
+
                 uint8_t layer = combo_fifo[0].layer;  // 保存されたレイヤーを使用
                 uint8_t mods = combo_fifo[0].mods;  // 保存されたmodを使用
                 bool shifted = (mods & MOD_MASK_SHIFT);
@@ -357,13 +388,19 @@ static inline void combo_fifo_service_extended(key_transform_extended_fn_t trans
                 } else if (shifted) {
                     tap_code16_with_shift(transformed.keycode);
                 } else {
-                    tap_code16(transformed.keycode);
+                    tap_code16_unshifted(transformed.keycode);
                 }
                 fifo_remove(0);
                 continue;
             }
             if (timer_elapsed(combo_fifo[0].time_pressed) > COMBO_TIMEOUT_MS) {
                 uint16_t base_kc = combo_fifo[0].keycode;
+
+                if (base_kc == KC_LSFT || base_kc == KC_RSFT) {
+                    fifo_remove(0);
+                    continue;
+                }
+
                 uint8_t layer = combo_fifo[0].layer;  // 保存されたレイヤーを使用
                 uint8_t mods = combo_fifo[0].mods;  // 保存されたmodを使用
                 bool shifted = (mods & MOD_MASK_SHIFT);
@@ -372,7 +409,7 @@ static inline void combo_fifo_service_extended(key_transform_extended_fn_t trans
                 // 単要素時は長押し対応のためホールド（needs_unshiftの場合はtap）
                 hold_state.keycode = transformed.keycode;
                 hold_state.time_confirmed = timer_read();
-                hold_state.is_held = !transformed.needs_unshift;
+                hold_state.is_held = !transformed.needs_unshift && !shifted;  // shiftなしの場合のみホールド
                 hold_state.source_key_a = base_kc;
                 hold_state.source_key_b = 0;
                 hold_state.source_a_pressed = true;
@@ -385,7 +422,8 @@ static inline void combo_fifo_service_extended(key_transform_extended_fn_t trans
                     hold_state.is_held = true;  // ホールド時はshift込みで登録
                     hold_state.shift_held = true;  // shift を含めてホールドしている
                 } else {
-                    register_code16(transformed.keycode);
+                    register_code16_without_shift(transformed.keycode);
+                    hold_state.is_held = true;
                 }
                 fifo_remove(0);
                 continue;
@@ -412,7 +450,7 @@ static inline void combo_fifo_service_extended(key_transform_extended_fn_t trans
                 } else if (shifted) {
                     tap_code16_with_shift(transformed.keycode);
                 } else {
-                    tap_code16(transformed.keycode);
+                    tap_code16_unshifted(transformed.keycode);
                 }
                 continue;
             } else {
@@ -428,7 +466,7 @@ static inline void combo_fifo_service_extended(key_transform_extended_fn_t trans
                     } else if (shifted) {
                         tap_code16_with_shift(transformed.keycode);
                     } else {
-                        tap_code16(transformed.keycode);
+                        tap_code16_unshifted(transformed.keycode);
                     }
                     fifo_remove(0);
                     continue;
