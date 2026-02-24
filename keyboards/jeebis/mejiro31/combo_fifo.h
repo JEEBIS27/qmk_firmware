@@ -118,6 +118,8 @@ typedef struct {
 
 typedef transformed_key_t (*key_transform_extended_fn_t)(uint16_t kc, bool shifted, uint8_t layer);
 
+bool combo_fifo_custom_action(uint16_t keycode, bool shifted, bool needs_unshift, bool is_hold);
+
 /**
  * コンボ定義を検索する関数
  * @param a キーコードA
@@ -255,6 +257,11 @@ static inline bool resolve_combo_head_extended(key_transform_extended_fn_t trans
 
             if (!head_pressed || !other_pressed) {
                 clear_hold_state();
+                if (combo_fifo_custom_action(transformed.keycode, shifted, transformed.needs_unshift, false)) {
+                    fifo_remove(i);
+                    fifo_remove(0);
+                    return true;
+                }
                 if (transformed.needs_unshift) {
                     tap_code16_unshifted(transformed.keycode);
                 } else if (shifted) {
@@ -268,6 +275,11 @@ static inline bool resolve_combo_head_extended(key_transform_extended_fn_t trans
             }
 
             clear_hold_state();
+            if (combo_fifo_custom_action(transformed.keycode, shifted, transformed.needs_unshift, true)) {
+                fifo_remove(i);
+                fifo_remove(0);
+                return true;
+            }
             hold_state.keycode = transformed.keycode;
             hold_state.time_confirmed = timer_read();
             hold_state.is_held = true;
@@ -393,6 +405,10 @@ static inline void combo_fifo_service_extended(key_transform_extended_fn_t trans
                 uint8_t mods = combo_fifo[0].mods;  // 保存されたmodを使用
                 bool shifted = (mods & MOD_MASK_SHIFT);
                 transformed_key_t transformed = transform_fn(base_kc, shifted, layer);
+                if (combo_fifo_custom_action(transformed.keycode, shifted, transformed.needs_unshift, false)) {
+                    fifo_remove(0);
+                    continue;
+                }
                 if (transformed.needs_unshift) {
                     tap_code16_unshifted(transformed.keycode);
                 } else if (shifted) {
@@ -415,6 +431,11 @@ static inline void combo_fifo_service_extended(key_transform_extended_fn_t trans
                 uint8_t mods = combo_fifo[0].mods;  // 保存されたmodを使用
                 bool shifted = (mods & MOD_MASK_SHIFT);
                 transformed_key_t transformed = transform_fn(base_kc, shifted, layer);
+                if (combo_fifo_custom_action(transformed.keycode, shifted, transformed.needs_unshift, true)) {
+                    clear_hold_state();
+                    fifo_remove(0);
+                    continue;
+                }
                 clear_hold_state();
                 // 単要素時は長押し対応のためホールド（needs_unshiftの場合はtap）
                 hold_state.keycode = transformed.keycode;

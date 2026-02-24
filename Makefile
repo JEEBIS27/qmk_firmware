@@ -115,7 +115,7 @@ endef
 TRY_TO_MATCH_RULE_FROM_LIST = $(eval $(call TRY_TO_MATCH_RULE_FROM_LIST_HELPER,$1))$(RULE_FOUND)
 
 # As TRY_TO_MATCH_RULE_FROM_LIST_HELPER, but with additional
-# resolution of keyboard_aliases.hjson for provided rule 
+# resolution of keyboard_aliases.hjson for provided rule
 define TRY_TO_MATCH_RULE_FROM_LIST_HELPER_KB
     # Split on ":", padding with empty strings to avoid indexing issues
     TOKEN1:=$$(shell python3 -c "import sys; print((sys.argv[1].split(':',1)+[''])[0])" $$(RULE))
@@ -225,6 +225,16 @@ define PARSE_KEYBOARD
     endif
 
     KEYMAPS := $$(sort $$(KEYMAPS) $$(LAYOUT_KEYMAPS))
+
+    # jeebis/mejiro31:jp -> build all jp_* keymaps
+    # jeebis/mejiro31:en -> build all en_* keymaps
+    ifeq ($$(CURRENT_KB),jeebis/mejiro31)
+        ifeq ($$(call COMPARE_AND_REMOVE_FROM_RULE,jp),true)
+            KEYMAPS := $$(filter jp_%,$$(KEYMAPS))
+        else ifeq ($$(call COMPARE_AND_REMOVE_FROM_RULE,en),true)
+            KEYMAPS := $$(filter en_%,$$(KEYMAPS))
+        endif
+    endif
 
     # if the rule after removing the start of it is empty (we haven't specified a kemap or target)
     # compile all the keymaps

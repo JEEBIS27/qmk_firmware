@@ -240,7 +240,7 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │  !  #  ?  │
+    //                         │ ALT │ CTL │   │MT_TG│   │Eisu @ Kana│
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // QWERTY Shifted
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
@@ -251,7 +251,7 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │  &  @  |  │
+    //                         │ ALT │ CTL │   │MT_TG│   │  !  #  ?  │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
@@ -262,7 +262,7 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │LANG2│LANG1│
+    //                         │ ALT │ CTL │   │MT_TG│   │  &  │  |  │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER Shifted
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
@@ -273,12 +273,12 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │LANG2│LANG1│
+    //                         │ ALT │ CTL │   │MT_TG│   │  &  │  |  │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
 
-    {KC_LBRC, KC_EXLM, KC_AMPR,    _QWERTY},  // [ / ! / &
-    {KC_RBRC, KC_QUES, KC_PIPE,    _QWERTY},  // ] / ? / |
-    {KC_EQL,  KC_HASH, KC_AT,      _QWERTY},  // = / # / @
+    {KC_LBRC, KC_LNG2, KC_EXLM,    _QWERTY},  // [ / 英 / !
+    {KC_RBRC, KC_LNG1, KC_QUES,    _QWERTY},  // ] / か / ?
+    {KC_EQL,  KC_AT,   KC_HASH,    _QWERTY},  // = / @ / #
 
     {KC_DZ,   KC_DZ,   KC_PERC,    _NUMBER},  // 00 / 00 / %
     {KC_1,    KC_1,    KC_LCBR,    _NUMBER},  // 1 / 1 / {
@@ -295,6 +295,8 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     {KC_8,    KC_8,    KC_RBRC,    _NUMBER},  // 8 / 8 / ]
     {KC_9,    KC_9,    KC_RPRN,    _NUMBER},  // 9 / 9 / )
     {KC_DOT,  KC_DOT,  KC_RABK,    _NUMBER},  // . / . / >
+    {KC_LNG2, KC_AMPR, KC_AMPR,    _NUMBER},  // 英 / & / &
+    {KC_LNG1, KC_PIPE, KC_PIPE,    _NUMBER},  // か / | / |
 };
 
 uint16_t sbl_transform(uint16_t kc, bool shifted, uint8_t layer) {
@@ -450,6 +452,23 @@ static void update_lang(uint8_t lang) {
     eeconfig_update_user(user_config.raw);
 }
 
+bool combo_fifo_custom_action(uint16_t keycode, bool shifted, bool needs_unshift, bool is_hold) {
+    (void)shifted;
+    (void)needs_unshift;
+    (void)is_hold;
+
+    switch (keycode) {
+        case KC_LNG1:
+            update_lang(2);
+            return true;
+        case KC_LNG2:
+            update_lang(1);
+            return true;
+        default:
+            return false;
+    }
+}
+
 static void toggle_jis_mode(void) {
     is_jis_mode = !is_jis_mode;
     user_config.jis_mode = is_jis_mode;
@@ -532,8 +551,10 @@ uint8_t combo_pair_count = sizeof(combo_pairs) / sizeof(combo_pairs[0]);
 bool is_combo_candidate(uint16_t keycode) {
     uint8_t mods = get_mods();
     bool shifted = (mods & MOD_MASK_SHIFT);
-    if (keycode == KC_LNG1) return false;
-    if (keycode == KC_LNG2) return false;
+    if (keycode == KC_LNG1 || keycode == KC_LNG2) {
+        uint8_t layer = get_highest_layer(layer_state | default_layer_state);
+        return layer == _NUMBER;
+    }
     if (keycode == KC_GRV) return true;
     if (keycode == KC_DZ) return is_sbl_mode && shifted;
     if (keycode == KC_TZ) return is_sbl_mode && shifted;
@@ -541,8 +562,6 @@ bool is_combo_candidate(uint16_t keycode) {
     if (keycode == KC_UP) return true;
     if (keycode == KC_RIGHT) return true;
     if (keycode == KC_CAPS) return true;
-    if (keycode == KC_LNG1) return true;
-    if (keycode == KC_LNG2) return true;
     return is_combo_candidate_default(keycode, 0);
 }
 
