@@ -16,7 +16,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /*---------------------------------------------------------------------------------------------------*/
-/*----------------------------------------------初期設定----------------------------------------------*/
+/*----------------------------------------------Setup------------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
 
 #include QMK_KEYBOARD_H
@@ -240,7 +240,7 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │  !  #  ?  │
+    //                         │ ALT │ CTL │   │MT_TG│   │  !  @  ?  │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // QWERTY Shifted
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
@@ -251,34 +251,34 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │  &  @  |  │
+    //                         │ ALT │ CTL │   │MT_TG│   │  &  #  |  │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │ MJR │ 00  │  1  │  2  │  3  │  -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │  `  │ 00  │  1  │  2  │  3  │  -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼─────┼──4──┼──5──┼──6──┼──,──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
     // │ ESC │  0  │  7  │  8  │  9  │  .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │LANG2│LANG1│
+    //                         │ ALT │ CTL │   │MT_TG│   │  !  @  ?  │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER Shifted
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │ MJR │  %  │  [  │  {  │  (  │  <  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │  `  │  %  │  [  │  {  │  (  │  <  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼──/──┼──*──┼──=──┼──+──┼──^──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
     // │ ESC │  $  │  ]  │  }  │  )  │  >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │LANG2│LANG1│
+    //                         │ ALT │ CTL │   │MT_TG│   │  &  #  |  │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
 
     {KC_LBRC, KC_EXLM, KC_AMPR,    _QWERTY},  // [ / ! / &
     {KC_RBRC, KC_QUES, KC_PIPE,    _QWERTY},  // ] / ? / |
-    {KC_EQL,  KC_HASH, KC_AT,      _QWERTY},  // = / # / @
+    {KC_EQL,  KC_AT,   KC_HASH,    _QWERTY},  // = / @ / #
 
     {KC_DZ,   KC_DZ,   KC_PERC,    _NUMBER},  // 00 / 00 / %
     {KC_1,    KC_1,    KC_LCBR,    _NUMBER},  // 1 / 1 / {
@@ -295,6 +295,9 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     {KC_8,    KC_8,    KC_RBRC,    _NUMBER},  // 8 / 8 / ]
     {KC_9,    KC_9,    KC_RPRN,    _NUMBER},  // 9 / 9 / )
     {KC_DOT,  KC_DOT,  KC_RABK,    _NUMBER},  // . / . / >
+    {KC_LBRC, KC_EXLM, KC_AMPR,    _NUMBER},  // [ / ! / &
+    {KC_RBRC, KC_QUES, KC_PIPE,    _NUMBER},  // ] / ? / |
+    {KC_EQL,  KC_AT,   KC_HASH,    _NUMBER},  // = / @ / #
 };
 
 uint16_t sbl_transform(uint16_t kc, bool shifted, uint8_t layer) {
@@ -450,6 +453,23 @@ static void update_lang(uint8_t lang) {
     eeconfig_update_user(user_config.raw);
 }
 
+bool combo_fifo_custom_action(uint16_t keycode, bool shifted, bool needs_unshift, bool is_hold) {
+    (void)shifted;
+    (void)needs_unshift;
+    (void)is_hold;
+
+    switch (keycode) {
+        case KC_LNG1:
+            update_lang(2);
+            return true;
+        case KC_LNG2:
+            update_lang(1);
+            return true;
+        default:
+            return false;
+    }
+}
+
 static void toggle_jis_mode(void) {
     is_jis_mode = !is_jis_mode;
     user_config.jis_mode = is_jis_mode;
@@ -494,7 +514,7 @@ static bool handle_toggle_on_hold(keyrecord_t *record, toggle_hold_state_t *stat
 }
 
 /*---------------------------------------------------------------------------------------------------*/
-/*--------------------------------------------FIFOコンボ----------------------------------------------*/
+/*--------------------------------------------FIFO combo---------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
 
 // コンボ定義（順不同）
@@ -526,14 +546,17 @@ const combo_pair_t combo_pairs[] PROGMEM = {
     {KC_3,    KC_MINS, KC_ESC,   _NUMBER},
     {KC_PGDN, KC_LEFT, KC_BSPC,  _NUMBER},
     {KC_PGUP, KC_HOME, KC_DEL,   _NUMBER},
+    {KC_LBRC, KC_RBRC, KC_EQL,   _NUMBER},
 };
 uint8_t combo_pair_count = sizeof(combo_pairs) / sizeof(combo_pairs[0]);
 
 bool is_combo_candidate(uint16_t keycode) {
     uint8_t mods = get_mods();
     bool shifted = (mods & MOD_MASK_SHIFT);
-    if (keycode == KC_LNG1) return false;
-    if (keycode == KC_LNG2) return false;
+    if (keycode == KC_LNG1 || keycode == KC_LNG2) {
+        uint8_t layer = get_highest_layer(layer_state | default_layer_state);
+        return layer == _NUMBER;
+    }
     if (keycode == KC_GRV) return true;
     if (keycode == KC_DZ) return is_sbl_mode && shifted;
     if (keycode == KC_TZ) return is_sbl_mode && shifted;
@@ -541,8 +564,6 @@ bool is_combo_candidate(uint16_t keycode) {
     if (keycode == KC_UP) return true;
     if (keycode == KC_RIGHT) return true;
     if (keycode == KC_CAPS) return true;
-    if (keycode == KC_LNG1) return true;
-    if (keycode == KC_LNG2) return true;
     return is_combo_candidate_default(keycode, 0);
 }
 
@@ -592,9 +613,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     ),
     // NUMBER
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  `  │ 00  │  1  │  2  │  3  │  -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │  `  │ 00  │  1  │  2  │  3 ESC -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼─────┼──4──┼──5──┼──6──┼──,──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
-    // │ ESC │  0  │  7  │  8  │  9  │  .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // │ ESC │  0  │  7  │  8  │  9 TAB .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
@@ -603,9 +624,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER Shifted
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  ~  │ ()← │  !  │  @  │  #  │  _  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │  `  │ ()← │  !  │  @  │  # ESC _  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼─────┼──$──┼──%──┼──^──┼──<──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
-    // │ ESC │  )  │  &  │  *  │  (  │  >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // │ ESC │  )  │  &  │  *  │  ( TAB >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
     //                         │   SandS   │             │   EandS   │
@@ -616,8 +637,8 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [_NUMBER] = LAYOUT(
         KC_GRV, KC_DZ,  KC_1, KC_2, KC_3,    KC_MINS,   KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_ALT,
         KC_ESC, KC_0,   KC_7, KC_8, KC_9,    KC_DOT,    KC_PGDN, KC_LEFT, KC_DOWN, KC_RIGHT, KC_LGUI, MO_FUN,
-                                     MT_SPC,  KC_TRNS, MT_ENT,
-                                     KC_LALT, KC_LCTL, KC_TRNS, KC_TRNS
+                                     MT_SPC,  KC_TRNS,  MT_ENT,
+                                     KC_LALT, KC_LCTL,  KC_LBRC, KC_RBRC
     ),
 
     // FUNCTION
