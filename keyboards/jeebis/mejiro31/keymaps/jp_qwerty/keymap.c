@@ -72,7 +72,7 @@ static toggle_hold_state_t tg_mjr_state = {false, 0};
 // 0:未使用, 1:英語, 2:日本語, 3:無変更
 static int stn_lang = 2; // ステノ時の言語
 static int kbd_lang = 1; // キーボード時の言語
-static int alt_lang = 0; // Alternative Layoutの言語設定
+static int alt_lang = 3; // Alternative Layoutの言語設定
 
 static inline bool is_modifier_keycode(uint16_t keycode) {
     switch (keycode) {
