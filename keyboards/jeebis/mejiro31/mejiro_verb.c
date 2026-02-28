@@ -228,6 +228,7 @@ static const verb_entry_t verb_dict[] = {
     {"KAU-STAU", "ころ", 's', VERB_TYPE_GODAN},    // 殺す
     {"KAU-SKA", "こわ", 's', VERB_TYPE_GODAN},     // 壊す
     {"TA-AU", "たお", 's', VERB_TYPE_GODAN},       // 倒す
+    {"TNA-", "だ", 's', VERB_TYPE_GODAN},       // 出す
     {"TU-TKNU", "つぶ", 's', VERB_TYPE_GODAN},     // 潰す
     {"TIA-STA", "てら", 's', VERB_TYPE_GODAN},     // 照らす
     {"NA-AU", "なお", 's', VERB_TYPE_GODAN},       // 直す
@@ -415,6 +416,14 @@ typedef struct {
 } auxiliary_map_t;
 
 static const auxiliary_map_t auxiliary_exception[] = {
+    {"nt-", CONJ_MASU, "たい"}, // ～たい
+    {"nt-n", CONJ_MASU, "たくない"}, // ～たい+否定
+    {"nt-t", CONJ_MASU, "たかった"}, // ～たい+過去
+    {"nt-nt", CONJ_MASU, "たくなかった"}, // ～たい+否定+過去
+    {"nt-k", CONJ_MASU, "てほしい"}, // ～ほしい
+    {"nt-nk", CONJ_MASU, "てほしくない"}, // ～ほしい+否定
+    {"nt-tk", CONJ_MASU, "てほしかった"}, // ～ほしい+過去
+    {"nt-ntk", CONJ_MASU, "てほしくなかった"}, // ～ほしい+否定+過去
     {"tk-", CONJ_KANOU, "る"},              // 可能
     {"tk-n", CONJ_KANOU, "ない"},           // 可能+否定
     {"tk-t", CONJ_KANOU, "た"},             // 可能+過去
@@ -426,11 +435,11 @@ static const auxiliary_map_t auxiliary_exception[] = {
     {"ntk-", CONJ_MASU, ""},                // 連用
     {"ntk-n", CONJ_NAI, "ず"},              // 否定
     {"ntk-t", CONJ_KATEI, "ば"},            // 仮定
-    {"ntk-k", CONJ_IKOU, ""},               // 意向
+    {"ntk-k", CONJ_MASU, "ましょう"},           // 提案
     {"ntk-nt", CONJ_NAI, "なければ"},       // 否定+仮定
     {"ntk-nk", CONJ_NAI, "なく"},           // 否定+連用
     {"ntk-tk", CONJ_TE_TA, "てください"},   // 丁寧命令
-    {"ntk-ntk", CONJ_MEIREI, ""},           // 命令
+    {"ntk-ntk", CONJ_IKOU, ""},               // 意向
     {"", -1, ""}  // 終端
 };
 
@@ -447,7 +456,6 @@ static const left_auxiliary_info_t left_auxiliary[] = {
     {"n", CONJ_TE_TA, "て", 2, 'w'},      // ～ている
     {"t", CONJ_SHIEKI, "", 3, 's'},        // ～させる（使役）
     {"k", CONJ_UKEMI, "", 3, 'r'},        // ～られる（受身）
-    {"nt", CONJ_TE_TA, "てもら", 1, 'w'}, // ～てもらう
     {"nk", CONJ_TE_TA, "てしま", 1, 'w'}, // ～てしまう
     {NULL, -1, "", 1, '\0'}
 };
@@ -560,7 +568,7 @@ static void get_conjugation_info(const char *left_particle, const char *right_pa
 // stem_len: 語幹の長さ（バイト数）。
 static void apply_godan_te_ta_voicing(char *str, size_t stem_len) {
     char *pos = str + stem_len;
-    
+
     // 語幹直後の「んて」 → 「んで」
     if (strstr(pos, "んて") == pos) {
         memcpy(pos, "んで", 6);
@@ -569,7 +577,7 @@ static void apply_godan_te_ta_voicing(char *str, size_t stem_len) {
     if (strstr(pos, "いて") == pos) {
         memcpy(pos, "いで", 6);
     }
-    
+
     pos = str + stem_len;
     // 語幹直後の「んた」 → 「んだ」
     if (strstr(pos, "んた") == pos) {
@@ -665,6 +673,12 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
                 apply_godan_te_ta_voicing(result.output, strlen(verb->stem));
             }
         }
+
+        // 「ある」で「ず」単体になった場合を「あらず」に変換
+        if (verb != NULL && verb->type == VERB_TYPE_SPECIAL && strcmp(stroke, "A-") == 0 && strcmp(result.output, "ず") == 0) {
+            strcpy(result.output, "あらず");
+        }
+
         result.success = true;
         return result;
     }
@@ -789,4 +803,3 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
 
     return result;
 }
-
