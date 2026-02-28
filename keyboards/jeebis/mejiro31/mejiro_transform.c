@@ -519,10 +519,11 @@ static void convert_to_kana(const char *conso, const char *vowel, const char *pa
         strcpy(out, exception_kana);
 
         // でゅっ→ちぇっ、ふゅっ→じぇっ
-        if (include_extra_sound && strcmp(particle_str, "tk") == 0) {
-            if (strcmp(out, "ゆい") == 0) {
+        // 入力ストロークで判定（「っ」持ち越し処理に対応）
+        if (strcmp(particle_str, "tk") == 0) {
+            if (strcmp(conso_vowel, "SKYU") == 0) {
                 strcpy(out, "ちぇ");
-            } else if (strcmp(out, "ふゅ") == 0) {
+            } else if (strcmp(conso_vowel, "STKNYU") == 0) {
                 strcpy(out, "じぇ");
             }
         }
