@@ -727,6 +727,10 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
                     strcat(kana_output, "。");
                 } else if (strcmp(particle_pattern, "-nk") == 0) {
                     strcat(kana_output, "、");
+                } else if (strcmp(particle_pattern, "n-nt") == 0) {
+                    strcat(kana_output, "?");
+                } else if (strcmp(particle_pattern, "n-nk") == 0) {
+                    strcat(kana_output, "!");
                 } else {
                     // その他の助詞は通常通り処理
                     char joshi_output[128] = {0};
