@@ -235,45 +235,45 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
     // │  `  │  q  │  w  │  e  │  r ESC t  │             │  y DEL u  │  i  │  o  │  p  │  -  │
     // ├─────┼──a──┼──s──┼──d──┼──f──┼──g──┤             ├──h──┼──j──┼──k──┼──l──┼──;──┼──'──┤
-    // │ ESC │  z  │  x  │  c  │  v TAB b  │             │  n BSP m  │  ,  │  .  │  /  │  \  │
+    // │ WIN │  z  │  x  │  c  │  v TAB b  │             │  n BSP m  │  ,  │  .  │  /  │  \  │
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
-    //                         │   SandS   │             │   EandS   │
+    //                         │Space/Shift│             │Enter/Shift│
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │  !  @  ?  │
+    //                         │ ALT │ CTL │   │Layer│   │  !  @  ?  │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // QWERTY Shifted
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
     // │  ~  │  Q  │  W  │  E  │  R ESC T  │             │  Y DEL U  │  I  │  O  │  P  │  _  │
     // ├─────┼──A──┼──S──┼──D──┼──F──┼──G──┤             ├──H──┼──J──┼──K──┼──L──┼──:──┼──"──┤
-    // │ ESC │  Z  │  X  │  C  │  V TAB B  │             │  N BSP M  │  <  │  >  │  ?  │  |  │
+    // │ WIN │  Z  │  X  │  C  │  V TAB B  │             │  N BSP M  │  <  │  >  │  ?  │  |  │
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
-    //                         │   SandS   │             │   EandS   │
+    //                         │Space/Shift│             │Enter/Shift│
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │  &  #  |  │
+    //                         │ ALT │ CTL │   │Layer│   │  &  #  |  │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
     // │  `  │ 00  │  1  │  2  │  3  │  -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼─────┼──4──┼──5──┼──6──┼──,──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
-    // │ ESC │  0  │  7  │  8  │  9  │  .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // │ WIN │  0  │  7  │  8  │  9  │  .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
-    //                         │   SandS   │             │   EandS   │
+    //                         │Space/Shift│             │Enter/Shift│
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │  !  @  ?  │
+    //                         │ ALT │ CTL │   │Layer│   │  !  @  ?  │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER Shifted
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
     // │  `  │  %  │  [  │  {  │  (  │  <  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼──/──┼──*──┼──=──┼──+──┼──^──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
-    // │ ESC │  $  │  ]  │  }  │  )  │  >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // │ WIN │  $  │  ]  │  }  │  )  │  >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
-    //                         │   SandS   │             │   EandS   │
+    //                         │Space/Shift│             │Enter/Shift│
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │  &  #  |  │
+    //                         │ ALT │ CTL │   │Layer│   │  &  #  |  │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
 
     {KC_LBRC, KC_EXLM, KC_AMPR,    _QWERTY},  // [ / ! / &
@@ -578,17 +578,17 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
     // │  `  │  q  │  w  │  e  │  r ESC t  │             │  y DEL u  │  i  │  o  │  p  │  -  │
     // ├─────┼──a──┼──s──┼──d──┼──f──┼──g──┤             ├──h──┼──j──┼──k──┼──l──┼──;──┼──'──┤
-    // │ ESC │  z  │  x  │  c  │  v TAB b  │             │  n BSP m  │  ,  │  .  │  /  │  \  │
+    // │ WIN │  z  │  x  │  c  │  v TAB b  │             │  n BSP m  │  ,  │  .  │  /  │  \  │
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
-    //                         │   SandS   │             │   EandS   │
+    //                         │Space/Shift│             │Enter/Shift│
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │  [  =  ]  │
+    //                         │ ALT │ CTL │   │Layer│   │  [  =  ]  │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // QWERTY
     [_QWERTY] = LAYOUT(
         KC_GRV, KC_Q, KC_W, KC_E, KC_R,    KC_T,    KC_Y,    KC_U,    KC_I,    KC_O,   KC_P,    KC_MINS,
-        KC_ESC, KC_Z, KC_X, KC_C, KC_V,    KC_B,    KC_N,    KC_M,    KC_COMM, KC_DOT, KC_SLSH, KC_BSLS,
+        KC_LGUI,KC_Z, KC_X, KC_C, KC_V,    KC_B,    KC_N,    KC_M,    KC_COMM, KC_DOT, KC_SLSH, KC_BSLS,
                                   MT_SPC , MT_TGL,  MT_ENT,
                                   KC_LALT, KC_LCTL, KC_LBRC, KC_RBRC
     ),
@@ -602,7 +602,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     //                         ┌───────────┐             ┌───────────┐
     //                         │     #     │             │     #     │
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │  A  │  O  │   │MT_TG│   │  E  │  U  │
+    //                         │  A  │  O  │   │Layer│   │  E  │  U  │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // GEMINI
     [_GEMINI] = LAYOUT(
@@ -615,28 +615,28 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
     // │  `  │ 00  │  1  │  2  │  3 ESC -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼─────┼──4──┼──5──┼──6──┼──,──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
-    // │ ESC │  0  │  7  │  8  │  9 TAB .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // │ WIN │  0  │  7  │  8  │  9 TAB .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
-    //                         │   SandS   │             │   EandS   │
+    //                         │Space/Shift│             │Enter/Shift│
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │  [  =  ]  │
+    //                         │ ALT │ CTL │   │Layer│   │  [  =  ]  │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER Shifted
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
     // │  `  │ ()← │  !  │  @  │  # ESC _  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼─────┼──$──┼──%──┼──^──┼──<──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
-    // │ ESC │  )  │  &  │  *  │  ( TAB >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // │ WIN │  )  │  &  │  *  │  ( TAB >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
-    //                         │   SandS   │             │   EandS   │
+    //                         │Space/Shift│             │Enter/Shift│
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │  {  +  }  │
+    //                         │ ALT │ CTL │   │Layer│   │  {  +  }  │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER
     [_NUMBER] = LAYOUT(
         KC_GRV, KC_DZ,  KC_1, KC_2, KC_3,    KC_MINS,   KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_ALT,
-        KC_ESC, KC_0,   KC_7, KC_8, KC_9,    KC_DOT,    KC_PGDN, KC_LEFT, KC_DOWN, KC_RIGHT, KC_LGUI, MO_FUN,
+        KC_LGUI,KC_0,   KC_7, KC_8, KC_9,    KC_DOT,    KC_PGDN, KC_LEFT, KC_DOWN, KC_RIGHT, KC_LGUI, MO_FUN,
                                      MT_SPC,  KC_TRNS,  MT_ENT,
                                      KC_LALT, KC_LCTL,  KC_LBRC, KC_RBRC
     ),
@@ -645,17 +645,17 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
     // │  `  │ F1  │ F2  │ F3  │ F4  │ F5  │             │ BRU │ VL0 │ VL- │ VL+ │ PSC │ SBL │
     // ├─────┼─────┼─────┼─────┼─────┼─────┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
-    // │ ESC │ F6  │ F7  │ F8  │ F9  │ F10 │             │ BRD │ |<< │ >|| │ >>| │ INS │MO_FN│
+    // │ WIN │ F6  │ F7  │ F8  │ F9  │ F10 │             │ BRD │ |<< │ >|| │ >>| │ INS │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
-    //                         │   SandS   │             │   EandS   │
+    //                         │Space/Shift│             │Enter/Shift│
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │MT_TG│   │ F11 │ F12 │
+    //                         │ ALT │ CTL │   │Layer│   │ F11 │ F12 │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // FUNCTION
     [_FUNCTION] = LAYOUT(
         KC_GRV, KC_F1, KC_F2, KC_F3, KC_F4,   KC_F5,   KC_BRIU, KC_MUTE, KC_VOLD, KC_VOLU, KC_PSCR, TG_SBL,
-        KC_ESC, KC_F6, KC_F7, KC_F8, KC_F9,   KC_F10,  KC_BRID, KC_MPRV, KC_MPLY, KC_MNXT, KC_LGUI, KC_TRNS,
+        KC_LGUI,KC_F6, KC_F7, KC_F8, KC_F9,   KC_F10,  KC_BRID, KC_MPRV, KC_MPLY, KC_MNXT, KC_LGUI, KC_TRNS,
                                      KC_TRNS, KC_TRNS, KC_TRNS,
                                      KC_TRNS, KC_TRNS, KC_F11,  KC_F12
     ),
