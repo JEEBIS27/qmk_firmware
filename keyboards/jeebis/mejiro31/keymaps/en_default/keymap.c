@@ -19,6 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 /*----------------------------------------------Setup------------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
 
+// Define the keymap name for alt_layout_config.h
+#define KEYMAP_EN_DEFAULT
 #include QMK_KEYBOARD_H
 #include "os_detection.h"
 #include "keymap_japanese.h"
@@ -49,6 +51,41 @@ enum custom_keycodes {
 #define MO_FUN MO(_FUNCTION)
 #define MT_TGL LT(_NUMBER, KC_F24)
 
+/*---------------------------------------------------------------------------------------------------*/
+/*--------------------------------------User Customization-------------------------------------------*/
+/*---------------------------------------------------------------------------------------------------*/
+
+// ============================================================
+// Alternative Layout Settings (Toggle with TG_ALT key)
+// ============================================================
+// Available layouts:
+//   qwerty, graphite, colemak, colemak_dh, dvorak, workman,
+//   handsdown_neu, sturdy, engram, gallium, canary,
+//   astarte, boo, eucalyn, eucalyn_biacco, merlin, o24, tomisuke
+//
+// Usage: ALT_LAYOUT(layout_name)
+// Disable: {NULL, 0}
+
+typedef struct {
+    const alt_mapping_t* mappings;
+    uint8_t count;
+} alt_layout_def_t;
+
+static alt_layout_def_t alt_layout = ALT_LAYOUT(graphite);  // Alternative Layout
+
+// ============================================================
+// Language Settings
+// ============================================================
+// 0: Not used, 1: English, 2: Japanese, 3: No change
+
+static int stn_lang = 3;   // Language for steno mode
+static int kbd_lang = 3;   // Language for keyboard mode
+static int alt_lang = 3;   // Language setting for Alternative Layout
+
+/*---------------------------------------------------------------------------------------------------*/
+/*----------------------------------------------Internal Variables-----------------------------------*/
+/*---------------------------------------------------------------------------------------------------*/
+
 bool is_jis_mode = false;
 bool is_sbl_mode = true;
 bool is_mejiro_mode = false;
@@ -69,10 +106,6 @@ static toggle_hold_state_t tg_jis_state = {false, 0};
 static toggle_hold_state_t tg_alt_state = {false, 0};
 static toggle_hold_state_t tg_sbl_state = {false, 0};
 static toggle_hold_state_t tg_mjr_state = {false, 0};
-// 0:未使用, 1:英語, 2:日本語, 3:無変更
-static int stn_lang = 3; // ステノ時の言語
-static int kbd_lang = 3; // キーボード時の言語
-static int alt_lang = 3; // Alternative Layoutの言語設定
 
 static inline bool is_modifier_keycode(uint16_t keycode) {
     switch (keycode) {
@@ -368,9 +401,19 @@ uint16_t alt_transform(uint16_t kc, bool shifted, uint8_t layer) {
 
     if (layer != _QWERTY) return kc;
 
-    for (uint8_t i = 0; i < sizeof(alt_mappings) / sizeof(alt_mappings[0]); i++) {
+    // Use custom layout if configured
+    const alt_mapping_t* mappings = alt_layout.mappings;
+    uint8_t count = alt_layout.count;
+
+    // If no custom layout, use default from config
+    if (mappings == NULL || count == 0) {
+        mappings = alt_get_current_mappings();
+        count = alt_get_mappings_count();
+    }
+
+    for (uint8_t i = 0; i < count; i++) {
         alt_mapping_t mapping;
-        memcpy_P(&mapping, &alt_mappings[i], sizeof(mapping));
+        memcpy_P(&mapping, &mappings[i], sizeof(mapping));
         if (mapping.base == kc) {
             return shifted ? mapping.shifted : mapping.unshifted;
         }

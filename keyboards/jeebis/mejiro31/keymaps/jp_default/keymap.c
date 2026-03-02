@@ -16,8 +16,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /*---------------------------------------------------------------------------------------------------*/
-/*----------------------------------------------Setup------------------------------------------------*/
+/*----------------------------------------------初期設定----------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
+
+#define KEYMAP_JP_DEFAULT
 
 #include QMK_KEYBOARD_H
 #include "os_detection.h"
@@ -49,9 +51,44 @@ enum custom_keycodes {
 #define MO_FUN MO(_FUNCTION)
 #define MT_TGL LT(_NUMBER, KC_F24)
 
-bool is_jis_mode = false;
+/*---------------------------------------------------------------------------------------------------*/
+/*-----------------------------------------ユーザーカスタマイズ----------------------------------------*/
+/*---------------------------------------------------------------------------------------------------*/
+
+// ============================================================
+// Alternative Layout 設定（TG_ALTキーで切り替え）
+// ============================================================
+// 使用可能なレイアウト:
+//   qwerty, graphite, colemak, colemak_dh, dvorak, workman,
+//   handsdown_neu, sturdy, engram, gallium, canary,
+//   astarte, boo, eucalyn, eucalyn_biacco, merlin, o24, tomisuke
+//
+// 使い方: ALT_LAYOUT(レイアウト名)
+// 無効化: {NULL, 0}
+
+typedef struct {
+    const alt_mapping_t* mappings;
+    uint8_t count;
+} alt_layout_def_t;
+
+static alt_layout_def_t alt_en_layout = ALT_LAYOUT(graphite);  // 英語モード時のレイアウト
+static alt_layout_def_t alt_jp_layout = ALT_LAYOUT(o24);  // 日本語モード時のレイアウト
+
+// ============================================================
+// 言語設定
+// ============================================================
+// 0:未使用, 1:英語, 2:日本語, 3:無変更
+
+static int stn_lang = 2;  // ステノモード時の言語
+static int kbd_lang = 1;  // キーボードモード時の言語
+
+/*---------------------------------------------------------------------------------------------------*/
+/*----------------------------------------------内部変数----------------------------------------------*/
+/*---------------------------------------------------------------------------------------------------*/
+
+bool is_jis_mode = true;
 bool is_sbl_mode = true;
-bool is_mejiro_mode = false;
+bool is_mejiro_mode = true;
 static bool is_mac = false;
 static bool os_detected = false;
 static uint16_t dz_timer = 0;
@@ -69,10 +106,6 @@ static toggle_hold_state_t tg_jis_state = {false, 0};
 static toggle_hold_state_t tg_alt_state = {false, 0};
 static toggle_hold_state_t tg_sbl_state = {false, 0};
 static toggle_hold_state_t tg_mjr_state = {false, 0};
-// 0:未使用, 1:英語, 2:日本語, 3:無変更
-static int stn_lang = 3; // ステノ時の言語
-static int kbd_lang = 3; // キーボード時の言語
-static int alt_lang = 3; // Alternative Layoutの言語設定
 
 static inline bool is_modifier_keycode(uint16_t keycode) {
     switch (keycode) {
@@ -115,10 +148,10 @@ static user_config_t user_config;
 
 void eeconfig_init_user(void) {
     user_config.raw = 0;
-    user_config.jis_mode = false;
+    user_config.jis_mode = true;
     user_config.alt_mode = true;
     user_config.sbl_mode = true;
-    user_config.mejiro_mode = false;
+    user_config.mejiro_mode = true;
     eeconfig_update_user(user_config.raw);
     steno_set_mode(STENO_MODE_GEMINI);
 }
@@ -240,7 +273,7 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     //                         ┌───────────┐             ┌───────────┐
     //                         │Space/Shift│             │Enter/Shift│
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │Layer│   │  !  @  ?  │
+    //                         │ ALT │ CTL │   │Layer│   │Eisu @ Kana│
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // QWERTY Shifted
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
@@ -251,33 +284,33 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     //                         ┌───────────┐             ┌───────────┐
     //                         │Space/Shift│             │Enter/Shift│
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │Layer│   │  &  #  |  │
+    //                         │ ALT │ CTL │   │Layer│   │  !  #  ?  │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  `  │ 00  │  1  │  2  │  3  │  -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │ MJR │ 00  │  1  │  2  │  3  │  -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼─────┼──4──┼──5──┼──6──┼──,──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
-    // │ WIN │  0  │  7  │  8  │  9  │  .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // │ WIN │  0  │  7  │  8  │  9  │  .  │             │ PGD │  ←  │  ↓  │  →  │ WIN │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
     //                         │Space/Shift│             │Enter/Shift│
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │Layer│   │  !  @  ?  │
+    //                         │ ALT │ CTL │   │Layer│   │  &  │  |  │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER Shifted
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  `  │  %  │  [  │  {  │  (  │  <  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │ MJR │  %  │  [  │  {  │  (  │  <  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼──/──┼──*──┼──=──┼──+──┼──^──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
-    // │ WIN │  $  │  ]  │  }  │  )  │  >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // │ WIN │  $  │  ]  │  }  │  )  │  >  │             │ PGD │  ←  │  ↓  │  →  │ WIN │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
     //                         │Space/Shift│             │Enter/Shift│
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │Layer│   │  &  #  |  │
+    //                         │ ALT │ CTL │   │Layer│   │  &  │  |  │
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
 
-    {KC_LBRC, KC_EXLM, KC_AMPR,    _QWERTY},  // [ / ! / &
-    {KC_RBRC, KC_QUES, KC_PIPE,    _QWERTY},  // ] / ? / |
+    {KC_LBRC, KC_LNG2, KC_EXLM,    _QWERTY},  // [ / 英 / !
+    {KC_RBRC, KC_LNG1, KC_QUES,    _QWERTY},  // ] / か / ?
     {KC_EQL,  KC_AT,   KC_HASH,    _QWERTY},  // = / @ / #
 
     {KC_DZ,   KC_DZ,   KC_PERC,    _NUMBER},  // 00 / 00 / %
@@ -295,9 +328,8 @@ static const sbl_mapping_t sbl_mappings[] PROGMEM = {
     {KC_8,    KC_8,    KC_RBRC,    _NUMBER},  // 8 / 8 / ]
     {KC_9,    KC_9,    KC_RPRN,    _NUMBER},  // 9 / 9 / )
     {KC_DOT,  KC_DOT,  KC_RABK,    _NUMBER},  // . / . / >
-    {KC_LBRC, KC_EXLM, KC_AMPR,    _NUMBER},  // [ / ! / &
-    {KC_RBRC, KC_QUES, KC_PIPE,    _NUMBER},  // ] / ? / |
-    {KC_EQL,  KC_AT,   KC_HASH,    _NUMBER},  // = / @ / #
+    {KC_LNG2, KC_AMPR, KC_AMPR,    _NUMBER},  // 英 / & / &
+    {KC_LNG1, KC_PIPE, KC_PIPE,    _NUMBER},  // か / | / |
 };
 
 uint16_t sbl_transform(uint16_t kc, bool shifted, uint8_t layer) {
@@ -315,62 +347,31 @@ uint16_t sbl_transform(uint16_t kc, bool shifted, uint8_t layer) {
     return kc;
 }
 
-/*---------------------------------------------------------------------------------------------------*/
-/*----------------------------------------Alternative Layout-----------------------------------------*/
-/*---------------------------------------------------------------------------------------------------*/
-
-// 配列：Graphite
-// ┌─────┬─────┬─────┬─────┬─────┐┌─────┬─────┬─────┬─────┬─────┬─────┐
-// │  b  │  l  │  d  │  w  │  z  ││ ' _ │  f  │  o  │  u  │  j  │ ; : │
-// ├──n──┼──r──┼──t──┼──s──┼──g──┤├──y──┼──h──┼──a──┼──e──┼──i──┼──,──┤
-// │  q  │  x  │  m  │  c  │  v  ││  k  │  p  │ . > │ - " │ / < │ \ | │
-// └─────┴─────┴─────┴─────┴─────┘└─────┴─────┴─────┴─────┴─────┴─────┘
-static const alt_mapping_t alt_mappings[] PROGMEM = {
-    {KC_Q,    KC_W,    KC_W},
-    {KC_W,    KC_L,    KC_L},
-    {KC_E,    KC_Y,    KC_Y},
-    {KC_R,    KC_P,    KC_P},
-    {KC_T,    KC_B,    KC_B},
-    {KC_Y,    KC_Z,    KC_Z},
-    {KC_U,    KC_F,    KC_F},
-    {KC_I,    KC_O,    KC_O},
-    {KC_O,    KC_U,    KC_U},
-    {KC_P,    KC_QUOT, KC_DQUO},
-    {KC_MINS, KC_MINS, KC_UNDS},
-
-    {KC_A,    KC_C,    KC_C},
-    {KC_S,    KC_R,    KC_R},
-    {KC_D,    KC_S,    KC_S},
-    {KC_F,    KC_T,    KC_T},
-    {KC_G,    KC_G,    KC_G},
-    {KC_H,    KC_M,    KC_M},
-    {KC_J,    KC_N,    KC_N},
-    {KC_K,    KC_E,    KC_E},
-    {KC_L,    KC_I,    KC_I},
-    {KC_SCLN, KC_A,    KC_A},
-    {KC_QUOT, KC_SCLN, KC_COLN},
-
-    {KC_Z,    KC_Q,    KC_Q},
-    {KC_X,    KC_J,    KC_J},
-    {KC_C,    KC_V,    KC_V},
-    {KC_V,    KC_D,    KC_D},
-    {KC_B,    KC_K,    KC_K},
-    {KC_N,    KC_X,    KC_X},
-    {KC_M,    KC_H,    KC_H},
-    {KC_COMM, KC_SLSH, KC_QUES},
-    {KC_DOT,  KC_COMM, KC_LABK},
-    {KC_SLSH, KC_DOT,  KC_RABK},
-    {KC_BSLS, KC_BSLS, KC_PIPE},
-};
-
 uint16_t alt_transform(uint16_t kc, bool shifted, uint8_t layer) {
     if (!is_alt_mode || force_qwerty_active) return kc;
 
     if (layer != _QWERTY) return kc;
 
-    for (uint8_t i = 0; i < sizeof(alt_mappings) / sizeof(alt_mappings[0]); i++) {
+    // 現在の言語に応じたマッピングを選択
+    const alt_mapping_t* mappings;
+    uint8_t count;
+
+    if (kbd_lang == 1) {
+        // 英語モード
+        mappings = alt_en_layout.mappings;
+        count = alt_en_layout.count;
+    } else {
+        // 日本語モード
+        mappings = alt_jp_layout.mappings;
+        count = alt_jp_layout.count;
+    }
+
+    // マッピングが設定されていない場合は変換しない
+    if (mappings == NULL || count == 0) return kc;
+
+    for (uint8_t i = 0; i < count; i++) {
         alt_mapping_t mapping;
-        memcpy_P(&mapping, &alt_mappings[i], sizeof(mapping));
+        memcpy_P(&mapping, &mappings[i], sizeof(mapping));
         if (mapping.base == kc) {
             return shifted ? mapping.shifted : mapping.unshifted;
         }
@@ -424,21 +425,28 @@ static void refresh_force_qwerty_state(void) {
     }
 }
 
+static bool has_alt_layout_for_lang(uint8_t lang) {
+    if (lang == 1) {
+        return alt_en_layout.mappings != NULL && alt_en_layout.count > 0;
+    }
+    if (lang == 2) {
+        return alt_jp_layout.mappings != NULL && alt_jp_layout.count > 0;
+    }
+    return false;
+}
+
+static uint8_t get_active_lang(void) {
+    return (default_layer == 0) ? (uint8_t)kbd_lang : (uint8_t)stn_lang;
+}
+
+static void apply_alt_mode_for_lang(uint8_t lang) {
+    is_alt_mode = user_config.alt_mode && has_alt_layout_for_lang(lang);
+}
+
 // lang : 0=なし, 1=英語, 2=日本語
 static void update_lang(uint8_t lang) {
-    switch (alt_lang) {
-        case 0:
-            is_alt_mode = false;
-            break;
-        case 1:
-            is_alt_mode = (lang == 1);
-            break;
-        case 2:
-            is_alt_mode = (lang == 2);
-            break;
-        default:
-            break;
-    }
+    apply_alt_mode_for_lang(lang);
+
     switch (lang) {
         case 1:
             tap_code16(KC_LNG2);
@@ -449,8 +457,6 @@ static void update_lang(uint8_t lang) {
         default:
             break;
     }
-    user_config.alt_mode = is_alt_mode;
-    eeconfig_update_user(user_config.raw);
 }
 
 bool combo_fifo_custom_action(uint16_t keycode, bool shifted, bool needs_unshift, bool is_hold) {
@@ -498,11 +504,18 @@ bool combo_fifo_custom_action(uint16_t keycode, bool shifted, bool needs_unshift
         }
     }
 
+    // 言語切り替え
     switch (keycode) {
         case KC_LNG1:
+            if (default_layer == 0) {
+                kbd_lang = 2;
+            }
             update_lang(2);
             return true;
         case KC_LNG2:
+            if (default_layer == 0) {
+                kbd_lang = 1;
+            }
             update_lang(1);
             return true;
         default:
@@ -517,8 +530,8 @@ static void toggle_jis_mode(void) {
 }
 
 static void toggle_alt_mode(void) {
-    is_alt_mode = !is_alt_mode;
-    user_config.alt_mode = is_alt_mode;
+    user_config.alt_mode = !user_config.alt_mode;
+    apply_alt_mode_for_lang(get_active_lang());
     eeconfig_update_user(user_config.raw);
 }
 
@@ -554,7 +567,7 @@ static bool handle_toggle_on_hold(keyrecord_t *record, toggle_hold_state_t *stat
 }
 
 /*---------------------------------------------------------------------------------------------------*/
-/*--------------------------------------------FIFO combo---------------------------------------------*/
+/*--------------------------------------------FIFOコンボ----------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
 
 // コンボ定義（順不同）
@@ -586,7 +599,6 @@ const combo_pair_t combo_pairs[] PROGMEM = {
     {KC_3,    KC_MINS, KC_ESC,   _NUMBER},
     {KC_PGDN, KC_LEFT, KC_BSPC,  _NUMBER},
     {KC_PGUP, KC_HOME, KC_DEL,   _NUMBER},
-    {KC_LBRC, KC_RBRC, KC_EQL,   _NUMBER},
 };
 uint8_t combo_pair_count = sizeof(combo_pairs) / sizeof(combo_pairs[0]);
 
@@ -609,7 +621,7 @@ bool is_combo_candidate(uint16_t keycode) {
 }
 
 /*---------------------------------------------------------------------------------------------------*/
-/*----------------------------------------------Keymaps----------------------------------------------*/
+/*--------------------------------------------キーマップ----------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
@@ -654,37 +666,37 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     ),
     // NUMBER
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  `  │ 00  │  1  │  2  │  3 ESC -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │ MJR │ 00  │  1  │  2  │  3 ESC -  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼─────┼──4──┼──5──┼──6──┼──,──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
-    // │ WIN │  0  │  7  │  8  │  9 TAB .  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // │ WIN │  0  │  7  │  8  │  9 TAB .  │             │ PGD │  ←  │  ↓  │  →  │ WIN │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
     //                         │Space/Shift│             │Enter/Shift│
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │Layer│   │  [  =  ]  │
+    //                         │ ALT │ CTL │   │Layer│   │LANG2│LANG1│
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER Shifted
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  `  │ ()← │  !  │  @  │  # ESC _  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
+    // │ MJR │ ()← │  !  │  @  │  # ESC _  │             │ PGU │ HOM │  ↑  │ END │ CAP │ ALT │
     // ├─────┼─────┼──$──┼──%──┼──^──┼──<──┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
-    // │ WIN │  )  │  &  │  *  │  ( TAB >  │             │ PGD │  ←  │  ↓  │  →  │ GUI │MO_FN│
+    // │ WIN │  )  │  &  │  *  │  ( TAB >  │             │ PGD │  ←  │  ↓  │  →  │ WIN │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
     //                         ┌───────────┐             ┌───────────┐
     //                         │Space/Shift│             │Enter/Shift│
     //                         ├─────┬─────┤   ┌─────┐   ├─────┬─────┤
-    //                         │ ALT │ CTL │   │Layer│   │  {  +  }  │
+    //                         │ ALT │ CTL │   │Layer│   │LANG2│LANG1│
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // NUMBER
     [_NUMBER] = LAYOUT(
-        KC_GRV, KC_DZ,  KC_1, KC_2, KC_3,    KC_MINS,   KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_ALT,
+        TG_MJR, KC_DZ,  KC_1, KC_2, KC_3,    KC_MINS,   KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_ALT,
         KC_LGUI,KC_0,   KC_7, KC_8, KC_9,    KC_DOT,    KC_PGDN, KC_LEFT, KC_DOWN, KC_RIGHT, KC_LGUI, MO_FUN,
                                      MT_SPC,  KC_TRNS,  MT_ENT,
-                                     KC_LALT, KC_LCTL,  KC_LBRC, KC_RBRC
+                                     KC_LALT, KC_LCTL,  KC_LNG2, KC_LNG1
     ),
 
     // FUNCTION
     // ┌─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┬─────┬─────┬─────┐
-    // │  `  │ F1  │ F2  │ F3  │ F4  │ F5  │             │ BRU │ VL0 │ VL- │ VL+ │ PSC │ SBL │
+    // │ JIS │ F1  │ F2  │ F3  │ F4  │ F5  │             │ BRU │ VL0 │ VL- │ VL+ │ PSC │ SBL │
     // ├─────┼─────┼─────┼─────┼─────┼─────┤             ├─────┼─────┼─────┼─────┼─────┼─────┤
     // │ WIN │ F6  │ F7  │ F8  │ F9  │ F10 │             │ BRD │ |<< │ >|| │ >>| │ WIN │MO_FN│
     // └─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┴─────┴─────┴─────┘
@@ -695,7 +707,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     //                         └─────┴─────┘   └─────┘   └─────┴─────┘
     // FUNCTION
     [_FUNCTION] = LAYOUT(
-        KC_GRV, KC_F1, KC_F2, KC_F3, KC_F4,   KC_F5,   KC_BRIU, KC_MUTE, KC_VOLD, KC_VOLU, KC_PSCR, TG_SBL,
+        TG_JIS, KC_F1, KC_F2, KC_F3, KC_F4,   KC_F5,   KC_BRIU, KC_MUTE, KC_VOLD, KC_VOLU, KC_PSCR, TG_SBL,
         KC_LGUI,KC_F6, KC_F7, KC_F8, KC_F9,   KC_F10,  KC_BRID, KC_MPRV, KC_MPLY, KC_MNXT, KC_LGUI, KC_TRNS,
                                      KC_TRNS, KC_TRNS, KC_TRNS,
                                      KC_TRNS, KC_TRNS, KC_F11,  KC_F12

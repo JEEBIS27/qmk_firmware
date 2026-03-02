@@ -43,3 +43,30 @@ static inline bool mods_except_shift_active(void) {
     mods &= ~MOD_MASK_SHIFT;
     return mods != 0;
 }
+
+// Include layout config (which includes layout definitions)
+#include "alt_layout_config.h"
+
+/**
+ * Helper function to get current layout's mapping array
+ * @return Pointer to the current layout's alt_mapping_t array
+ */
+static inline const alt_mapping_t* alt_get_current_mappings(void) {
+    return ALT_LAYOUT_MAPPINGS;
+}
+
+/**
+ * Helper function to get current layout ID
+ * @return The current layout ID
+ */
+static inline alt_layout_t alt_get_layout_id(void) {
+    return ALT_LAYOUT_ID;
+}
+
+/**
+ * Helper function to get the number of mappings for the current layout
+ * @return Number of mappings in the current layout
+ */
+static inline uint8_t alt_get_mappings_count(void) {
+    return sizeof(ALT_LAYOUT_MAPPINGS) / sizeof(ALT_LAYOUT_MAPPINGS[0]);
+}
