@@ -457,6 +457,47 @@ bool combo_fifo_custom_action(uint16_t keycode, bool shifted, bool needs_unshift
     (void)needs_unshift;
     (void)is_hold;
 
+    // MacOS用のキー変換
+    if (is_mac) {
+        uint8_t mods = get_mods();
+        bool command_held = (mods & MOD_MASK_GUI);
+
+        switch (keycode) {
+            case KC_HOME:
+                // Home → ⌘+← (Ctrl+Home → ⌘+↑)
+                {
+                    uint8_t saved_mods = mods;
+                    add_mods(MOD_LGUI);
+                    if (!command_held) {
+                        tap_code16(KC_LEFT);
+                    } else {
+                        del_mods(MOD_LCTL);
+                        tap_code16(KC_UP);
+                    }
+                    set_mods(saved_mods);
+                    send_keyboard_report();
+                }
+                return true;
+
+            case KC_END:
+                // End → ⌘+→ (Ctrl+End → ⌘+↓)
+                {
+                    uint8_t saved_mods = mods;
+                    add_mods(MOD_LGUI);
+                    if (!command_held) {
+                        tap_code16(KC_RIGHT);
+                    } else {
+                        del_mods(MOD_LCTL);
+                        tap_code16(KC_DOWN);
+                    }
+                    set_mods(saved_mods);
+                    send_keyboard_report();
+                }
+                return true;
+        }
+    }
+
+    // 言語切り替え
     switch (keycode) {
         case KC_LNG1:
             update_lang(2);
@@ -561,6 +602,7 @@ bool is_combo_candidate(uint16_t keycode) {
     if (keycode == KC_DOWN) return true;
     if (keycode == KC_UP) return true;
     if (keycode == KC_RIGHT) return true;
+    if (keycode == KC_END) return true;
     if (keycode == KC_CAPS) return true;
     return is_combo_candidate_default(keycode, 0);
 }
