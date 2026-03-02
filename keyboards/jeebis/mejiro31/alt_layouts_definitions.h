@@ -19,12 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include QMK_KEYBOARD_H
 
-// レイアウトを簡単に定義するためのマクロ
-// 使用例: static alt_layout_def_t alt_en_layout = ALT_LAYOUT(graphite);
 #define ALT_LAYOUT(name) {name, sizeof(name)/sizeof(name[0])}
 
 // Alternative Layout Definitions
-// This file contains all the alternative layout mappings
 
 // ====== QWERTY ======
 static const alt_mapping_t qwerty[] PROGMEM = {
@@ -763,4 +760,3 @@ static const alt_mapping_t tomisuke[] PROGMEM = {
     {KC_BSLS, KC_BSLS, KC_PIPE},
 
 };
-
