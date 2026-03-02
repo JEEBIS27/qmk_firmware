@@ -64,20 +64,19 @@ enum custom_keycodes {
 //   astarte, boo, eucalyn, eucalyn_biacco, merlin, o24, tomisuke
 //
 // 使い方: ALT_LAYOUT(レイアウト名)
-// 無効化: {NULL, 0}
 
 typedef struct {
     const alt_mapping_t* mappings;
     uint8_t count;
 } alt_layout_def_t;
 
-static alt_layout_def_t alt_en_layout = ALT_LAYOUT(graphite);  // 英語モード時のレイアウト
-static alt_layout_def_t alt_jp_layout = ALT_LAYOUT(o24);  // 日本語モード時のレイアウト
+static alt_layout_def_t alt_en_layout = ALT_LAYOUT(qwerty);  // 英語モード時のレイアウト
+static alt_layout_def_t alt_jp_layout = ALT_LAYOUT(qwerty);  // 日本語モード時のレイアウト
 
 // ============================================================
 // 言語設定
 // ============================================================
-// 0:未使用, 1:英語, 2:日本語, 3:無変更
+// 0:未使用, 1:英語, 2:日本語, 3:日英両方
 
 static int stn_lang = 2;  // ステノモード時の言語
 static int kbd_lang = 1;  // キーボードモード時の言語

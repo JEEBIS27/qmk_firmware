@@ -37,12 +37,12 @@ enum layer_names {
 };
 
 enum custom_keycodes {
-    KC_DZ = SAFE_RANGE,  // 00キー
-    KC_TZ,               // 000キー
-    TG_JIS,              // JISモード切替キー
-    TG_ALT,              // Alternative Layout切替キー
-    TG_SBL,              // Mejiro31 Symbol Layout切替キー
-    TG_MJR,              // Mejiro（メジロ式）モード切替キー
+    KC_DZ = SAFE_RANGE,  // 00 key
+    KC_TZ,               // 000 key
+    TG_JIS,              // JIS mode toggle key
+    TG_ALT,              // Alternative Layout toggle key
+    TG_SBL,              // Mejiro31 Symbol Layout toggle key
+    TG_MJR,              // Mejiro (Mejiro-shiki) mode toggle key
 };
 
 #define MT_SPC KC_LSFT
@@ -64,19 +64,18 @@ enum custom_keycodes {
 //   astarte, boo, eucalyn, eucalyn_biacco, merlin, o24, tomisuke
 //
 // Usage: ALT_LAYOUT(layout_name)
-// Disable: {NULL, 0}
 
 typedef struct {
     const alt_mapping_t* mappings;
     uint8_t count;
 } alt_layout_def_t;
 
-static alt_layout_def_t alt_layout = ALT_LAYOUT(graphite);  // Alternative Layout
+static alt_layout_def_t alt_layout = ALT_LAYOUT(qwerty);  // Alternative Layout
 
 // ============================================================
 // Language Settings
 // ============================================================
-// 0: Not used, 1: English, 2: Japanese, 3: No change
+// 0: Not used, 1: English, 2: Japanese, 3: Both
 
 static int stn_lang = 3;   // Language for steno mode
 static int kbd_lang = 3;   // Language for keyboard mode
@@ -93,11 +92,11 @@ static bool is_mac = false;
 static bool os_detected = false;
 static uint16_t dz_timer = 0;
 static bool dz_delayed = false;
-static uint8_t dz_fifo_len_at_press = 0;  // DZ キー押下時のコンボ FIFO 長
-uint16_t lshift_timer = 0;      // L_shiftが押される時間
-uint16_t rshift_timer = 0;      // R_shiftが押される時間
-static bool lshift_has_key = false;    // L_shift押下中に新しいキーが押されたか
-static bool rshift_has_key = false;    // R_shift押下中に新しいキーが押されたか
+static uint8_t dz_fifo_len_at_press = 0;  // Combo FIFO length when DZ key is pressed
+uint16_t lshift_timer = 0;      // Time L_shift is held
+uint16_t rshift_timer = 0;      // Time R_shift is held
+static bool lshift_has_key = false;    // Whether a new key was pressed while L_shift is held
+static bool rshift_has_key = false;    // Whether a new key was pressed while R_shift is held
 typedef struct {
     bool pressed;
     uint16_t timer;
@@ -208,8 +207,8 @@ void unregister_code16_with_shift(uint16_t kc) {
 }
 
 /**
- * Shift が押されている状態でも、一時的に解除してキーをレジスタする
- * @param kc キーコード
+ * Register key temporarily releasing shift even if shift is pressed
+ * @param kc keycode
  */
 void register_code16_without_shift(uint16_t kc) {
     uint8_t saved_mods      = get_mods();
@@ -230,8 +229,8 @@ void register_code16_without_shift(uint16_t kc) {
 }
 
 /**
- * Shift が押されている状態でも、一時的に解除してキーをアンレジスタする
- * @param kc キーコード
+ * Unregister key temporarily releasing shift even if shift is pressed
+ * @param kc keycode
  */
 void unregister_code16_without_shift(uint16_t kc) {
     uint8_t saved_mods      = get_mods();
@@ -352,7 +351,7 @@ uint16_t sbl_transform(uint16_t kc, bool shifted, uint8_t layer) {
 /*----------------------------------------Alternative Layout-----------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
 
-// 配列：Graphite
+// Layout: Graphite
 // ┌─────┬─────┬─────┬─────┬─────┐┌─────┬─────┬─────┬─────┬─────┬─────┐
 // │  b  │  l  │  d  │  w  │  z  ││ ' _ │  f  │  o  │  u  │  j  │ ; : │
 // ├──n──┼──r──┼──t──┼──s──┼──g──┤├──y──┼──h──┼──a──┼──e──┼──i──┼──,──┤
@@ -467,7 +466,7 @@ static void refresh_force_qwerty_state(void) {
     }
 }
 
-// lang : 0=なし, 1=英語, 2=日本語
+// lang : 0=None, 1=English, 2=Japanese
 static void update_lang(uint8_t lang) {
     switch (alt_lang) {
         case 0:
@@ -501,7 +500,7 @@ bool combo_fifo_custom_action(uint16_t keycode, bool shifted, bool needs_unshift
     (void)needs_unshift;
     (void)is_hold;
 
-    // MacOS用のキー変換
+    // Key translation for MacOS
     if (is_mac) {
         uint8_t mods = get_mods();
         bool command_held = (mods & MOD_MASK_GUI);
@@ -541,7 +540,7 @@ bool combo_fifo_custom_action(uint16_t keycode, bool shifted, bool needs_unshift
         }
     }
 
-    // 言語切り替え
+    // Language switch
     switch (keycode) {
         case KC_LNG1:
             update_lang(2);
@@ -601,7 +600,7 @@ static bool handle_toggle_on_hold(keyrecord_t *record, toggle_hold_state_t *stat
 /*--------------------------------------------FIFO combo---------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
 
-// コンボ定義（順不同）
+// Combo definitions (no particular order)
 const combo_pair_t combo_pairs[] PROGMEM = {
 
     {KC_Q,    KC_Z,    KC_A,    _QWERTY},
@@ -747,7 +746,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 };
 
 /*---------------------------------------------------------------------------------------------------*/
-/*--------------------------------------------メイン処理----------------------------------------------*/
+/*----------------------------------------------Main Process------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
 
 
@@ -780,7 +779,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         if (keycode == KC_GRV) {
             if (is_jis_mode && (mods & MOD_MASK_ALT)) {
                 if (record->event.pressed) {
-                    tap_code16(KC_GRV); // 全角半角
+                    tap_code16(KC_GRV); // Zenkaku/Hankaku
                 }
                 return false;
             }
@@ -885,7 +884,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 lshift_timer = timer_read();
                 lshift_has_key = false;
 
-                // FIFO に KC_LSFT を追加
+                // Add KC_LSFT to FIFO
                 if (combo_fifo_len < COMBO_FIFO_LEN) {
                     combo_fifo[combo_fifo_len].keycode = KC_LSFT;
                     combo_fifo[combo_fifo_len].layer = get_highest_layer(layer_state | default_layer_state);
@@ -897,7 +896,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             } else {
                 lshift_timer = 0;
 
-                // FIFO 内の KC_LSFT に released=true を設定
+                // Set released=true for KC_LSFT in FIFO
                 bool lshift_found = false;
                 for (uint8_t i = 0; i < combo_fifo_len; i++) {
                     if (combo_fifo[i].keycode == KC_LSFT && !combo_fifo[i].released) {
@@ -907,7 +906,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                     }
                 }
 
-                // コンボ処理を実行
+                // Execute combo processing
                 if (lshift_found) {
                     combo_fifo_service_extended(transform_key_extended);
                 }
@@ -918,7 +917,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 rshift_timer = timer_read();
                 rshift_has_key = false;
 
-                // FIFO に KC_RSFT を追加
+                // Add KC_RSFT to FIFO
                 if (combo_fifo_len < COMBO_FIFO_LEN) {
                     combo_fifo[combo_fifo_len].keycode = KC_RSFT;
                     combo_fifo[combo_fifo_len].layer = get_highest_layer(layer_state | default_layer_state);
@@ -930,7 +929,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             } else {
                 rshift_timer = 0;
 
-                // FIFO 内の KC_RSFT に released=true を設定
+                // Set released=true for KC_RSFT in FIFO
                 bool rshift_found = false;
                 for (uint8_t i = 0; i < combo_fifo_len; i++) {
                     if (combo_fifo[i].keycode == KC_RSFT && !combo_fifo[i].released) {
@@ -940,7 +939,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                     }
                 }
 
-                // コンボ処理を実行
+                // Execute combo processing
                 if (rshift_found) {
                     combo_fifo_service_extended(transform_key_extended);
                 }
@@ -987,10 +986,10 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             }
             return true;
         case KC_LNG1:
-            update_lang(2);  // 日本語へ切り替え
+            update_lang(2);  // Japaneseへ切り替え
             return false;
         case KC_LNG2:
-            update_lang(1);  // 英語へ切り替え
+            update_lang(1);  // Englishへ切り替え
             return false;
         default:
             break;
