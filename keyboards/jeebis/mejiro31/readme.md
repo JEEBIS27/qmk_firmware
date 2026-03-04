@@ -6,7 +6,7 @@
 
 Make example for this keyboard (after setting up your build environment):
 
-    make jeebis/mejiro31:default
+    make jeebis/mejiro31:jp_default
 
 Copy the created uf2 file to the RPI_RP2 drive.
 
