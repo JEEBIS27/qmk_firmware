@@ -224,62 +224,72 @@ static const diphthong_map_t diphthong_table[] = {
     {"IAU", "o", "う"}
 };
 
-// 複雑二重母音マッピング（親指を使う外来音）
+// マイナー二重母音マッピング（親指を使う外来音）
 typedef struct {
     const char *stroke;  // 母音+助詞ストローク
     const char *first_vowel;
     const char *suffix;
-} complex_diphthong_map_t;
+} minor_diphthong_map_t;
 
-static const complex_diphthong_map_t complex_diphthong_table[] = {
+static const minor_diphthong_map_t minor_diphthong_table[] = {
+    {"IAUtk", "a", "a"},   // ~aa
+    {"YItk", "i", "i"},    // ~ii
+    {"YIUtk", "o", "i"},   // ~oi
+    {"YIAtk", "e", "e"},   // ~ee
+    {"YIAUtk", "o", "o"},  // ~oo
+};
 
-// V/C | t | k | nt | nk |tk |ntk |
-// ----|---|---|----|----|---|----|
-// IAU |~at|~as|~and|~ang|~al|~ali|
-// YI  |~it|~is|~ind|~ing|~il|~ili|
-// YIU |~ut|~us|~ent|~ank|~ul|~uli|
-// YIA |~et|~es|~end|~eng|~el|~eli|
-// YIAU|~ot|~os|~ont|~ong|~ol|~oli|
+// 英語音マッピング（親指を使う外来音）
+typedef struct {
+    const char *stroke;  // 母音+助詞ストローク
+    const char *first_vowel;
+    const char *suffix;
+} english_diphthong_map_t;
 
-    // IAU
-    {"IAUt", "a", "っと"},   // ~at
-    {"IAUk", "a", "す"},     // ~as
-    {"IAUnt", "a", "んど"},  // ~and
+static const english_diphthong_map_t english_diphthong_table[] = {
+
+// |V/C | t | k |  nt   | nk | ntk|
+// |----|---|---|-------|----|----|
+// |IAU |~as|~al|~ation |~ang|~arn|
+// |YI  |~is|~il|~ition |~ing|~een|
+// |YIU |~us|~ul|~usion |~ank|~oom|
+// |YIA |~es|~el|~ention|~eng|~ain|
+// |YIAU|~os|~ol|~otion |~ong|~orn|
+
+    // t
+    {"IAUt", "a", "す"},   // ~as
+    {"YIt", "i", "す"},    // ~is
+    {"YIUt", "u", "す"},   // ~us
+    {"YIAt", "e", "す"},   // ~es
+    {"YIAUt", "o", "す"},  // ~os
+
+    // k
+    {"IAUk", "a", "る"},   // ~al
+    {"YIk", "i", "る"},    // ~il
+    {"YIUk", "u", "る"},   // ~ul
+    {"YIAk", "e", "る"},   // ~el
+    {"YIAUk", "o", "る"},  // ~ol
+
+    // nt
+    {"IAUnt", "e", "ーしょん"},  // ~ation
+    {"YInt", "i", "しょん"},     // ~ition
+    {"YIUnt", "u", "しょん"},    // ~usion
+    {"YIAnt", "e", "んしょん"},  // ~ention
+    {"YIAUnt", "o", "ーしょん"}, // ~otion
+
+    // nk
     {"IAUnk", "a", "んぐ"},  // ~ang
-    {"IAUtk", "a", "る"},    // ~al
-    {"IAUntk", "a", "り"},   // ~ali
-
-    // YI
-    {"YIt", "i", "っと"},   // ~it
-    {"YIk", "i", "す"},     // ~is
-    {"YInt", "i", "んど"},  // ~ind
-    {"YInk", "i", "んぐ"},  // ~ing
-    {"YItk", "i", "る"},    // ~il
-    {"YIntk", "i", "り"},   // ~ili
-
-    // YIU
-    {"YIUt", "u", "っと"},  // ~ut
-    {"YIUk", "u", "す"},    // ~us
-    {"YIUnt", "e", "んと"}, // ~ent
-    {"YIUnk", "a", "んく"}, // ~ank
-    {"YIUtk", "u", "る"},   // ~ul
-    {"YIUntk", "u", "り"},  // ~uli
-
-    // YIA
-    {"YIAt", "e", "っと"},  // ~et
-    {"YIAk", "e", "す"},    // ~es
-    {"YIAnt", "e", "んど"}, // ~end
-    {"YIAnk", "e", "んぐ"}, // ~eng
-    {"YIAtk", "e", "る"},   // ~el
-    {"YIAntk", "e", "り"},  // ~eli
-
-    // YIAU
-    {"YIAUt", "o", "っと"},  // ~ot
-    {"YIAUk", "o", "す"},    // ~os
-    {"YIAUnt", "o", "んと"}, // ~ont
+    {"YInk", "i", "んぐ"},   // ~ing
+    {"YIUnk", "a", "んく"},  // ~ank
+    {"YIAnk", "e", "んぐ"},  // ~eng
     {"YIAUnk", "o", "んぐ"}, // ~ong
-    {"YIAUtk", "o", "る"},   // ~ol
-    {"YIAUntk", "o", "り"},  // ~oli
+
+    // ntk
+    {"IAUntk", "a", "ーん"},  // ~arn
+    {"YIntk", "i", "ーん"},   // ~een
+    {"YIUntk", "u", "ーん"},  // ~oom
+    {"YIAntk", "e", "ーん"},  // ~ain
+    {"YIAUntk", "o", "ーん"}, // ~orn
 };
 
 // 例外的なかなのマッピング
@@ -293,7 +303,7 @@ static const exception_kana_t exception_kana_table[] = {
 //  |U  |YA |YI |YU  |YIU|YAU|YIAU|IAU|IU  |Y   |YIA
 // -|---|---|---|----|---|---|----|---|----|----|----
 // F|vu |va |vi |fyu |ve |vo |jei |je |vyu |----|----
-// W|xwa|wha|wyi|yui |wye|who|chei|che|iu  |----|----
+// W|xwa|wha|wyi|yui |wye|wo |chei|che|iu  |----|----
 // D|---|thi|twu|dhu |dwu|dhi|ye  |---|thu |----|----
 // X|---|sta|sti|sthi|ste|sto|shei|she|kusu|stai|stei
 
@@ -314,7 +324,7 @@ static const exception_kana_t exception_kana_table[] = {
     {"SKYI", "ゐ"},
     {"SKYU", "ゆい"},
     {"SKYIU", "ゑ"},
-    {"SKYAU", "うぉ"},
+    {"SKYAU", "を"},
     {"SKYIAU", "ちぇい"},
     {"SKIAU", "ちぇ"},
     {"SKIU", "いう"},
@@ -418,12 +428,24 @@ static const char *get_diphthong_suffix(const char *stroke) {
     return "";
 }
 
-// 複雑二重母音をチェック（母音+助詞ストローク）
-static bool check_complex_diphthong(const char *vowel_particle, const char **first_vowel, const char **suffix) {
-    for (uint8_t i = 0; i < sizeof(complex_diphthong_table)/sizeof(complex_diphthong_table[0]); i++) {
-        if (strcmp(vowel_particle, complex_diphthong_table[i].stroke) == 0) {
-            *first_vowel = complex_diphthong_table[i].first_vowel;
-            *suffix = complex_diphthong_table[i].suffix;
+// 英語音をチェック（母音+助詞ストローク）
+static bool check_english_diphthong(const char *vowel_particle, const char **first_vowel, const char **suffix) {
+    for (uint8_t i = 0; i < sizeof(english_diphthong_table)/sizeof(english_diphthong_table[0]); i++) {
+        if (strcmp(vowel_particle, english_diphthong_table[i].stroke) == 0) {
+            *first_vowel = english_diphthong_table[i].first_vowel;
+            *suffix = english_diphthong_table[i].suffix;
+            return true;
+        }
+    }
+    return false;
+}
+
+// マイナー二重母音をチェック（母音+助詞ストローク）
+static bool check_minor_diphthong(const char *vowel_particle, const char **first_vowel, const char **suffix) {
+    for (uint8_t i = 0; i < sizeof(minor_diphthong_table)/sizeof(minor_diphthong_table[0]); i++) {
+        if (strcmp(vowel_particle, minor_diphthong_table[i].stroke) == 0) {
+            *first_vowel = minor_diphthong_table[i].first_vowel;
+            *suffix = minor_diphthong_table[i].suffix;
             return true;
         }
     }
@@ -468,16 +490,16 @@ static void convert_to_kana(const char *conso, const char *vowel, const char *pa
         return;
     }
 
-    // 複雑二重母音をチェック（母音+助詞）- 優先度高
+    // 英語音をチェック（母音+助詞）- 優先度高
     char vowel_particle[32];
     strcpy(vowel_particle, vowel);
     strcat(vowel_particle, particle_str);
     const char *first_vowel = NULL;
     const char *suffix = NULL;
-    bool is_complex = check_complex_diphthong(vowel_particle, &first_vowel, &suffix);
+    bool is_english = check_english_diphthong(vowel_particle, &first_vowel, &suffix);
 
-    if (is_complex) {
-        // 複雑二重母音の場合、first_vowelからインデックスを取得
+    if (is_english) {
+        // 英語音の場合、first_vowelからインデックスを取得
         const char *c_roma = get_conso_roma(conso);
         if (c_roma == NULL) c_roma = "";
 
@@ -495,16 +517,62 @@ static void convert_to_kana(const char *conso, const char *vowel, const char *pa
 
         const char *base_kana = kana_table[c_idx][v_idx];
 
-        // 英語モードの場合、ち→てぃ、ぢ→でぃに置き換え
+        // 英語モードの場合、ち→てぃ、ぢ→でぃ、づ→どぅに置き換え
         if (strcmp(base_kana, "ち") == 0) {
             base_kana = "てぃ";
         } else if (strcmp(base_kana, "ぢ") == 0) {
             base_kana = "でぃ";
+        } else if (strcmp(base_kana, "づ") == 0) {
+            base_kana = "どぅ";
+        } else if (strcmp(base_kana, "ぁ") == 0) {
+            base_kana = "すた";
+        } else if (strcmp(base_kana, "ぃ") == 0) {
+            base_kana = "すち";
+        } else if (strcmp(base_kana, "ぅ") == 0) {
+            base_kana = "すてぃ";
+        } else if (strcmp(base_kana, "ぇ") == 0) {
+            base_kana = "すて";
+        } else if (strcmp(base_kana, "ぉ") == 0) {
+            base_kana = "すと";
         }
 
         strcpy(out, base_kana);
         strcat(out, suffix);
-        // 複雑二重母音は追加音なし
+
+        // 連結後の組み合わせ置き換え
+        if (strcmp(out, "るしょん") == 0) {
+            strcpy(out, "りゅーしょん");
+        } else if (strcmp(out, "ふしょん") == 0) {
+            strcpy(out, "ふゅーじょん");
+        }
+        // 英語音は追加音なし
+        return;
+    }
+
+    // マイナー二重母音をチェック（母音+助詞）
+    bool is_minor = check_minor_diphthong(vowel_particle, &first_vowel, &suffix);
+
+    if (is_minor) {
+        const char *c_roma = get_conso_roma(conso);
+        if (c_roma == NULL) c_roma = "";
+
+        int v_idx = -1;
+        for (uint8_t j = 0; j < sizeof(vowel_table)/sizeof(vowel_table[0]); j++) {
+            if (strcmp(vowel_table[j].roma, first_vowel) == 0) {
+                v_idx = vowel_table[j].index;
+                break;
+            }
+        }
+        if (v_idx < 0) v_idx = 0;
+
+        int c_idx = get_roma_index(c_roma);
+        if (c_idx < 0) c_idx = 0;
+
+        const char *base_kana = kana_table[c_idx][v_idx];
+
+        strcpy(out, base_kana);
+        strcat(out, suffix);
+        // 追加音なし
         return;
     }
 
@@ -814,29 +882,31 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
     }
 
     // 「っ」の持ち越し判定（左側と右側を別々に判定）
-    // ただし、複雑二重母音（母音+助詞）に該当する場合は「っ」を出力しないため、持ち越し対象から除外する
+    // ただし、英語音・マイナー二重母音（母音+助詞）に該当する場合は「っ」を出力しないため、持ち越し対象から除外する
     char left_vowel_particle[32] = {0};
     strcpy(left_vowel_particle, l_vowel);
     strcat(left_vowel_particle, l_particle_str);
     const char *dummy_first_vowel_left = NULL;
     const char *dummy_suffix_left = NULL;
-    bool is_complex_left = check_complex_diphthong(left_vowel_particle, &dummy_first_vowel_left, &dummy_suffix_left);
+    bool is_english_left = check_english_diphthong(left_vowel_particle, &dummy_first_vowel_left, &dummy_suffix_left);
+    bool is_minor_left = check_minor_diphthong(left_vowel_particle, &dummy_first_vowel_left, &dummy_suffix_left);
 
     char right_vowel_particle[32] = {0};
     strcpy(right_vowel_particle, r_vowel);
     strcat(right_vowel_particle, r_particle_str);
     const char *dummy_first_vowel_right = NULL;
     const char *dummy_suffix_right = NULL;
-    bool is_complex_right = check_complex_diphthong(right_vowel_particle, &dummy_first_vowel_right, &dummy_suffix_right);
+    bool is_english_right = check_english_diphthong(right_vowel_particle, &dummy_first_vowel_right, &dummy_suffix_right);
+    bool is_minor_right = check_minor_diphthong(right_vowel_particle, &dummy_first_vowel_right, &dummy_suffix_right);
 
     bool has_final_tsu_left = ((strlen(l_conso) > 0 || strlen(l_vowel) > 0) &&
                                strcmp(l_particle_str, "tk") == 0 &&
                                strlen(r_conso) == 0 && strlen(r_vowel) == 0 && strlen(r_particle_str) == 0 &&
-                               !is_complex_left);
+                               !is_english_left && !is_minor_left);
     bool has_final_tsu_right = ((strlen(r_conso) > 0 || strlen(r_vowel) > 0) &&
                                 strcmp(r_particle_str, "tk") == 0 &&
                                 !is_left_plus_particle &&
-                                !is_complex_right);
+                                !is_english_right && !is_minor_right);
     bool has_final_tsu = has_final_tsu_left || has_final_tsu_right;
 
     if (is_particle_only) {
@@ -851,18 +921,18 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
         }
 
         // 「っ」の持ち越し判定
-        // 左側のみでtk助詞があり、右側がない場合（複雑二重母音は除外）
+        // 左側のみでtk助詞があり、右側がない場合（英語音・マイナー二重母音は除外）
         if ((strlen(l_conso) > 0 || strlen(l_vowel) > 0) &&
             strcmp(l_particle_str, "tk") == 0 &&
             strlen(r_conso) == 0 && strlen(r_vowel) == 0 && strlen(r_particle_str) == 0 &&
-            !is_complex_left) {
+            !is_english_left && !is_minor_left) {
             has_final_tsu = true;
         }
-        // 右側にtk助詞がある場合（左+助詞パターンでない、かつ複雑二重母音は除外）
+        // 右側にtk助詞がある場合（左+助詞パターンでない、かつ英語音・マイナー二重母音は除外）
         if ((strlen(r_conso) > 0 || strlen(r_vowel) > 0) &&
             strcmp(r_particle_str, "tk") == 0 &&
             !is_left_plus_particle &&
-            !is_complex_right) {
+            !is_english_right && !is_minor_right) {
             has_final_tsu = true;
         }
 
