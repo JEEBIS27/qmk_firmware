@@ -1,0 +1,54 @@
+[
+    {
+      "firmware_name": "mejiro31_en_mine",
+      "layout": "graphite"
+    },
+    {
+      "firmware_name": "mejiro31_en_dvorak",
+      "layout": "dvorak"
+    },
+    {
+      "firmware_name": "mejiro31_en_boo",
+      "layout": "boo"
+    },
+    {
+      "firmware_name": "mejiro31_en_colemak",
+      "layout": "colemak"
+    },
+    {
+      "firmware_name": "mejiro31_en_colemak-dh",
+      "layout": "colemak_dh"
+    },
+    {
+      "firmware_name": "mejiro31_en_workman",
+      "layout": "workman"
+    },
+    {
+      "firmware_name": "mejiro31_en_graphite",
+      "layout": "graphite"
+    },
+    {
+      "firmware_name": "mejiro31_en_gallium",
+      "layout": "gallium"
+    },
+    {
+      "firmware_name": "mejiro31_en_canary",
+      "layout": "canary"
+    },
+    {
+      "firmware_name": "mejiro31_en_engram",
+      "layout": "engram"
+    },
+    {
+      "firmware_name": "mejiro31_en_handsdown-neu",
+      "layout": "handsdown_neu"
+    },
+    {
+      "firmware_name": "mejiro31_en_sturdy",
+      "layout": "sturdy"
+    },
+    {
+      "firmware_name": "mejiro31_en_qwerty",
+      "layout": "qwerty"
+    }
+]

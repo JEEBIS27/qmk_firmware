@@ -1,0 +1,72 @@
+[
+    {
+      "firmware_name": "mejiro31_jp_mine",
+      "english_layout": "graphite",
+      "japanese_layout": "o24"
+    },
+    {
+      "firmware_name": "mejiro31_jp_dvorak",
+      "english_layout": "dvorak",
+      "japanese_layout": "dvorak"
+    },
+    {
+      "firmware_name": "mejiro31_jp_boo",
+      "english_layout": "boo",
+      "japanese_layout": "qwerty"
+    },
+    {
+      "firmware_name": "mejiro31_jp_colemak",
+      "english_layout": "colemak",
+      "japanese_layout": "colemak"
+    },
+    {
+      "firmware_name": "mejiro31_jp_colemak-dh",
+      "english_layout": "colemak_dh",
+      "japanese_layout": "colemak_dh"
+    },
+    {
+      "firmware_name": "mejiro31_jp_workman",
+      "english_layout": "workman",
+      "japanese_layout": "workman"
+    },
+    {
+      "firmware_name": "mejiro31_jp_graphite",
+      "english_layout": "graphite",
+      "japanese_layout": "qwerty"
+    },
+    {
+      "firmware_name": "mejiro31_jp_astarte",
+      "english_layout": "astarte",
+      "japanese_layout": "astarte"
+    },
+    {
+      "firmware_name": "mejiro31_jp_eucalyn",
+      "english_layout": "eucalyn",
+      "japanese_layout": "eucalyn"
+    },
+    {
+      "firmware_name": "mejiro31_jp_eucalyn-biacco",
+      "english_layout": "eucalyn_biacco",
+      "japanese_layout": "eucalyn_biacco"
+    },
+    {
+      "firmware_name": "mejiro31_jp_tomisuke",
+      "english_layout": "tomisuke",
+      "japanese_layout": "tomisuke"
+    },
+    {
+      "firmware_name": "mejiro31_jp_o24",
+      "english_layout": "o24",
+      "japanese_layout": "o24"
+    },
+    {
+      "firmware_name": "mejiro31_jp_merlin",
+      "english_layout": "merlin",
+      "japanese_layout": "merlin"
+    },
+    {
+      "firmware_name": "mejiro31_jp_qwerty",
+      "english_layout": "qwerty",
+      "japanese_layout": "qwerty"
+    }
+]
