@@ -200,11 +200,11 @@ static const verb_entry_t verb_dict[] = {
     {"I-TNA", "いただ", 'k', VERB_TYPE_GODAN},     // 頂く
     {"U-KNAU", "うご", 'k', VERB_TYPE_GODAN},      // 動く
     {"KA-YA", "かがや", 'k', VERB_TYPE_GODAN},     // 輝く
-    {"KI-TU", "きがつ", 'k', VERB_TYPE_GODAN},     // 気が付く
+    {"KI-KNA", "きがつ", 'k', VERB_TYPE_GODAN},    // 気が付く
     {"KI-TNU", "きづ", 'k', VERB_TYPE_GODAN},      // 気付く
     {"SI-KNAU", "しご", 'k', VERB_TYPE_GODAN},     // 扱く
     {"TA-TA", "たた", 'k', VERB_TYPE_GODAN},       // 叩く
-    {"TN-KU", "つづ", 'k', VERB_TYPE_GODAN},       // 続く
+    {"TU-TNU", "つづ", 'k', VERB_TYPE_GODAN},      // 続く
     {"NAU-SNAU", "のぞ", 'k', VERB_TYPE_GODAN},    // 除く
     {"TKA-STA", "はたら", 'k', VERB_TYPE_GODAN},   // 働く
     {"SKNI-KNA", "みが", 'k', VERB_TYPE_GODAN},    // 磨く
@@ -227,8 +227,9 @@ static const verb_entry_t verb_dict[] = {
     {"KU-STA", "くら", 's', VERB_TYPE_GODAN},      // 暮らす
     {"KAU-STAU", "ころ", 's', VERB_TYPE_GODAN},    // 殺す
     {"KAU-SKA", "こわ", 's', VERB_TYPE_GODAN},     // 壊す
+    {"SA-KNA", "さが", 's', VERB_TYPE_GODAN},      // 探す
     {"TA-AU", "たお", 's', VERB_TYPE_GODAN},       // 倒す
-    {"TNA-", "だ", 's', VERB_TYPE_GODAN},       // 出す
+    {"TNA-", "だ", 's', VERB_TYPE_GODAN},          // 出す
     {"TU-TKNU", "つぶ", 's', VERB_TYPE_GODAN},     // 潰す
     {"TIA-STA", "てら", 's', VERB_TYPE_GODAN},     // 照らす
     {"NA-AU", "なお", 's', VERB_TYPE_GODAN},       // 直す
@@ -237,7 +238,10 @@ static const verb_entry_t verb_dict[] = {
     {"NAU-TKNA", "のば", 's', VERB_TYPE_GODAN},    // 伸ばす
     {"TKA-NA", "はな", 's', VERB_TYPE_GODAN},      // 話す
     {"SKNA-KA", "まか", 's', VERB_TYPE_GODAN},     // 任す
+    {"SKNI-TA", "みた", 's', VERB_TYPE_GODAN},     // 満たす
     {"SKNI-NA", "みな", 's', VERB_TYPE_GODAN},     // 見なす
+    {"SKNI-SKNA", "みまわ", 's', VERB_TYPE_GODAN}, // 見回す
+    {"SKNI-SKA", "みわた", 's', VERB_TYPE_GODAN},  // 見渡す
     {"YU-STA", "ゆら", 's', VERB_TYPE_GODAN},      // 揺らす
     {"SKA-TA", "わた", 's', VERB_TYPE_GODAN},      // 渡す
     // 五段活用 (t行)
@@ -279,10 +283,12 @@ static const verb_entry_t verb_dict[] = {
     {"KA-KNI", "かぎ", 'r', VERB_TYPE_GODAN},      // 限る
     {"KNA-TKNA", "がんば", 'r', VERB_TYPE_GODAN},  // 頑張る
     {"KNA-", "がんば", 'r', VERB_TYPE_GODAN},      // 頑張る
+    {"KU-TNA", "くださ", 'r', VERB_TYPE_GODAN},    // 下さる
     {"KIA-", "け", 'r', VERB_TYPE_GODAN},          // 蹴る
     {"SYA-TKNIA", "しゃべ", 'r', VERB_TYPE_GODAN}, // しゃべる
     {"SU-TKNIA", "すべ", 'r', VERB_TYPE_GODAN},    // 滑る
     {"T-KA", "たすか", 'r', VERB_TYPE_GODAN},      // 助かる
+    {"TA-SNU", "たずさわ", 'r', VERB_TYPE_GODAN},  // 携わる
     {"NA-", "な", 'r', VERB_TYPE_GODAN},           // なる
     {"TKY-", "はい", 'r', VERB_TYPE_GODAN},        // 入る
     {"TKA-TKNA", "はばか", 'r', VERB_TYPE_GODAN},  // 憚る
@@ -300,6 +306,7 @@ static const verb_entry_t verb_dict[] = {
     {"U-TA", "うた", 'w', VERB_TYPE_GODAN},        // 歌う
     {"U-KNA", "うたが", 'w', VERB_TYPE_GODAN},     // 疑う
     {"U-YA", "うやま", 'w', VERB_TYPE_GODAN},      // 敬う
+    {"AU-KAU", "おこな", 'w', VERB_TYPE_GODAN},    // 行う
     {"AU-SKNAU", "おも", 'w', VERB_TYPE_GODAN},    // 思う
     {"AU-", "おも", 'w', VERB_TYPE_GODAN},         // 思う
     {"KA-NA", "かな", 'w', VERB_TYPE_GODAN},       // 叶う
@@ -341,6 +348,7 @@ static const verb_entry_t verb_dict[] = {
     // 上一段活用 (m行)
     {"KA-SKNI", "かんが", 'm', VERB_TYPE_KAMI},    // 鑑みる
     // 下一段活用 (k行)
+    {"KI-SKAU", "きをつ", 'k', VERB_TYPE_SIMO},    // 気をつける
     {"T-KIA", "たす", 'k', VERB_TYPE_SIMO},        // 助ける
     {"TU-TN", "つづ", 'k', VERB_TYPE_SIMO},        // 続ける
     {"TN-KIA", "つづ", 'k', VERB_TYPE_SIMO},       // 続ける
@@ -354,14 +362,17 @@ static const verb_entry_t verb_dict[] = {
     {"KU-STA", "くら", 'b', VERB_TYPE_SIMO},       // 比べる
     // 下一段活用 (m行)
     {"SA-TNA", "さだ", 'm', VERB_TYPE_SIMO},       // 定める
+    {"TA-SI", "たしか", 'm', VERB_TYPE_SIMO},      // 確かめる
     {"TKA-SNI", "はじ", 'm', VERB_TYPE_SIMO},      // 始める
     {"SKNAU-TAU", "もと", 'm', VERB_TYPE_SIMO},    // 求める
     // 下一段活用 (r行)
 
     {"KAU-STIA", "こわ", 'r', VERB_TYPE_SIMO},     // 壊れる
+    {"NA-KNA", "なが", 'r', VERB_TYPE_SIMO},       // 流れる
     {"SKA-SU", "わす", 'r', VERB_TYPE_SIMO},       // 忘れる
     // 下一段活用 (w行)
     {"AU-SA", "おさ", 'w', VERB_TYPE_SIMO},        // 抑える
+    {"AU-SI", "おし", 'w', VERB_TYPE_SIMO},        // 教える
     {"AU-TKNAU", "おぼ", 'w', VERB_TYPE_SIMO},     // 覚える
     {"KA-KNA", "かんが", 'w', VERB_TYPE_SIMO},     // 考える
     {"KA-", "かんが", 'w', VERB_TYPE_SIMO},        // 考える
@@ -589,6 +600,17 @@ static void apply_godan_te_ta_voicing(char *str, size_t stem_len) {
     }
 }
 
+static void apply_sahen_negative_zu(char *str, int conj_form, const char *suffix) {
+    if (conj_form != CONJ_NAI || strcmp(suffix, "ず") != 0) {
+        return;
+    }
+
+    size_t len = strlen(str);
+    if (len >= 6 && strcmp(str + len - 6, "しず") == 0) {
+        memcpy(str + len - 6, "せず", 6);
+    }
+}
+
 // メイン動詞活用関数
 verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vowel,
                                     const char *left_particle,
@@ -627,6 +649,28 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
             result.success = true;
             return result;
         }
+    }
+
+    // 「いう」処理: right_vowel == 'IU' && strlen(right_conso) == 0
+    if (strlen(right_conso) == 0 && strcmp(right_vowel, "IU") == 0) {
+        const right_auxiliary_t *iu_right_aux = get_right_auxiliary(right_particle);
+        int iu_conj_form = CONJ_JISHO;
+        const char *iu_suffix = "";
+
+        if (iu_right_aux != NULL) {
+            iu_conj_form = iu_right_aux->conj_form;
+            iu_suffix = iu_right_aux->suffix;
+        }
+
+        strcpy(result.output, left_kana);
+        strcat(result.output, get_particle_extra(left_particle));
+
+        int idx = gyou_to_index('w');
+        strcat(result.output, "い");
+        strcat(result.output, godan_conjugate[idx][iu_conj_form]);
+        strcat(result.output, iu_suffix);
+        result.success = true;
+        return result;
     }
 
     const verb_entry_t *verb = NULL;
@@ -691,15 +735,12 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
             result.output[0] = '\0';
         }
         strcat(result.output, sahen_conjugate[conj_form]);
-        char *shizu_pos = strstr(result.output, "しず");
-        if (shizu_pos) {
-            memcpy(shizu_pos, "せず", 6);
-        }
         if (left_aux != NULL) {
             append_left_auxiliary(result.output, left_aux, right_aux);
         } else {
             strcat(result.output, suffix);
         }
+        apply_sahen_negative_zu(result.output, conj_form, suffix);
         result.success = true;
         return result;
     }

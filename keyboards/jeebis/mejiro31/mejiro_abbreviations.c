@@ -37,7 +37,6 @@ static const user_abbreviation_t user_abbreviations[] = {
     {"YAU-STAU", "よろしく"},
     {"TA-TAU", "たとえば"},
     {"KNU-TY", "ぐたいてきには"},
-    {"TA-SI", "たしかに"},
     {NULL, NULL}
 };
 
@@ -57,11 +56,7 @@ static const abstract_abbreviation_t abstract_abbreviations[] = {
     {"KAU-IU", "こういう"},
     {"SAU-IU", "そういう"},
     {"TNAU-IU", "どういう"},
-    {"KIAU-IU", "こういう"},
-    {"SIAU-IU", "そういう"},
-    {"TNIAU-IU", "どういう"},
     {"NA-IU", "なんていう"},
-    {"TAU-IU", "という"},
     {NULL, NULL}
 };
 

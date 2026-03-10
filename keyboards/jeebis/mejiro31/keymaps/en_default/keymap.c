@@ -47,7 +47,6 @@ enum custom_keycodes {
 
 #define MT_SPC KC_LSFT
 #define MT_ENT KC_RSFT
-#define MT_ESC MT(MOD_LGUI, KC_ESC)
 #define MO_FUN MO(_FUNCTION)
 #define MT_TGL LT(_NUMBER, KC_F24)
 
