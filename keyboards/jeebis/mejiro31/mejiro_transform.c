@@ -195,7 +195,7 @@ static const char *kana_table[][8] = {
     {"は", "ひ", "ふ", "へ", "ほ", "ひゃ", "ひゅ", "ひょ"}, // h
     {"ま", "み", "む", "め", "も", "みゃ", "みゅ", "みょ"}, // m
     {"ら", "り", "る", "れ", "ろ", "りゃ", "りゅ", "りょ"}, // r
-    {"わ", "うぃ", "う", "うぇ", "うぉ", "うぁ", "う", "うぉ"}, // w
+    {"わ", "うぃ", "う", "うぇ", "うぉ", "うぁ", "う", "を"}, // w
     {"が", "ぎ", "ぐ", "げ", "ご", "ぎゃ", "ぎゅ", "ぎょ"}, // g
     {"ざ", "じ", "ず", "ぜ", "ぞ", "じゃ", "じゅ", "じょ"}, // z
     {"だ", "ぢ", "づ", "で", "ど", "ぢゃ", "ぢゅ", "ぢょ"}, // d
@@ -232,11 +232,11 @@ typedef struct {
 } minor_diphthong_map_t;
 
 static const minor_diphthong_map_t minor_diphthong_table[] = {
-    {"IAUtk", "a", "a"},   // ~aa
-    {"YItk", "i", "i"},    // ~ii
-    {"YIUtk", "o", "i"},   // ~oi
-    {"YIAtk", "e", "e"},   // ~ee
-    {"YIAUtk", "o", "o"},  // ~oo
+    {"IAUtk", "a", "u"},   // ~あう
+    {"YItk", "i", "i"},    // ~いい
+    {"YIUtk", "o", "i"},   // ~おい
+    {"YIAtk", "a", "e"},   // ~あえ
+    {"YIAUtk", "o", "o"},  // ~おお
 };
 
 // 英語音マッピング（親指を使う外来音）
@@ -250,10 +250,10 @@ static const english_diphthong_map_t english_diphthong_table[] = {
 
 // |V/C | t | k |  nt   | nk | ntk|
 // |----|---|---|-------|----|----|
-// |IAU |~as|~al|~ation |~ang|~arn|
+// |IAU |~as|~al|~ation |~ind|~arn|
 // |YI  |~is|~il|~ition |~ing|~een|
-// |YIU |~us|~ul|~usion |~ank|~oom|
-// |YIA |~es|~el|~ention|~eng|~ain|
+// |YIU |~us|~ul|~usion |~and|~oom|
+// |YIA |~es|~el|~ention|~end|~ain|
 // |YIAU|~os|~ol|~otion |~ong|~orn|
 
     // t
@@ -278,10 +278,10 @@ static const english_diphthong_map_t english_diphthong_table[] = {
     {"YIAUnt", "o", "ーしょん"}, // ~otion
 
     // nk
-    {"IAUnk", "a", "んぐ"},  // ~ang
+    {"IAUnk", "a", "いんど"},  // ~ind
     {"YInk", "i", "んぐ"},   // ~ing
-    {"YIUnk", "a", "んく"},  // ~ank
-    {"YIAnk", "e", "んぐ"},  // ~eng
+    {"YIUnk", "a", "んど"},  // ~and
+    {"YIAnk", "e", "んど"},  // ~end
     {"YIAUnk", "o", "んぐ"}, // ~ong
 
     // ntk
