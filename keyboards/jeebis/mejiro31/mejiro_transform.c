@@ -493,6 +493,37 @@ static void convert_to_kana(const char *conso, const char *vowel, const char *pa
         return;
     }
 
+    // 例外かなを先に確認（特定の助詞では最優先）
+    char conso_vowel[32];
+    strcpy(conso_vowel, conso);
+    strcat(conso_vowel, vowel);
+    const char *exception_kana = check_exception_kana(conso_vowel);
+    bool prefer_exception = (strcmp(particle_str, "n") == 0 ||
+                             strcmp(particle_str, "tk") == 0 ||
+                             strcmp(particle_str, "ntk") == 0);
+    if (prefer_exception && exception_kana != NULL) {
+        strcpy(out, exception_kana);
+
+        // 入力ストロークで判定（「っ」持ち越し処理に対応）
+        if (strcmp(particle_str, "tk") == 0) {
+            if (strcmp(conso_vowel, "SKIAU") == 0) {
+                strcpy(out, "ちぇ");
+            } else if (strcmp(conso_vowel, "STKNIAU") == 0) {
+                strcpy(out, "じぇ");
+            } else if (strcmp(conso_vowel, "STNIAU") == 0) {
+                strcpy(out, "しぇ");
+            } else if (strcmp(conso_vowel, "TNYIAU") == 0) {
+                strcpy(out, "いぇ");
+            }
+        }
+
+        if (include_extra_sound) {
+            const char *extra = get_second_sound(particle_str);
+            strcat(out, extra);
+        }
+        return;
+    }
+
     // 英語音をチェック（母音+助詞）- 優先度高
     char vowel_particle[32];
     strcpy(vowel_particle, vowel);
@@ -580,22 +611,20 @@ static void convert_to_kana(const char *conso, const char *vowel, const char *pa
     }
 
     // 例外的なかなのマッピングをチェック
-    char conso_vowel[32];
-    strcpy(conso_vowel, conso);
-    strcat(conso_vowel, vowel);
-    const char *exception_kana = check_exception_kana(conso_vowel);
-
     if (exception_kana != NULL) {
         // 例外かなを使用
         strcpy(out, exception_kana);
 
-        // でゅっ→ちぇっ、ふゅっ→じぇっ
         // 入力ストロークで判定（「っ」持ち越し処理に対応）
         if (strcmp(particle_str, "tk") == 0) {
-            if (strcmp(conso_vowel, "SKYU") == 0) {
+            if (strcmp(conso_vowel, "SKIAU") == 0) {
                 strcpy(out, "ちぇ");
-            } else if (strcmp(conso_vowel, "STKNYU") == 0) {
+            } else if (strcmp(conso_vowel, "STKNIAU") == 0) {
                 strcpy(out, "じぇ");
+            } else if (strcmp(conso_vowel, "STNIAU") == 0) {
+                strcpy(out, "しぇ");
+            } else if (strcmp(conso_vowel, "TNYIAU") == 0) {
+                strcpy(out, "いぇ");
             }
         }
 
