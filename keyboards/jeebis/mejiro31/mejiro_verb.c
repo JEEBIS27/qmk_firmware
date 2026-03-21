@@ -431,10 +431,10 @@ static const auxiliary_map_t auxiliary_exception[] = {
     {"nt-n", CONJ_MASU, "たくない"}, // ～たい+否定
     {"nt-t", CONJ_MASU, "たかった"}, // ～たい+過去
     {"nt-nt", CONJ_MASU, "たくなかった"}, // ～たい+否定+過去
-    {"nt-k", CONJ_MASU, "てほしい"}, // ～ほしい
-    {"nt-nk", CONJ_MASU, "てほしくない"}, // ～ほしい+否定
-    {"nt-tk", CONJ_MASU, "てほしかった"}, // ～ほしい+過去
-    {"nt-ntk", CONJ_MASU, "てほしくなかった"}, // ～ほしい+否定+過去
+    {"nt-k", CONJ_TE_TA, "てほしい"}, // ～ほしい
+    {"nt-nk", CONJ_TE_TA, "てほしくない"}, // ～ほしい+否定
+    {"nt-tk", CONJ_TE_TA, "てほしかった"}, // ～ほしい+過去
+    {"nt-ntk", CONJ_TE_TA, "てほしくなかった"}, // ～ほしい+否定+過去
     {"tk-", CONJ_KANOU, "る"},              // 可能
     {"tk-n", CONJ_KANOU, "ない"},           // 可能+否定
     {"tk-t", CONJ_KANOU, "た"},             // 可能+過去
@@ -770,19 +770,14 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
     }
 
     if (strcmp(right_vowel, "I") == 0) {
-        char gyou = 'w';
-        if (strlen(right_kana) > 0) {
-            gyou = kana_to_gyou(right_kana);
-            if (gyou == '\0') gyou = 'w';
-        }
-        if (gyou == 'k' || gyou == 'g' || gyou == 'z' || gyou == 't' ||
-            gyou == 'n' || gyou == 'b' || gyou == 'm' || gyou == 'r' || gyou == 'w') {
+        char gyou = kana_to_gyou(right_kana);
+        int idx = gyou_to_index(gyou);
+        if (gyou != '\0' && idx < 9 && kami_conjugate[idx][CONJ_JISHO][0] != '\0') {
             if (strlen(left_kana) > 0) {
                 strcpy(result.output, left_kana);
             } else {
                 result.output[0] = '\0';
             }
-            int idx = gyou_to_index(gyou);
             strcat(result.output, kami_conjugate[idx][conj_form]);
             if (left_aux != NULL) {
                 append_left_auxiliary(result.output, left_aux, right_aux);
@@ -795,20 +790,14 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
     }
 
     if (strcmp(right_vowel, "IA") == 0) {
-        char gyou = 'w';
-        if (strlen(right_kana) > 0) {
-            gyou = kana_to_gyou(right_kana);
-            if (gyou == '\0') gyou = 'w';
-        }
-        if (gyou == 'k' || gyou == 'g' || gyou == 's' || gyou == 'z' ||
-            gyou == 't' || gyou == 'd' || gyou == 'n' || gyou == 'h' ||
-            gyou == 'b' || gyou == 'm' || gyou == 'r' || gyou == 'w') {
+        char gyou = kana_to_gyou(right_kana);
+        int idx = gyou_to_index_simo(gyou);
+        if (gyou != '\0' && idx < 12 && simo_conjugate[idx][CONJ_JISHO][0] != '\0') {
             if (strlen(left_kana) > 0) {
                 strcpy(result.output, left_kana);
             } else {
                 result.output[0] = '\0';
             }
-            int idx = gyou_to_index_simo(gyou);
             strcat(result.output, simo_conjugate[idx][conj_form]);
             if (left_aux != NULL) {
                 append_left_auxiliary(result.output, left_aux, right_aux);
