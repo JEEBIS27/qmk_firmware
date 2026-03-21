@@ -9,11 +9,10 @@ const mejiro_command_t mejiro_commands[] = {
     {"-U",    CMD_UNDO,   {.keycode = 0}},
 
     // コマンド
-    {"Sk#-",   CMD_KEYCODE, {.keycode = LCTL(KC_Z)}},
-    {"Kk#-",   CMD_KEYCODE, {.keycode = LCTL(KC_X)}},
-    {"Nk#-",   CMD_KEYCODE, {.keycode = LCTL(KC_C)}},
-    {"Ak#-",   CMD_KEYCODE, {.keycode = LCTL(KC_V)}},
-    {"Ank#-",  CMD_KEYCODE, {.keycode = LCTL(LSFT(KC_V))}},
+    {"#-n",    CMD_KEYCODE, {.keycode = LSFT(KC_ENTER)}},
+    {"#-nk",   CMD_KEYCODE, {.keycode = LCTL(KC_ENTER)}},
+    {"#-t",    CMD_KEYCODE, {.keycode = KC_LNG1}},
+    {"#-k",    CMD_KEYCODE, {.keycode = KC_LNG2}},
 
     // キーコード送信
     {"-AU",   CMD_KEYCODE, {.keycode = KC_BSPC}},
@@ -75,10 +74,6 @@ const mejiro_command_t mejiro_commands[] = {
     {"-KYA",  CMD_STRING,  {.string = "zk"}}, // ↑
     {"-IAU",  CMD_STRING,  {.string = "zh"}}, // ←
     {"-STK",  CMD_STRING,  {.string = "zl"}}, // →
-    {"-NYA",  CMD_STRING,  {.string = "zhj"}}, // ↙
-    {"-TNY",  CMD_STRING,  {.string = "zlk"}}, // ↗
-    {"-NYI",  CMD_STRING,  {.string = "zhk"}}, // ↖
-    {"-KNY",  CMD_STRING,  {.string = "zlj"}}, // ↘
     {"-nt",   CMD_STRING,  {.string = "."}},
     {"-nk",   CMD_STRING,  {.string = ","}},
     {"n-nt",  CMD_STRING,  {.string = "?"}},
