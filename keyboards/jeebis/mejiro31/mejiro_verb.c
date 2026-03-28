@@ -195,7 +195,8 @@ static const char *aru_conjugate[10] = {
 
 // 主要な動詞辞書 (Plover_Mejiroより統合)
 static const verb_entry_t verb_dict[] = {
-    // 五段活用 (k行)
+    // 五段活用
+    // k行 13コ
     {"A-STU", "ある", 'k', VERB_TYPE_GODAN},       // 歩く
     {"I-TNA", "いただ", 'k', VERB_TYPE_GODAN},     // 頂く
     {"U-KNAU", "うご", 'k', VERB_TYPE_GODAN},      // 動く
@@ -207,17 +208,17 @@ static const verb_entry_t verb_dict[] = {
     {"TU-TNU", "つづ", 'k', VERB_TYPE_GODAN},      // 続く
     {"NAU-SNAU", "のぞ", 'k', VERB_TYPE_GODAN},    // 除く
     {"TKA-STA", "はたら", 'k', VERB_TYPE_GODAN},   // 働く
+    {"TKI-STA", "ひら", 'k', VERB_TYPE_GODAN},     // 開く
     {"SKNI-KNA", "みが", 'k', VERB_TYPE_GODAN},    // 磨く
-    // 五段活用 (g行)
+    // g行 7コ
     {"I-SAU", "いそ", 'g', VERB_TYPE_GODAN},       // 急ぐ
     {"KA-SIA", "かせ", 'g', VERB_TYPE_GODAN},      // 稼ぐ
     {"KA-TU", "かつ", 'g', VERB_TYPE_GODAN},       // 担ぐ
     {"SA-SA", "ささ", 'g', VERB_TYPE_GODAN},       // 捧ぐ
-    {"SA-SKA", "さわ", 'g', VERB_TYPE_GODAN},      // 騒ぐ
     {"TU-NA", "つな", 'g', VERB_TYPE_GODAN},       // 繋ぐ
     {"TKU-SA", "ふさ", 'g', VERB_TYPE_GODAN},      // 塞ぐ
     {"TKU-SIA", "ふせ", 'g', VERB_TYPE_GODAN},     // 防ぐ
-    // 五段活用 (s行)
+    // s行 27コ
     {"A-KA", "あか", 's', VERB_TYPE_GODAN},        // 明かす
     {"I-KA", "いか", 's', VERB_TYPE_GODAN},        // 活かす
     {"I-TA", "いた", 's', VERB_TYPE_GODAN},        // 致す
@@ -228,15 +229,16 @@ static const verb_entry_t verb_dict[] = {
     {"KAU-STAU", "ころ", 's', VERB_TYPE_GODAN},    // 殺す
     {"KAU-SKA", "こわ", 's', VERB_TYPE_GODAN},     // 壊す
     {"SA-KNA", "さが", 's', VERB_TYPE_GODAN},      // 探す
+    {"SI-SKNIA", "しめ", 's', VERB_TYPE_GODAN},    // 示す
     {"TA-AU", "たお", 's', VERB_TYPE_GODAN},       // 倒す
     {"TNA-", "だ", 's', VERB_TYPE_GODAN},          // 出す
     {"TU-TKNU", "つぶ", 's', VERB_TYPE_GODAN},     // 潰す
     {"TIA-STA", "てら", 's', VERB_TYPE_GODAN},     // 照らす
     {"NA-AU", "なお", 's', VERB_TYPE_GODAN},       // 直す
     {"NI-KNA", "にが", 's', VERB_TYPE_GODAN},      // 逃がす
-    {"NAU-KAU", "のこ", 's', VERB_TYPE_GODAN},     // 残す
     {"NAU-TKNA", "のば", 's', VERB_TYPE_GODAN},    // 伸ばす
     {"TKA-NA", "はな", 's', VERB_TYPE_GODAN},      // 話す
+    {"TKA-KNA", "はが", 's', VERB_TYPE_GODAN},     // 剥がす
     {"SKNA-KA", "まか", 's', VERB_TYPE_GODAN},     // 任す
     {"SKNI-TA", "みた", 's', VERB_TYPE_GODAN},     // 満たす
     {"SKNI-NA", "みな", 's', VERB_TYPE_GODAN},     // 見なす
@@ -244,26 +246,28 @@ static const verb_entry_t verb_dict[] = {
     {"SKNI-SKA", "みわた", 's', VERB_TYPE_GODAN},  // 見渡す
     {"YU-STA", "ゆら", 's', VERB_TYPE_GODAN},      // 揺らす
     {"SKA-TA", "わた", 's', VERB_TYPE_GODAN},      // 渡す
-    // 五段活用 (t行)
+    // t行 4コ
     {"U-KNA", "うが", 't', VERB_TYPE_GODAN},       // 穿つ
     {"SAU-TNA", "そだ", 't', VERB_TYPE_GODAN},     // 育つ
     {"TA-SKNAU", "たも", 't', VERB_TYPE_GODAN},    // 保つ
     {"SKNIA-TNA", "めだ", 't', VERB_TYPE_GODAN},   // 目立つ
-    // 五段活用 (b行)
+    // b行 10コ
     {"A-SAU", "あそ", 'b', VERB_TYPE_GODAN},       // 遊ぶ
     {"IA-STA", "えら", 'b', VERB_TYPE_GODAN},      // 選ぶ
     {"AU-YAU", "およ", 'b', VERB_TYPE_GODAN},      // 及ぶ
+    {"KAU-STAU", "ころ", 'b', VERB_TYPE_GODAN},    // 転ぶ
     {"NA-STA", "なら", 'b', VERB_TYPE_GODAN},      // 並ぶ
     {"TKA-KAU", "はこ", 'b', VERB_TYPE_GODAN},     // 運ぶ
     {"TKAU-STAU", "ほろ", 'b', VERB_TYPE_GODAN},   // 滅ぶ
     {"SKNA-NA", "まな", 'b', VERB_TYPE_GODAN},     // 学ぶ
     {"SKNU-SU", "むす", 'b', VERB_TYPE_GODAN},     // 結ぶ
     {"YAU-STAU", "よろこ", 'b', VERB_TYPE_GODAN},  // 喜ぶ
-    // 五段活用 (m行)
+    // m行 19コ
     {"I-NA", "いな", 'm', VERB_TYPE_GODAN},        // 否む
     {"U-STA", "うらや", 'm', VERB_TYPE_GODAN},     // 羨む
     {"KA-KNA", "かが", 'm', VERB_TYPE_GODAN},      // 屈む
     {"KA-SU", "かす", 'm', VERB_TYPE_GODAN},       // 霞む
+    {"SI-SNU", "しず", 'm', VERB_TYPE_GODAN},      // 沈む
     {"SU-SU", "すす", 'm', VERB_TYPE_GODAN},       // 進む
     {"TA-NAU", "たの", 'm', VERB_TYPE_GODAN},      // 頼む
     {"TIU-TKNA", "ついば", 'm', VERB_TYPE_GODAN},  // 啄む
@@ -278,13 +282,14 @@ static const verb_entry_t verb_dict[] = {
     {"TKU-KU", "ふく", 'm', VERB_TYPE_GODAN},      // 含む
     {"TKAU-TKAU", "ほほえ", 'm', VERB_TYPE_GODAN}, // 微笑む
     {"YA-SU", "やす", 'm', VERB_TYPE_GODAN},       // 休む
-    // 五段活用 (r行)
+    // r行 17コ
     {"I-", "い", 'r', VERB_TYPE_GODAN},            // 要る
     {"KA-KNI", "かぎ", 'r', VERB_TYPE_GODAN},      // 限る
     {"KNA-TKNA", "がんば", 'r', VERB_TYPE_GODAN},  // 頑張る
     {"KNA-", "がんば", 'r', VERB_TYPE_GODAN},      // 頑張る
     {"KU-TNA", "くださ", 'r', VERB_TYPE_GODAN},    // 下さる
     {"KIA-", "け", 'r', VERB_TYPE_GODAN},          // 蹴る
+    {"KAU-TAU", "ことな", 'r', VERB_TYPE_GODAN},   // 異なる
     {"SYA-TKNIA", "しゃべ", 'r', VERB_TYPE_GODAN}, // しゃべる
     {"SU-TKNIA", "すべ", 'r', VERB_TYPE_GODAN},    // 滑る
     {"T-KA", "たすか", 'r', VERB_TYPE_GODAN},      // 助かる
@@ -295,7 +300,7 @@ static const verb_entry_t verb_dict[] = {
     {"YA-", "や", 'r', VERB_TYPE_GODAN},           // やる
     {"-YA", "や", 'r', VERB_TYPE_GODAN},           // やる
     {"SKA-", "わか", 'r', VERB_TYPE_GODAN},        // 分かる
-    // 五段活用 (w行)
+    // w行 41コ
     {"-A", "あ", 'w', VERB_TYPE_GODAN},            // 会う
     {"A-STA", "あら", 'w', VERB_TYPE_GODAN},       // 洗う
     {"A-SAU", "あらそ", 'w', VERB_TYPE_GODAN},     // 争う
@@ -337,45 +342,51 @@ static const verb_entry_t verb_dict[] = {
     {"SKNU-KA", "むか", 'w', VERB_TYPE_GODAN},     // 向かう
     {"SKNAU-STA", "もら", 'w', VERB_TYPE_GODAN},   // 貰う
     {"SKA-STA", "わら", 'w', VERB_TYPE_GODAN},     // 笑う
-    // 上一段活用 (k行)
+    // 上一段活用
+    // k行 1コ
     {"TN-KI", "で", 'k', VERB_TYPE_KAMI},          // 出来る
-    // 上一段活用 (z行)
+    // z行 5コ
     {"IA-SNI", "えん", 'z', VERB_TYPE_KAMI},       // 演じる
     {"KA-SNI", "かん", 'z', VERB_TYPE_KAMI},       // 感じる
     {"KI-SNI", "きん", 'z', VERB_TYPE_KAMI},       // 禁じる
     {"SI-SNI", "しん", 'z', VERB_TYPE_KAMI},       // 信じる
     {"TNA-SNI", "だん", 'z', VERB_TYPE_KAMI},      // 断じる
-    // 上一段活用 (m行)
+    // m行 1コ
     {"KA-SKNI", "かんが", 'm', VERB_TYPE_KAMI},    // 鑑みる
-    // 下一段活用 (k行)
+    // 下一段活用
+    // k行 4コ
     {"KI-SKAU", "きをつ", 'k', VERB_TYPE_SIMO},    // 気をつける
     {"T-KIA", "たす", 'k', VERB_TYPE_SIMO},        // 助ける
     {"TU-TN", "つづ", 'k', VERB_TYPE_SIMO},        // 続ける
     {"TN-KIA", "つづ", 'k', VERB_TYPE_SIMO},       // 続ける
-    // 下一段活用 (g行)
+    // g行 1コ
     {"K-KNIA", "かか", 'g', VERB_TYPE_SIMO},       // 掲げる
-    // 下一段活用 (s行)
+    // s行 2コ
+    {"A-SKNA", "あわ", 's', VERB_TYPE_SIMO},       // 合わせる
     {"SKNA-KA", "まか", 's', VERB_TYPE_SIMO},      // 任せる
-    // 下一段活用 (d行)
+    // d行 1コ
     {"TN-", "", 'd', VERB_TYPE_SIMO},              // 出る
-    // 下一段活用 (b行)
+    // b行 2コ
     {"KU-STA", "くら", 'b', VERB_TYPE_SIMO},       // 比べる
-    // 下一段活用 (m行)
+    {"SI-STA", "しら", 'b', VERB_TYPE_SIMO},       // 調べる
+    // m行 4コ
     {"SA-TNA", "さだ", 'm', VERB_TYPE_SIMO},       // 定める
     {"TA-SI", "たしか", 'm', VERB_TYPE_SIMO},      // 確かめる
     {"TKA-SNI", "はじ", 'm', VERB_TYPE_SIMO},      // 始める
     {"SKNAU-TAU", "もと", 'm', VERB_TYPE_SIMO},    // 求める
-    // 下一段活用 (r行)
-
+    // r行 5コ
+    {"U-SKNAU", "うも", 'r', VERB_TYPE_SIMO},      // 埋もれる
     {"KAU-STIA", "こわ", 'r', VERB_TYPE_SIMO},     // 壊れる
     {"NA-KNA", "なが", 'r', VERB_TYPE_SIMO},       // 流れる
+    {"TKA-SNU", "はず", 'r', VERB_TYPE_SIMO},      // 外れる
     {"SKA-SU", "わす", 'r', VERB_TYPE_SIMO},       // 忘れる
-    // 下一段活用 (w行)
+    // w行 10コ
     {"AU-SA", "おさ", 'w', VERB_TYPE_SIMO},        // 抑える
     {"AU-SI", "おし", 'w', VERB_TYPE_SIMO},        // 教える
     {"AU-TKNAU", "おぼ", 'w', VERB_TYPE_SIMO},     // 覚える
     {"KA-KNA", "かんが", 'w', VERB_TYPE_SIMO},     // 考える
     {"KA-", "かんが", 'w', VERB_TYPE_SIMO},        // 考える
+    {"KI-TA", "きた", 'w', VERB_TYPE_SIMO},        // 鍛える
     {"KU-SKA", "くわ", 'w', VERB_TYPE_SIMO},       // 加える
     {"KAU-TA", "こた", 'w', VERB_TYPE_SIMO},       // 答える
     {"SA-SA", "ささ", 'w', VERB_TYPE_SIMO},        // 支える
