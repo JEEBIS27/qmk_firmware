@@ -48,4 +48,5 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
                                     const char *left_particle,
                                     const char *right_conso, const char *right_vowel, 
                                     const char *right_particle,
-                                    const char *left_kana, const char *right_kana);
+                                    const char *left_kana, const char *right_kana,
+                                    const char *left_syllable, const char *right_syllable);

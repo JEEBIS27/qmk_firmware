@@ -362,7 +362,7 @@ static const verb_entry_t verb_dict[] = {
     // g行 1コ
     {"K-KNIA", "かか", 'g', VERB_TYPE_SIMO},       // 掲げる
     // s行 2コ
-    {"A-SKNA", "あわ", 's', VERB_TYPE_SIMO},       // 合わせる
+    {"A-SKA", "あわ", 's', VERB_TYPE_SIMO},       // 合わせる
     {"SKNA-KA", "まか", 's', VERB_TYPE_SIMO},      // 任せる
     // d行 1コ
     {"TN-", "", 'd', VERB_TYPE_SIMO},              // 出る
@@ -416,19 +416,6 @@ static const desu_conjugate_t desu_conjugate[] = {
     {"ntk", "ですね"},
     {NULL, NULL}
 };
-
-// 助詞の追加音（ん/つ/く/っ/ち/き/ー）を取得
-static const char *get_particle_extra(const char *particle) {
-    static const char *particle_key_list[] = {"", "n", "t", "k", "tk", "nt", "nk", "ntk"};
-    static const char *second_sound_list[] = {"", "ん", "つ", "く", "っ", "ち", "き", "ー"};
-
-    for (size_t i = 0; i < sizeof(particle_key_list) / sizeof(particle_key_list[0]); i++) {
-        if (strcmp(particle, particle_key_list[i]) == 0) {
-            return second_sound_list[i];
-        }
-    }
-    return "";
-}
 
 // 補助動詞・助動詞マップ
 typedef struct {
@@ -627,7 +614,8 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
                                     const char *left_particle,
                                     const char *right_conso, const char *right_vowel,
                                     const char *right_particle,
-                                    const char *left_kana, const char *right_kana) {
+                                    const char *left_kana, const char *right_kana,
+                                    const char *left_syllable, const char *right_syllable) {
     verb_result_t result = {{0}, false};
 
     char stroke[64];
@@ -647,13 +635,8 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
 
     // 「です」処理: right_conso == 'TN' && strlen(right_vowel) == 0
     if (strcmp(right_conso, "TN") == 0 && strlen(right_vowel) == 0) {
-        char base[128] = {0};
-        strcat(base, left_kana);
-        // 左側の助詞追加音は含める（例: TAn-TN* → たんです）
-        strcat(base, get_particle_extra(left_particle));
-        // 右側の助詞追加音は含めない（例: -TNk* → でしょう）
-
-        strcpy(result.output, base);
+        // left_syllableを使用（助詞込みの完全な音節）
+        strcpy(result.output, left_syllable);
         const char *desu_form = get_desu_conjugate(right_particle);
         if (desu_form != NULL) {
             strcat(result.output, desu_form);
@@ -664,22 +647,12 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
 
     // 「いう」処理: right_vowel == 'IU' && strlen(right_conso) == 0
     if (strlen(right_conso) == 0 && strcmp(right_vowel, "IU") == 0) {
-        const right_auxiliary_t *iu_right_aux = get_right_auxiliary(right_particle);
-        int iu_conj_form = CONJ_JISHO;
-        const char *iu_suffix = "";
-
-        if (iu_right_aux != NULL) {
-            iu_conj_form = iu_right_aux->conj_form;
-            iu_suffix = iu_right_aux->suffix;
-        }
-
         strcpy(result.output, left_kana);
-        strcat(result.output, get_particle_extra(left_particle));
 
         int idx = gyou_to_index('w');
         strcat(result.output, "い");
-        strcat(result.output, godan_conjugate[idx][iu_conj_form]);
-        strcat(result.output, iu_suffix);
+        strcat(result.output, godan_conjugate[idx][conj_form]);
+        strcat(result.output, suffix);
         result.success = true;
         return result;
     }
@@ -832,6 +805,10 @@ verb_result_t mejiro_verb_conjugate(const char *left_conso, const char *left_vow
         char *gozari_pos = strstr(result.output, "ござり");
         if (gozari_pos) {
             memcpy(gozari_pos + 6, "い", 3);
+        }
+        char *nasari_pos = strstr(result.output, "なさり");
+        if (nasari_pos) {
+            memcpy(nasari_pos + 6, "い", 3);
         }
         if (left_aux != NULL) {
             append_left_auxiliary(result.output, left_aux, right_aux);
