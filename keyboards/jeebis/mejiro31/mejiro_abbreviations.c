@@ -98,6 +98,7 @@ static const abstract_right_t abstract_right[] = {
     {"TAU", "ところ"},
     {"TKI", "ひと"},
     {"TKA", "はなし"},
+    {"KA", "かんじ"},
     {"TKIAU", "ほう"},
     {"SKNAU", "もの"},
     {"KNAU", "ものごと"},
