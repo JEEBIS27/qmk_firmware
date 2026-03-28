@@ -1,6 +1,9 @@
 # AI Contexts
 contexts/
 
+# Backup
+*.backup
+
 # Junk files
 *.bak
 *.swp
