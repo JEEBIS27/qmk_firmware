@@ -66,6 +66,7 @@ static const kana_roma_t kana_roma_table[] = {
     {"うぁ", "wha"}, {"うぃ", "wi"},  {"うぇ", "we"}, {"うぉ", "who"},
     {"ふぁ", "fa"},  {"ふぃ", "fi"},  {"ふぇ", "fe"}, {"ふぉ", "fo"},
     {"ふゃ", "fya"}, {"ふゅ", "fyu"}, {"ふょ", "fyo"},
+    {"くぁ", "kwa"},  {"くぃ", "kwi"},  {"くぇ", "kwe"}, {"くぉ", "kwo"},
     {"いぇ", "ye"}, {"しぇ", "she"}, {"じぇ", "je"}, {"ちぇ", "che"},
     {"てぃ", "thi"}, {"でぃ", "dhi"}, {"でゅ", "dhu"},
     {"とぅ", "twu"}, {"どぅ", "dwu"},
@@ -657,6 +658,137 @@ static void convert_to_kana(const char *conso, const char *vowel, const char *pa
     }
 }
 
+// 子音・母音・助詞から、音節全体を生成する関数（英語音・マイナー音対応）
+// 「です」処理など、助詞込みの完全な音節が必要な場合に使用
+static void convert_to_syllable(const char *conso, const char *vowel, const char *particle_str, char *out) {
+    out[0] = '\0';
+
+    // STN+母音なしは「何も出力しない」特例（追加音のみ必要なケース）
+    if (strlen(conso) > 0 && strlen(vowel) == 0 && strcmp(conso, "STN") == 0) {
+        const char *extra = get_second_sound(particle_str);
+        strcpy(out, extra);
+        return;
+    }
+
+    // 例外かなを先に確認（特定の助詞では最優先）
+    char conso_vowel[32];
+    strcpy(conso_vowel, conso);
+    strcat(conso_vowel, vowel);
+    const char *exception_kana = check_exception_kana(conso_vowel);
+    bool prefer_exception = (strcmp(particle_str, "n") == 0 ||
+                             strcmp(particle_str, "tk") == 0 ||
+                             strcmp(particle_str, "ntk") == 0);
+
+    // 英語音をチェック（母音+助詞）- 最優先
+    char vowel_particle[32];
+    strcpy(vowel_particle, vowel);
+    strcat(vowel_particle, particle_str);
+    const char *first_vowel = NULL;
+    const char *suffix = NULL;
+    bool is_english = check_english_diphthong(vowel_particle, &first_vowel, &suffix);
+
+    if (is_english) {
+        // 英語音の場合
+        const char *c_roma = get_conso_roma(conso);
+        if (c_roma == NULL) c_roma = "";
+
+        int v_idx = -1;
+        for (uint8_t j = 0; j < sizeof(vowel_table)/sizeof(vowel_table[0]); j++) {
+            if (strcmp(vowel_table[j].roma, first_vowel) == 0) {
+                v_idx = vowel_table[j].index;
+                break;
+            }
+        }
+        if (v_idx < 0) v_idx = 0;
+
+        int c_idx = get_roma_index(c_roma);
+        if (c_idx < 0) c_idx = 0;
+
+        const char *base_kana = kana_table[c_idx][v_idx];
+
+        // 英語モードの置き換え
+        if (strcmp(base_kana, "ち") == 0) {
+            base_kana = "てぃ";
+        } else if (strcmp(base_kana, "ぢ") == 0) {
+            base_kana = "でぃ";
+        } else if (strcmp(base_kana, "づ") == 0) {
+            base_kana = "どぅ";
+        } else if (strcmp(base_kana, "ぁ") == 0) {
+            base_kana = "すた";
+        } else if (strcmp(base_kana, "ぃ") == 0) {
+            base_kana = "すち";
+        } else if (strcmp(base_kana, "ぅ") == 0) {
+            base_kana = "すてぃ";
+        } else if (strcmp(base_kana, "ぇ") == 0) {
+            base_kana = "すて";
+        } else if (strcmp(base_kana, "ぉ") == 0) {
+            base_kana = "すと";
+        }
+
+        strcpy(out, base_kana);
+        strcat(out, suffix);
+
+        // 連結後の組み合わせ置き換え
+        if (strcmp(out, "るしょん") == 0) {
+            strcpy(out, "りゅーしょん");
+        } else if (strcmp(out, "ふしょん") == 0) {
+            strcpy(out, "ふゅーじょん");
+        }
+        return;
+    }
+
+    // マイナー二重母音をチェック（母音+助詞）
+    bool is_minor = check_minor_diphthong(vowel_particle, &first_vowel, &suffix);
+
+    if (is_minor) {
+        const char *c_roma = get_conso_roma(conso);
+        if (c_roma == NULL) c_roma = "";
+
+        int v_idx = -1;
+        for (uint8_t j = 0; j < sizeof(vowel_table)/sizeof(vowel_table[0]); j++) {
+            if (strcmp(vowel_table[j].roma, first_vowel) == 0) {
+                v_idx = vowel_table[j].index;
+                break;
+            }
+        }
+        if (v_idx < 0) v_idx = 0;
+
+        int c_idx = get_roma_index(c_roma);
+        if (c_idx < 0) c_idx = 0;
+
+        const char *base_kana = kana_table[c_idx][v_idx];
+
+        strcpy(out, base_kana);
+        strcat(out, suffix);
+        return;
+    }
+
+    // 例外的なかなのマッピング（英語音・マイナー音でない場合）
+    if (prefer_exception && exception_kana != NULL) {
+        strcpy(out, exception_kana);
+
+        // 入力ストロークで判定
+        if (strcmp(particle_str, "tk") == 0) {
+            if (strcmp(conso_vowel, "SKIAU") == 0) {
+                strcpy(out, "ちぇ");
+            } else if (strcmp(conso_vowel, "STKNIAU") == 0) {
+                strcpy(out, "じぇ");
+            } else if (strcmp(conso_vowel, "STNIAU") == 0) {
+                strcpy(out, "しぇ");
+            } else if (strcmp(conso_vowel, "TNYIAU") == 0) {
+                strcpy(out, "いぇ");
+            }
+        }
+
+        const char *extra = get_second_sound(particle_str);
+        strcat(out, extra);
+        return;
+    }
+
+    // 通常の処理（convert_to_kanaと同じ）に追加音を加える
+    convert_to_kana(conso, vowel, particle_str, true, out);
+}
+
 // 助詞変換
 static void transform_joshi(const char *left_stroke, const char *right_stroke, char *out) {
     // right_strokeからnを除去
@@ -693,10 +825,10 @@ static void transform_joshi(const char *left_stroke, const char *right_stroke, c
     if (strcmp(left_stroke, "n") == 0) {
         strcpy(out, r_particle[r_idx]);
         strcat(out, "、");
-    } else if ((strcmp(right_stroke, "k") == 0 || strcmp(right_stroke, "nk") == 0) &&
-               strcmp(left_stroke, "") != 0 && strcmp(left_stroke, "k") != 0 && strcmp(left_stroke, "ntk") != 0) {
+    } else if ((strcmp(right_stroke, "k") == 0 || strcmp(right_stroke, "nk") == 0) && strcmp(left_stroke, "") != 0) {
         strcpy(out, "の");
         strcat(out, l_particle[l_idx]);
+        if (strcmp(out, "のの") == 0) strcpy(out, "な");
         if (has_comma) strcat(out, "、");
     } else {
         strcpy(out, l_particle[l_idx]);
@@ -777,7 +909,7 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
         p++;
     }
 
-    // 動詞活用チェック（通常の変換より先に）。Plover版同様、アスタリスクがある場合のみ動詞略語を試行。
+    // 動詞活用チェック（通常の変換より先に）。アスタリスクがある場合のみ動詞略語を試行。
     if (has_asterisk) {
         // 完全なストロークを構築（アスタリスクを除く）
         char full_stroke[128];
@@ -849,19 +981,25 @@ mejiro_result_t mejiro_transform(const char *mejiro_id) {
         // 動詞略語チェック
         char left_kana_temp[64] = {0};
         char right_kana_temp[64] = {0};
+        char left_syllable_temp[64] = {0};
+        char right_syllable_temp[64] = {0};
+
         // 左側の仮名を生成（動詞語幹用）
         if (strlen(l_conso) > 0 || strlen(l_vowel) > 0) {
             convert_to_kana(l_conso, l_vowel, "", false, left_kana_temp);
+            convert_to_syllable(l_conso, l_vowel, l_particle_str, left_syllable_temp);
         }
         // 右側の仮名を生成（動詞語幹用）
         if (strlen(r_conso) > 0 || strlen(r_vowel) > 0) {
             convert_to_kana(r_conso, r_vowel, "", false, right_kana_temp);
+            convert_to_syllable(r_conso, r_vowel, r_particle_str, right_syllable_temp);
         }
 
         verb_result_t verb_result = mejiro_verb_conjugate(
             l_conso, l_vowel, l_particle_str,
             r_conso, r_vowel, r_particle_str,
-            left_kana_temp, right_kana_temp
+            left_kana_temp, right_kana_temp,
+            left_syllable_temp, right_syllable_temp
         );
 
         if (verb_result.success) {
