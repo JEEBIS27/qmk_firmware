@@ -282,7 +282,7 @@ static const verb_entry_t verb_dict[] = {
     {"TKU-KU", "ふく", 'm', VERB_TYPE_GODAN},      // 含む
     {"TKAU-TKAU", "ほほえ", 'm', VERB_TYPE_GODAN}, // 微笑む
     {"YA-SU", "やす", 'm', VERB_TYPE_GODAN},       // 休む
-    // r行 17コ
+    // r行 18コ
     {"I-", "い", 'r', VERB_TYPE_GODAN},            // 要る
     {"KA-KNI", "かぎ", 'r', VERB_TYPE_GODAN},      // 限る
     {"KNA-TKNA", "がんば", 'r', VERB_TYPE_GODAN},  // 頑張る
@@ -296,6 +296,7 @@ static const verb_entry_t verb_dict[] = {
     {"TA-SNU", "たずさわ", 'r', VERB_TYPE_GODAN},  // 携わる
     {"NA-", "な", 'r', VERB_TYPE_GODAN},           // なる
     {"TKY-", "はい", 'r', VERB_TYPE_GODAN},        // 入る
+    {"TKA-SI", "はし", 'r', VERB_TYPE_GODAN},      // 走る
     {"TKA-TKNA", "はばか", 'r', VERB_TYPE_GODAN},  // 憚る
     {"YA-", "や", 'r', VERB_TYPE_GODAN},           // やる
     {"-YA", "や", 'r', VERB_TYPE_GODAN},           // やる
