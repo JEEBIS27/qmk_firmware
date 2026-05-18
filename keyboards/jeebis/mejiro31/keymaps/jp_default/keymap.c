@@ -46,8 +46,12 @@ enum custom_keycodes {
     TG_MJR,              // Mejiro（メジロ式）モード切替キー
 };
 
-#define MT_SPC KC_LSFT
-#define MT_ENT KC_RSFT
+#define MT_SPC LT(MOD_LSFT, KC_SPC)
+#define QL_SPC LT(_QWERTY_SHIFT, KC_SPC)
+#define NL_SPC LT(_NUMBER_SHIFT, KC_SPC)
+#define MT_ENT LT(MOD_RSFT, KC_ENT)
+#define QL_ENT LT(_QWERTY_SHIFT, KC_ENT)
+#define NL_ENT LT(_NUMBER_SHIFT, KC_ENT)
 #define MT_TGL LT(_NUMBER, KC_F24)
 #define MO_FUN MO(_FUNCTION)
 #define MY_QUES RSFT(KC_SLSH)
@@ -94,10 +98,6 @@ static bool mt_tgl_pressed = false;
 static uint16_t dz_timer = 0;
 static bool dz_delayed = false;
 static uint8_t dz_fifo_len_at_press = 0;  // DZ キー押下時のコンボ FIFO 長
-uint16_t lshift_timer = 0;      // L_shiftが押される時間
-uint16_t rshift_timer = 0;      // R_shiftが押される時間
-static bool lshift_has_key = false;    // L_shift押下中に新しいキーが押されたか
-static bool rshift_has_key = false;    // R_shift押下中に新しいキーが押されたか
 typedef struct {
     bool pressed;
     uint16_t timer;
@@ -334,8 +334,6 @@ static void refresh_force_qwerty_state(void) {
 
 static void refresh_shift_layer_state(void) {
     uint8_t active_layer = get_highest_layer(layer_state | default_layer_state);
-    bool shift_held = lshift_timer > 0 || rshift_timer > 0;
-    bool number_shift_shortcut = lshift_timer > 0 && rshift_timer > 0;
 
     if (number_shift_shortcut) {
       layer_move(_NUMBER_SHIFT);
@@ -388,9 +386,7 @@ static void update_lang(uint8_t lang) {
     }
 }
 
-bool combo_fifo_custom_action(uint16_t keycode, bool shifted, bool needs_unshift, bool is_hold) {
-    (void)shifted;
-    (void)needs_unshift;
+bool combo_fifo_custom_action(uint16_t keycode, bool is_hold) {
 
     // MacOS用のキー変換
     if (is_mac) {
@@ -611,13 +607,13 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [_QWERTY] = LAYOUT(
         KC_GRV, KC_Q, KC_W, KC_E, KC_R, KC_T,               KC_Y, KC_U, KC_I,    KC_O,   KC_P,    KC_MINS,
         KC_LGUI,KC_Z, KC_X, KC_C, KC_V, KC_B,               KC_N, KC_M, KC_COMM, KC_DOT, KC_SLSH, KC_BSLS,
-                                  MT_SPC ,          MT_TGL, MT_ENT,
+                                  QL_SPC ,          MT_TGL, QL_ENT,
                                   KC_LALT, KC_LCTL,         KC_LNG2, KC_LNG1
     ),
     [_QWERTY_SHIFT] = LAYOUT(
         KC_TILD,KC_Q, KC_W, KC_E, KC_R, KC_T,               KC_Y, KC_U, KC_I,    KC_O,   KC_P,    KC_UNDS,
         KC_LGUI,KC_Z, KC_X, KC_C, KC_V, KC_B,               KC_N, KC_M, KC_LABK, KC_RABK,KC_QUES, KC_PIPE,
-                                  MT_SPC ,          MT_TGL, MT_ENT,
+                                  QL_SPC ,          MT_TGL, QL_ENT,
                                   KC_LALT, KC_LCTL,         KC_EXLM, MY_QUES
     ),
     // NUMBER
@@ -645,13 +641,13 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [_NUMBER] = LAYOUT(
         TG_MJR, KC_DZ,   KC_1,    KC_2,    KC_3,    KC_MINS,          KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_ALT,
         KC_LGUI,KC_0,    KC_7,    KC_8,    KC_9,    KC_DOT,           KC_PGDN, KC_LEFT, KC_DOWN, KC_RIGHT, KC_LGUI, MO_FUN,
-                                           MT_SPC,           KC_TRNS, MT_ENT,
+                                           NL_SPC,           KC_TRNS, NL_ENT,
                                            KC_LALT, KC_LCTL,          KC_AMPR, KC_PIPE
     ),
     [_NUMBER_SHIFT] = LAYOUT(
         TG_MJR, KC_PERC, KC_LCBR, KC_LBRC, KC_LPRN, KC_LABK,          KC_PGUP, KC_HOME, KC_UP,   KC_END,   KC_CAPS, TG_ALT,
         KC_LGUI,KC_DLR,  KC_RCBR, KC_RBRC, KC_RPRN, KC_RABK,          KC_PGDN, KC_LEFT, KC_DOWN, KC_RIGHT, KC_LGUI, MO_FUN,
-                                           MT_SPC,           KC_TRNS, MT_ENT,
+                                           NL_SPC,           KC_TRNS, NL_ENT,
                                            KC_LALT, KC_LCTL,          KC_LCTL, KC_LALT
     ),
     // FUNCTION
@@ -669,7 +665,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [_FUNCTION] = LAYOUT(
         TG_JIS, KC_F1, KC_F2, KC_F3, KC_F4,   KC_F5,           KC_BRIU, KC_MUTE, KC_VOLD, KC_VOLU, KC_PSCR, KC_TRNS,
         KC_LGUI,KC_F6, KC_F7, KC_F8, KC_F9,   KC_F10,          KC_BRID, KC_MPRV, KC_MPLY, KC_MNXT, KC_LGUI, KC_TRNS,
-                                     KC_TRNS,         KC_TRNS, KC_TRNS,
+                                     MT_SPC,          KC_TRNS, MT_ENT,
                                      KC_TRNS, KC_TRNS,         KC_F11,  KC_F12
     ),
 };
@@ -682,15 +678,6 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     uint8_t mods = get_mods();
     bool shifted = (mods & MOD_MASK_SHIFT);
-
-    if (record->event.pressed) {
-        if (lshift_timer != 0 && !is_modifier_keycode(keycode)) {
-            lshift_has_key = true;
-        }
-        if (rshift_timer != 0 && !is_modifier_keycode(keycode)) {
-            rshift_has_key = true;
-        }
-    }
 
     if (is_mejiro_mode && get_highest_layer(layer_state | default_layer_state) == _GEMINI && is_stn_key(keycode)) {
         if (record->event.pressed) {
@@ -721,20 +708,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                     clear_hold_state();
                 }
                 combo_fifo[combo_fifo_len].keycode = base;
-                combo_fifo[combo_fifo_len].layer   = get_highest_layer(layer_state | default_layer_state);
                 combo_fifo[combo_fifo_len].mods    = mods;
                 combo_fifo[combo_fifo_len].time_pressed = timer_read();
                 combo_fifo[combo_fifo_len].released = false;
-                if ((mods & MOD_LSFT) && lshift_timer != 0) {
-                    lshift_has_key = true;
-                }
-                if ((mods & MOD_RSFT) && rshift_timer != 0) {
-                    rshift_has_key = true;
-                }
                 combo_fifo_len++;
             } else {
-                uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-                transformed_key_t transformed = transform_key_extended(keycode, shifted, current_layer);
+                transformed_key_t transformed = transform_key_extended(keycode);
                 if (transformed.needs_unshift) {
                     tap_code16_unshifted(transformed.keycode);
                 } else {
@@ -805,72 +784,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 dz_fifo_len_at_press = combo_fifo_len;
             }
             return false;
-        case KC_LSFT:
-            if (record->event.pressed) {
-                lshift_timer = timer_read();
-                lshift_has_key = false;
-
-                // FIFO に KC_LSFT を追加
-                if (combo_fifo_len < COMBO_FIFO_LEN) {
-                    combo_fifo[combo_fifo_len].keycode = KC_LSFT;
-                    combo_fifo[combo_fifo_len].layer = get_highest_layer(layer_state | default_layer_state);
-                    combo_fifo[combo_fifo_len].mods = get_mods();
-                    combo_fifo[combo_fifo_len].time_pressed = timer_read();
-                    combo_fifo[combo_fifo_len].released = false;
-                    combo_fifo_len++;
-                }
-            } else {
-                lshift_timer = 0;
-
-                // FIFO 内の KC_LSFT に released=true を設定
-                bool lshift_found = false;
-                for (uint8_t i = 0; i < combo_fifo_len; i++) {
-                    if (combo_fifo[i].keycode == KC_LSFT && !combo_fifo[i].released) {
-                        combo_fifo[i].released = true;
-                        lshift_found = true;
-                        break;
-                    }
-                }
-
-                // コンボ処理を実行
-                if (lshift_found) {
-                    combo_fifo_service_extended(transform_key_extended);
-                }
-            }
-            return true;
-        case KC_RSFT:
-            if (record->event.pressed) {
-                rshift_timer = timer_read();
-                rshift_has_key = false;
-
-                // FIFO に KC_RSFT を追加
-                if (combo_fifo_len < COMBO_FIFO_LEN) {
-                    combo_fifo[combo_fifo_len].keycode = KC_RSFT;
-                    combo_fifo[combo_fifo_len].layer = get_highest_layer(layer_state | default_layer_state);
-                    combo_fifo[combo_fifo_len].mods = get_mods();
-                    combo_fifo[combo_fifo_len].time_pressed = timer_read();
-                    combo_fifo[combo_fifo_len].released = false;
-                    combo_fifo_len++;
-                }
-            } else {
-                rshift_timer = 0;
-
-                // FIFO 内の KC_RSFT に released=true を設定
-                bool rshift_found = false;
-                for (uint8_t i = 0; i < combo_fifo_len; i++) {
-                    if (combo_fifo[i].keycode == KC_RSFT && !combo_fifo[i].released) {
-                        combo_fifo[i].released = true;
-                        rshift_found = true;
-                        break;
-                    }
-                }
-
-                // コンボ処理を実行
-                if (rshift_found) {
-                    combo_fifo_service_extended(transform_key_extended);
-                }
-            }
-            return true;
         case KC_LCTL:
             if (is_mac) {
                 if (record->event.pressed) {
