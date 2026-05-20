@@ -353,7 +353,10 @@ static void update_lang(uint8_t lang) {
     }
 }
 
-bool combo_fifo_custom_action(uint16_t keycode, bool is_hold) {
+bool combo_fifo_custom_action(uint16_t keycode, bool shifted, bool needs_unshift, bool is_hold) {
+    (void)shifted;
+    (void)needs_unshift;
+    (void)is_hold;
 
     // MacOS用のキー変換
     if (is_mac) {
@@ -511,23 +514,6 @@ const combo_pair_t combo_pairs[] PROGMEM = {
     {KC_PGUP, KC_HOME, KC_DEL,   _NUMBER_SHIFT},
 };
 uint8_t combo_pair_count = sizeof(combo_pairs) / sizeof(combo_pairs[0]);
-
-bool is_combo_candidate(uint16_t keycode) {
-    uint8_t mods = get_mods();
-    bool shifted = (mods & MOD_MASK_SHIFT);
-    if (keycode == KC_GRV) {
-        if (is_jis_mode && (mods & MOD_MASK_ALT)) return false;
-        return true;
-    }
-    if (keycode == KC_DZ) return shifted;
-    if (keycode == KC_TZ) return shifted;
-    if (keycode == KC_DOWN) return true;
-    if (keycode == KC_UP) return true;
-    if (keycode == KC_RIGHT) return true;
-    if (keycode == KC_END) return true;
-    if (keycode == KC_CAPS) return true;
-    return is_combo_candidate_default(keycode, 0);
-}
 
 /*---------------------------------------------------------------------------------------------------*/
 /*--------------------------------------------キーマップ----------------------------------------------*/

@@ -30,6 +30,18 @@
 #ifdef COMBO_FIFO_ENABLE
 #include "combo_fifo.h"
 
+combo_event_t combo_fifo[COMBO_FIFO_LEN];
+uint8_t combo_fifo_len = 0;
+hold_state_t hold_state = {0, 0, false, HOLD_REG_NONE, 0, 0, false, false};
+
+__attribute__((weak)) bool combo_fifo_custom_action(uint16_t keycode, bool shifted, bool needs_unshift, bool is_hold) {
+    (void)keycode;
+    (void)shifted;
+    (void)needs_unshift;
+    (void)is_hold;
+    return false;
+}
+
 __attribute__((weak)) void process_combo_event(uint16_t combo_index, bool pressed) {
     (void)combo_index;
     (void)pressed;
@@ -38,6 +50,11 @@ __attribute__((weak)) void process_combo_event(uint16_t combo_index, bool presse
 __attribute__((weak)) void combo_fifo_on_key_event(uint16_t keycode, keyrecord_t *record) {
     (void)keycode;
     (void)record;
+}
+
+__attribute__((weak)) void combo_fifo_on_enqueue(const combo_event_t *event, uint8_t fifo_len) {
+    (void)event;
+    (void)fifo_len;
 }
 
 __attribute__((weak)) bool combo_fifo_should_passthrough(uint16_t keycode, keyrecord_t *record) {
@@ -87,6 +104,8 @@ bool process_combo(uint16_t keycode, keyrecord_t *record) {
         return true;
     }
 
+    action_tapping_on_other_key(record);
+
     uint8_t mods    = get_mods();
     bool    shifted = (mods & MOD_MASK_SHIFT);
 
@@ -95,11 +114,13 @@ bool process_combo(uint16_t keycode, keyrecord_t *record) {
             if (hold_state.is_held && combo_fifo_len > 0) {
                 clear_hold_state();
             }
+            combo_fifo[combo_fifo_len].key = record->event.key;
             combo_fifo[combo_fifo_len].keycode = keycode;
             combo_fifo[combo_fifo_len].layer   = get_highest_layer(layer_state | default_layer_state);
             combo_fifo[combo_fifo_len].time_pressed = timer_read();
             combo_fifo[combo_fifo_len].released = false;
             combo_fifo_len++;
+            combo_fifo_on_enqueue(&combo_fifo[combo_fifo_len - 1], combo_fifo_len);
         } else {
             uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
             transformed_key_t transformed = transform_key_extended(keycode, shifted, current_layer);

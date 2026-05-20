@@ -5,7 +5,6 @@ STRING_ENABLE = yes
 OS_DETECTION_ENABLE = yes
 COMBO_ENABLE = yes
 
-SRC += $(KEYBOARD_PATH_1)/combo_fifo.c
 SRC += $(KEYBOARD_PATH_1)/alt_layout.c
 SRC += $(KEYBOARD_PATH_1)/mejiro_fifo.c
 SRC += $(KEYBOARD_PATH_1)/mejiro_commands.c

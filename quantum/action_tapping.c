@@ -199,6 +199,33 @@ void action_tapping_process(keyrecord_t record) {
     }
 }
 
+void action_tapping_on_other_key(const keyrecord_t *record) {
+    if (record == NULL) return;
+    if (IS_NOEVENT(tapping_key.event)) return;
+    if (KEYEQ(tapping_key.event.key, record->event.key)) return;
+    if (!tapping_key.event.pressed) return;
+
+    if (record->event.pressed) {
+        tapping_key.tap.interrupted = true;
+        return;
+    }
+
+    const uint16_t tapping_keycode = get_record_keycode(&tapping_key, false);
+    if (!(IS_QK_MOD_TAP(tapping_keycode) || IS_QK_LAYER_TAP(tapping_keycode))) return;
+#    if defined(PERMISSIVE_HOLD_PER_KEY)
+    if (!get_permissive_hold(tapping_keycode, &tapping_key)) return;
+#    elif !defined(PERMISSIVE_HOLD)
+    return;
+#    endif
+    if (!WITHIN_TAPPING_TERM(record->event)) return;
+
+    tapping_key.tap.interrupted = true;
+    ac_dprintf("Tapping: End. No tap. Interfered by FIFO key\n");
+    process_record(&tapping_key);
+    tapping_key = (keyrecord_t){0};
+    debug_tapping_key();
+}
+
 /* Some conditionally defined helper macros to keep process_tapping more
  * readable. The conditional definition of tapping_keycode and all the
  * conditional uses of it are hidden inside macros named TAP_...

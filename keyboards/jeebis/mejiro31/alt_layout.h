@@ -18,7 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include QMK_KEYBOARD_H
-#include "combo_fifo.h"
 
 // グローバル変数の宣言
 extern bool is_alt_mode;
