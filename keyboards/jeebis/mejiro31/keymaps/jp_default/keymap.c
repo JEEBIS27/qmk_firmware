@@ -94,7 +94,6 @@ bool is_jis_mode = true;
 bool is_mejiro_mode = true;
 static bool is_mac = false;
 static bool os_detected = false;
-static bool mt_tgl_pressed = false;
 static uint16_t dz_timer = 0;
 static bool dz_delayed = false;
 static uint8_t dz_fifo_len_at_press = 0;  // DZ キー押下時のコンボ FIFO 長
@@ -105,18 +104,6 @@ typedef struct {
 static toggle_hold_state_t tg_jis_state = {false, 0};
 static toggle_hold_state_t tg_alt_state = {false, 0};
 static toggle_hold_state_t tg_mjr_state = {false, 0};
-
-static inline bool is_modifier_keycode(uint16_t keycode) {
-    switch (keycode) {
-        case KC_LCTL: case KC_RCTL:
-        case KC_LALT: case KC_RALT:
-        case KC_LGUI: case KC_RGUI:
-        case KC_LSFT: case KC_RSFT:
-            return true;
-        default:
-            return false;
-    }
-}
 
 static inline bool mt_tgl_can_toggle(const keyrecord_t *record) {
     if (combo_fifo_len != 0) return false;
@@ -295,7 +282,7 @@ uint16_t alt_transform(uint16_t kc, bool shifted, uint8_t layer) {
     return kc;
 }
 
-static inline transformed_key_t transform_key_extended(uint16_t kc, bool shifted, uint8_t layer) {
+transformed_key_t transform_key_extended(uint16_t kc, bool shifted, uint8_t layer) {
     uint16_t alt_kc = alt_transform(kc, shifted, layer);
 
     bool needs_unshift = is_jis_shift_target(alt_kc);
@@ -329,26 +316,6 @@ static void refresh_force_qwerty_state(void) {
         default_layer_set(target_default);
         layer_move(default_layer == 1 ? _QWERTY : _GEMINI);
         force_qwerty_active = false;
-    }
-}
-
-static void refresh_shift_layer_state(void) {
-    uint8_t active_layer = get_highest_layer(layer_state | default_layer_state);
-
-    if (number_shift_shortcut) {
-      layer_move(_NUMBER_SHIFT);
-    } else if (shift_held) {
-        if (!mt_tgl_pressed) {
-            layer_move(_QWERTY_SHIFT);
-            default_layer_set((layer_state_t)1UL << _QWERTY);
-            default_layer = _QWERTY;
-        }
-    } else {
-        if (active_layer == _QWERTY_SHIFT) {
-            layer_move(_QWERTY);
-        } else if (active_layer == _NUMBER_SHIFT) {
-            layer_move(_NUMBER);
-        }
     }
 }
 
@@ -548,7 +515,10 @@ uint8_t combo_pair_count = sizeof(combo_pairs) / sizeof(combo_pairs[0]);
 bool is_combo_candidate(uint16_t keycode) {
     uint8_t mods = get_mods();
     bool shifted = (mods & MOD_MASK_SHIFT);
-    if (keycode == KC_GRV) return true;
+    if (keycode == KC_GRV) {
+        if (is_jis_mode && (mods & MOD_MASK_ALT)) return false;
+        return true;
+    }
     if (keycode == KC_DZ) return shifted;
     if (keycode == KC_TZ) return shifted;
     if (keycode == KC_DOWN) return true;
@@ -677,7 +647,13 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     uint8_t mods = get_mods();
-    bool shifted = (mods & MOD_MASK_SHIFT);
+
+    if (keycode == KC_GRV && is_jis_mode && (mods & MOD_MASK_ALT)) {
+        if (record->event.pressed) {
+            tap_code16(KC_GRV); // 全角半角
+        }
+        return false;
+    }
 
     if (is_mejiro_mode && get_highest_layer(layer_state | default_layer_state) == _GEMINI && is_stn_key(keycode)) {
         if (record->event.pressed) {
@@ -691,68 +667,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
-    if (is_combo_candidate(keycode)) {
-        if (keycode == KC_GRV) {
-            if (is_jis_mode && (mods & MOD_MASK_ALT)) {
-                if (record->event.pressed) {
-                    tap_code16(KC_GRV); // 全角半角
-                }
-                return false;
-            }
-        }
-
-        if (record->event.pressed) {
-            if (combo_fifo_len < COMBO_FIFO_LEN) {
-                uint16_t base = keycode;
-                if (hold_state.is_held && combo_fifo_len > 0) {
-                    clear_hold_state();
-                }
-                combo_fifo[combo_fifo_len].keycode = base;
-                combo_fifo[combo_fifo_len].mods    = mods;
-                combo_fifo[combo_fifo_len].time_pressed = timer_read();
-                combo_fifo[combo_fifo_len].released = false;
-                combo_fifo_len++;
-            } else {
-                transformed_key_t transformed = transform_key_extended(keycode);
-                if (transformed.needs_unshift) {
-                    tap_code16_unshifted(transformed.keycode);
-                } else {
-                    tap_code16(transformed.keycode);
-                }
-            }
-        } else {
-            uint16_t base = keycode;
-            if (hold_state.is_held) {
-                if (base == hold_state.source_key_a) {
-                    hold_state.source_a_pressed = false;
-                }
-                if (base == hold_state.source_key_b) {
-                    hold_state.source_b_pressed = false;
-                }
-                if (!hold_state.source_a_pressed || !hold_state.source_b_pressed) {
-                    clear_hold_state();
-                }
-            }
-
-            bool fifo_updated = false;
-            for (uint8_t i = 0; i < combo_fifo_len; i++) {
-                if (combo_fifo[i].keycode == base && !combo_fifo[i].released) {
-                    combo_fifo[i].released = true;
-                    fifo_updated = true;
-                    break;
-                }
-            }
-            if (fifo_updated) {
-                combo_fifo_service_extended(transform_key_extended);
-            }
-        }
-        return false;
-    }
-
     switch (keycode) {
         case MT_TGL:
             if (record->event.pressed) {
-                mt_tgl_pressed = true;
                 if (record->tap.count > 0 && mt_tgl_can_toggle(record)) {
                     if (default_layer == _QWERTY) {
                         default_layer_set((layer_state_t)1UL << _GEMINI);
@@ -767,8 +684,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                         update_lang(kbd_lang);
                     }
                 }
-            } else {
-                mt_tgl_pressed = false;
             }
             return record->tap.count == 0;
         case TG_JIS:
@@ -845,8 +760,6 @@ void matrix_scan_user(void) {
         }
     }
     refresh_force_qwerty_state();
-    refresh_shift_layer_state();
-    combo_fifo_service_extended(transform_key_extended);
 
     if (dz_delayed) {
         if (dz_fifo_len_at_press == 0) {

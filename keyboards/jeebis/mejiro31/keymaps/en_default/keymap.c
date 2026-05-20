@@ -92,10 +92,6 @@ static bool os_detected = false;
 static uint16_t dz_timer = 0;
 static bool dz_delayed = false;
 static uint8_t dz_fifo_len_at_press = 0;  // Combo FIFO length when DZ key is pressed
-uint16_t lshift_timer = 0;      // Time L_shift is held
-uint16_t rshift_timer = 0;      // Time R_shift is held
-static bool lshift_has_key = false;    // Whether a new key was pressed while L_shift is held
-static bool rshift_has_key = false;    // Whether a new key was pressed while R_shift is held
 typedef struct {
     bool pressed;
     uint16_t timer;
@@ -104,18 +100,6 @@ static toggle_hold_state_t tg_jis_state = {false, 0};
 static toggle_hold_state_t tg_alt_state = {false, 0};
 static toggle_hold_state_t tg_sbl_state = {false, 0};
 static toggle_hold_state_t tg_mjr_state = {false, 0};
-
-static inline bool is_modifier_keycode(uint16_t keycode) {
-    switch (keycode) {
-        case KC_LCTL: case KC_RCTL:
-        case KC_LALT: case KC_RALT:
-        case KC_LGUI: case KC_RGUI:
-        case KC_LSFT: case KC_RSFT:
-            return true;
-        default:
-            return false;
-    }
-}
 
 static inline bool mt_tgl_can_toggle(const keyrecord_t *record) {
     if (combo_fifo_len != 0) return false;
@@ -420,11 +404,11 @@ uint16_t alt_transform(uint16_t kc, bool shifted, uint8_t layer) {
     return kc;
 }
 
-static inline transformed_key_t transform_key_extended(uint16_t kc, bool shifted, uint8_t layer) {
+transformed_key_t transform_key_extended(uint16_t kc, bool shifted, uint8_t layer) {
     uint16_t sbl_kc = sbl_transform(kc, shifted, layer);
     uint16_t alt_kc = alt_transform(sbl_kc, shifted, layer);
 
-    bool needs_unshift = is_jis_shift_target(alt_kc, shifted);
+    bool needs_unshift = is_jis_shift_target(alt_kc);
 
     if (!needs_unshift && shifted && is_sbl_mode && !force_qwerty_active) {
         if (layer == _NUMBER || layer == _QWERTY) {
@@ -639,7 +623,10 @@ bool is_combo_candidate(uint16_t keycode) {
         uint8_t layer = get_highest_layer(layer_state | default_layer_state);
         return layer == _NUMBER;
     }
-    if (keycode == KC_GRV) return true;
+    if (keycode == KC_GRV) {
+        if (is_jis_mode && (mods & MOD_MASK_ALT)) return false;
+        return true;
+    }
     if (keycode == KC_DZ) return is_sbl_mode && shifted;
     if (keycode == KC_TZ) return is_sbl_mode && shifted;
     if (keycode == KC_DOWN) return true;
@@ -753,13 +740,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     uint8_t mods = get_mods();
     bool shifted = (mods & MOD_MASK_SHIFT);
 
-    if (record->event.pressed) {
-        if (lshift_timer != 0 && !is_modifier_keycode(keycode)) {
-            lshift_has_key = true;
+    if (keycode == KC_GRV && is_jis_mode && (mods & MOD_MASK_ALT)) {
+        if (record->event.pressed) {
+            tap_code16(KC_GRV); // Zenkaku/Hankaku
         }
-        if (rshift_timer != 0 && !is_modifier_keycode(keycode)) {
-            rshift_has_key = true;
-        }
+        return false;
     }
 
     if (is_mejiro_mode && get_highest_layer(layer_state | default_layer_state) == _GEMINI && is_stn_key(keycode)) {
@@ -769,72 +754,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             mejiro_on_release(keycode);
             if (mejiro_should_send_passthrough()) {
                 mejiro_send_passthrough_keys();
-            }
-        }
-        return false;
-    }
-
-    if (is_combo_candidate(keycode)) {
-        if (keycode == KC_GRV) {
-            if (is_jis_mode && (mods & MOD_MASK_ALT)) {
-                if (record->event.pressed) {
-                    tap_code16(KC_GRV); // Zenkaku/Hankaku
-                }
-                return false;
-            }
-        }
-
-        if (record->event.pressed) {
-            if (combo_fifo_len < COMBO_FIFO_LEN) {
-                uint16_t base = keycode;
-                if (hold_state.is_held && combo_fifo_len > 0) {
-                    clear_hold_state();
-                }
-                combo_fifo[combo_fifo_len].keycode = base;
-                combo_fifo[combo_fifo_len].layer   = get_highest_layer(layer_state | default_layer_state);
-                combo_fifo[combo_fifo_len].mods    = mods;
-                combo_fifo[combo_fifo_len].time_pressed = timer_read();
-                combo_fifo[combo_fifo_len].released = false;
-                if ((mods & MOD_LSFT) && lshift_timer != 0) {
-                    lshift_has_key = true;
-                }
-                if ((mods & MOD_RSFT) && rshift_timer != 0) {
-                    rshift_has_key = true;
-                }
-                combo_fifo_len++;
-            } else {
-                uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-                transformed_key_t transformed = transform_key_extended(keycode, shifted, current_layer);
-                if (transformed.needs_unshift) {
-                    tap_code16_unshifted(transformed.keycode);
-                } else {
-                    tap_code16(transformed.keycode);
-                }
-            }
-        } else {
-            uint16_t base = keycode;
-            if (hold_state.is_held) {
-                if (base == hold_state.source_key_a) {
-                    hold_state.source_a_pressed = false;
-                }
-                if (base == hold_state.source_key_b) {
-                    hold_state.source_b_pressed = false;
-                }
-                if (!hold_state.source_a_pressed || !hold_state.source_b_pressed) {
-                    clear_hold_state();
-                }
-            }
-
-            bool fifo_updated = false;
-            for (uint8_t i = 0; i < combo_fifo_len; i++) {
-                if (combo_fifo[i].keycode == base && !combo_fifo[i].released) {
-                    combo_fifo[i].released = true;
-                    fifo_updated = true;
-                    break;
-                }
-            }
-            if (fifo_updated) {
-                combo_fifo_service_extended(transform_key_extended);
             }
         }
         return false;
@@ -878,72 +797,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 }
             }
             return false;
-        case KC_LSFT:
-            if (record->event.pressed) {
-                lshift_timer = timer_read();
-                lshift_has_key = false;
-
-                // Add KC_LSFT to FIFO
-                if (combo_fifo_len < COMBO_FIFO_LEN) {
-                    combo_fifo[combo_fifo_len].keycode = KC_LSFT;
-                    combo_fifo[combo_fifo_len].layer = get_highest_layer(layer_state | default_layer_state);
-                    combo_fifo[combo_fifo_len].mods = get_mods();
-                    combo_fifo[combo_fifo_len].time_pressed = timer_read();
-                    combo_fifo[combo_fifo_len].released = false;
-                    combo_fifo_len++;
-                }
-            } else {
-                lshift_timer = 0;
-
-                // Set released=true for KC_LSFT in FIFO
-                bool lshift_found = false;
-                for (uint8_t i = 0; i < combo_fifo_len; i++) {
-                    if (combo_fifo[i].keycode == KC_LSFT && !combo_fifo[i].released) {
-                        combo_fifo[i].released = true;
-                        lshift_found = true;
-                        break;
-                    }
-                }
-
-                // Execute combo processing
-                if (lshift_found) {
-                    combo_fifo_service_extended(transform_key_extended);
-                }
-            }
-            return true;
-        case KC_RSFT:
-            if (record->event.pressed) {
-                rshift_timer = timer_read();
-                rshift_has_key = false;
-
-                // Add KC_RSFT to FIFO
-                if (combo_fifo_len < COMBO_FIFO_LEN) {
-                    combo_fifo[combo_fifo_len].keycode = KC_RSFT;
-                    combo_fifo[combo_fifo_len].layer = get_highest_layer(layer_state | default_layer_state);
-                    combo_fifo[combo_fifo_len].mods = get_mods();
-                    combo_fifo[combo_fifo_len].time_pressed = timer_read();
-                    combo_fifo[combo_fifo_len].released = false;
-                    combo_fifo_len++;
-                }
-            } else {
-                rshift_timer = 0;
-
-                // Set released=true for KC_RSFT in FIFO
-                bool rshift_found = false;
-                for (uint8_t i = 0; i < combo_fifo_len; i++) {
-                    if (combo_fifo[i].keycode == KC_RSFT && !combo_fifo[i].released) {
-                        combo_fifo[i].released = true;
-                        rshift_found = true;
-                        break;
-                    }
-                }
-
-                // Execute combo processing
-                if (rshift_found) {
-                    combo_fifo_service_extended(transform_key_extended);
-                }
-            }
-            return true;
         case KC_LCTL:
             if (is_mac) {
                 if (record->event.pressed) {
@@ -1005,7 +858,6 @@ void matrix_scan_user(void) {
         }
     }
     refresh_force_qwerty_state();
-    combo_fifo_service_extended(transform_key_extended);
 
     if (dz_delayed) {
         if (dz_fifo_len_at_press == 0) {

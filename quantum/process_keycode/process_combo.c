@@ -27,6 +27,146 @@
 #include "action_util.h"
 #include "keymap_introspection.h"
 
+#ifdef COMBO_FIFO_ENABLE
+#include "combo_fifo.h"
+
+__attribute__((weak)) void process_combo_event(uint16_t combo_index, bool pressed) {
+    (void)combo_index;
+    (void)pressed;
+}
+
+__attribute__((weak)) void combo_fifo_on_key_event(uint16_t keycode, keyrecord_t *record) {
+    (void)keycode;
+    (void)record;
+}
+
+__attribute__((weak)) bool combo_fifo_should_passthrough(uint16_t keycode, keyrecord_t *record) {
+    (void)keycode;
+    (void)record;
+    return false;
+}
+
+__attribute__((weak)) bool is_combo_candidate(uint16_t keycode) {
+    return is_combo_candidate_default(keycode, 0);
+}
+
+__attribute__((weak)) transformed_key_t transform_key_extended(uint16_t kc, bool shifted, uint8_t layer) {
+    (void)shifted;
+    (void)layer;
+    return (transformed_key_t){
+        .keycode = kc,
+        .needs_unshift = false,
+    };
+}
+
+static bool b_combo_enable = true; // defaults to enabled
+
+bool process_combo(uint16_t keycode, keyrecord_t *record) {
+    combo_fifo_on_key_event(keycode, record);
+
+    if (keycode == QK_COMBO_ON && record->event.pressed) {
+        combo_enable();
+        return true;
+    }
+
+    if (keycode == QK_COMBO_OFF && record->event.pressed) {
+        combo_disable();
+        return true;
+    }
+
+    if (keycode == QK_COMBO_TOGGLE && record->event.pressed) {
+        combo_toggle();
+        return true;
+    }
+
+    if (!b_combo_enable) {
+        return true;
+    }
+
+    if (!is_combo_candidate(keycode)) {
+        return true;
+    }
+
+    uint8_t mods    = get_mods();
+    bool    shifted = (mods & MOD_MASK_SHIFT);
+
+    if (record->event.pressed) {
+        if (combo_fifo_len < COMBO_FIFO_LEN) {
+            if (hold_state.is_held && combo_fifo_len > 0) {
+                clear_hold_state();
+            }
+            combo_fifo[combo_fifo_len].keycode = keycode;
+            combo_fifo[combo_fifo_len].layer   = get_highest_layer(layer_state | default_layer_state);
+            combo_fifo[combo_fifo_len].time_pressed = timer_read();
+            combo_fifo[combo_fifo_len].released = false;
+            combo_fifo_len++;
+        } else {
+            uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+            transformed_key_t transformed = transform_key_extended(keycode, shifted, current_layer);
+            if (transformed.needs_unshift) {
+                tap_code16_unshifted(transformed.keycode);
+            } else {
+                tap_code16(transformed.keycode);
+            }
+        }
+    } else {
+        if (hold_state.is_held) {
+            if (keycode == hold_state.source_key_a) {
+                hold_state.source_a_pressed = false;
+            }
+            if (keycode == hold_state.source_key_b) {
+                hold_state.source_b_pressed = false;
+            }
+            if (!hold_state.source_a_pressed || !hold_state.source_b_pressed) {
+                clear_hold_state();
+            }
+        }
+
+        bool fifo_updated = false;
+        for (uint8_t i = 0; i < combo_fifo_len; i++) {
+            if (combo_fifo[i].keycode == keycode && !combo_fifo[i].released) {
+                combo_fifo[i].released = true;
+                fifo_updated = true;
+                break;
+            }
+        }
+        if (fifo_updated) {
+            combo_fifo_service_extended(transform_key_extended);
+        }
+    }
+    return combo_fifo_should_passthrough(keycode, record);
+}
+
+void combo_task(void) {
+    if (!b_combo_enable) {
+        return;
+    }
+    combo_fifo_service_extended(transform_key_extended);
+}
+
+void combo_enable(void) {
+    b_combo_enable = true;
+}
+
+void combo_disable(void) {
+    b_combo_enable = false;
+    combo_fifo_len = 0;
+    clear_hold_state();
+}
+
+void combo_toggle(void) {
+    if (b_combo_enable) {
+        combo_disable();
+    } else {
+        combo_enable();
+    }
+}
+
+bool is_combo_enabled(void) {
+    return b_combo_enable;
+}
+
+#else
 __attribute__((weak)) void process_combo_event(uint16_t combo_index, bool pressed) {}
 
 #ifndef COMBO_ONLY_FROM_LAYER
@@ -676,3 +816,5 @@ void combo_toggle(void) {
 bool is_combo_enabled(void) {
     return b_combo_enable;
 }
+
+#endif

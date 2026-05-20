@@ -98,7 +98,7 @@ __attribute__((weak)) uint16_t keycode_at_dip_switch_map_location(uint8_t switch
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Combos
 
-#if defined(COMBO_ENABLE)
+#if defined(COMBO_ENABLE) && !defined(COMBO_FIFO_ENABLE)
 
 uint16_t combo_count_raw(void) {
     return ARRAY_SIZE(key_combos);
@@ -119,7 +119,7 @@ __attribute__((weak)) combo_t* combo_get(uint16_t combo_idx) {
     return combo_get_raw(combo_idx);
 }
 
-#endif // defined(COMBO_ENABLE)
+#endif // defined(COMBO_ENABLE) && !defined(COMBO_FIFO_ENABLE)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Tap Dance
