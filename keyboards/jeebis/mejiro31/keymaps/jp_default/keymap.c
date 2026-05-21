@@ -90,7 +90,7 @@ static int kbd_lang = 1;  // キーボードモード時の言語
 /*----------------------------------------------内部変数----------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------*/
 
-bool is_jis_mode = true;
+bool is_jis_mode = false;
 bool is_mejiro_mode = true;
 static bool is_mac = false;
 static bool os_detected = false;
@@ -316,6 +316,15 @@ static void refresh_force_qwerty_state(void) {
         default_layer_set(target_default);
         layer_move(default_layer == 1 ? _QWERTY : _GEMINI);
         force_qwerty_active = false;
+    }
+}
+
+static void add_shift_in_these_layers(void) {
+    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+    if (current_layer == _QWERTY_SHIFT || current_layer == _NUMBER_SHIFT) {
+      register_mods(MOD_LSFT);
+    } else if (current_layer != _FUNCTION) {
+      unregister_mods(MOD_LSFT);
     }
 }
 
@@ -746,6 +755,7 @@ void matrix_scan_user(void) {
         }
     }
     refresh_force_qwerty_state();
+    add_shift_in_these_layers();
 
     if (dz_delayed) {
         if (dz_fifo_len_at_press == 0) {
