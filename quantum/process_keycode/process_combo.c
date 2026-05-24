@@ -80,6 +80,7 @@ static bool b_combo_enable = true; // defaults to enabled
 
 bool process_combo(uint16_t keycode, keyrecord_t *record) {
     combo_fifo_on_key_event(keycode, record);
+    action_tapping_on_other_key(record);
 
     if (keycode == QK_COMBO_ON && record->event.pressed) {
         combo_enable();
@@ -103,8 +104,6 @@ bool process_combo(uint16_t keycode, keyrecord_t *record) {
     if (!is_combo_candidate(keycode)) {
         return true;
     }
-
-    action_tapping_on_other_key(record);
 
     uint8_t mods    = get_mods();
     bool    shifted = (mods & MOD_MASK_SHIFT);
@@ -155,7 +154,13 @@ bool process_combo(uint16_t keycode, keyrecord_t *record) {
             combo_fifo_service_extended(transform_key_extended);
         }
     }
-    return combo_fifo_should_passthrough(keycode, record);
+    // Allow tap-hold processing to continue even after combo processing.
+    // Return true to ensure key reaches waiting_buffer for PERMISSIVE_HOLD,
+    // while FIFO still processes the key independently.
+    // This means FIFO combos will consume the key, but PERMISSIVE_HOLD
+    // also gets to see the key input event.
+    combo_fifo_should_passthrough(keycode, record);
+    return true;
 }
 
 void combo_task(void) {
