@@ -13,10 +13,7 @@ if str(SHARED_DIR) not in sys.path:
 
 from firmware_preset_builder import PresetBuilderConfig, RewriteRule, run_builder
 
-ALT_LAYOUT_PATTERN = re.compile(
-    r"^static alt_layout_def_t alt_layout = ALT_LAYOUT\([a-z0-9_]+\);.*$",
-    re.MULTILINE,
-)
+LAYOUT_PATTERNS = tuple(re.compile(rf"^#define MJI_{language}_LAYOUT mji_layout_[a-z0-9_]+.*$", re.MULTILINE) for language in ("ENGLISH", "JAPANESE"))
 
 CONFIG = PresetBuilderConfig(
     script_dir=SCRIPT_DIR,
@@ -27,18 +24,16 @@ CONFIG = PresetBuilderConfig(
     layout_fields=("layout",),
     description=(
         "Build firmware presets for jeebis/mejiro31:en_default by temporarily "
-        "rewriting alt_layout in keymap.c."
+        "selecting the engine layout in keymap.c."
     ),
     list_format=lambda preset: f"{preset['firmware_name']}: layout={preset['layout']}",
-    rewrite_rules=(
+    rewrite_rules=tuple(
         RewriteRule(
-            pattern=ALT_LAYOUT_PATTERN,
-            replacement_factory=lambda preset: (
-                "static alt_layout_def_t alt_layout = "
-                f"ALT_LAYOUT({preset['layout']});  // Alternative Layout"
-            ),
-            error_message="Could not rewrite alt_layout in keymap.c.",
-        ),
+            pattern=pattern,
+            replacement_factory=lambda preset, language=language: f"#define MJI_{language}_LAYOUT mji_layout_{preset['layout']}",
+            error_message=f"Could not select {language} layout in keymap.c.",
+        )
+        for language, pattern in zip(("ENGLISH", "JAPANESE"), LAYOUT_PATTERNS)
     ),
     output_subdir=".build/export",
 )
