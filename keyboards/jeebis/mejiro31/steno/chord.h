@@ -4,6 +4,7 @@
 #pragma once
 
 #include QMK_KEYBOARD_H
+#include "steno_keycodes.h"
 
 // Public API
 // true: 何かキーが離された時点で確定（First Up Chord Send）

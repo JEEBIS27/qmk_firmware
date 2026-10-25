@@ -84,7 +84,11 @@ bool usb_get_report_cb(USBDriver *driver) {
 
     static usb_fs_report_t report;
 
-    if (!IS_VALID_INTERFACE(interface) || !IS_VALID_REPORT_ID(report_id)) {
+    bool valid_report_id = IS_VALID_REPORT_ID(report_id);
+#ifdef PLOVER_HID_ENABLE
+    if (interface == PLOVER_HID_INTERFACE) valid_report_id = report_id == REPORT_ID_PLOVER_HID || report_id == 0;
+#endif
+    if (!IS_VALID_INTERFACE(interface) || !valid_report_id) {
         return false;
     }
 
@@ -243,7 +247,11 @@ bool usb_get_idle_cb(USBDriver *driver) {
 
     static uint8_t _Alignas(4) idle_rate;
 
-    if (!IS_VALID_INTERFACE(interface) || !IS_VALID_REPORT_ID(report_id)) {
+    bool valid_report_id = IS_VALID_REPORT_ID(report_id);
+#ifdef PLOVER_HID_ENABLE
+    if (interface == PLOVER_HID_INTERFACE) valid_report_id = report_id == REPORT_ID_PLOVER_HID || report_id == 0;
+#endif
+    if (!IS_VALID_INTERFACE(interface) || !valid_report_id) {
         return false;
     }
 
@@ -272,7 +280,11 @@ bool usb_set_idle_cb(USBDriver *driver) {
     uint8_t                report_id = setup->wValue.lbyte;
     uint8_t                idle_rate = setup->wValue.hbyte;
 
-    if (!IS_VALID_INTERFACE(interface) || !IS_VALID_REPORT_ID(report_id)) {
+    bool valid_report_id = IS_VALID_REPORT_ID(report_id);
+#ifdef PLOVER_HID_ENABLE
+    if (interface == PLOVER_HID_INTERFACE) valid_report_id = report_id == REPORT_ID_PLOVER_HID || report_id == 0;
+#endif
+    if (!IS_VALID_INTERFACE(interface) || !valid_report_id) {
         return false;
     }
 

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include <assert.h>
 #include <stdio.h>
+#include "report.h"
 #include "keymap_japanese.h"
 #ifdef MJI_TEST_EN
 #    include "../keymaps/en_default/keymap.c"
@@ -77,18 +78,19 @@ uint32_t timer_read32(void) {
 os_variant_t detected_host_os(void) {
     return OS_LINUX;
 }
-void steno_set_mode(steno_mode_t m) {
-    (void)m;
-}
-bool process_steno(uint16_t c, keyrecord_t *r) {
-    (void)c;
-    (void)r;
-    steno_events++;
-    steno_pending += r->event.pressed ? 1 : -1;
-    assert(steno_pending >= 0);
-    uint8_t chord[6] = {0};
-    if (!r->event.pressed && !steno_pending && send_steno_chord_user(STENO_MODE_GEMINI, chord)) ++steno_packets;
-    return false;
+static uint8_t plover_state[8];
+static unsigned plover_reports;
+void host_plover_hid_send(report_plover_hid_t *report) {
+    assert(report->report_id == 0x50);
+    int down = 0;
+    for (unsigned i = 0; i < 8; ++i) {
+        steno_events += __builtin_popcount(plover_state[i] ^ report->data[i]);
+        down += __builtin_popcount(report->data[i]);
+    }
+    if (steno_pending && !down) ++steno_packets;
+    steno_pending = down;
+    memcpy(plover_state, report->data, 8);
+    ++plover_reports;
 }
 bool is_stn_key(uint16_t kc) {
     return kc >= STN_N1 && kc <= STN_ZR;
@@ -118,6 +120,9 @@ uint16_t keycode_at_keymap_location(uint8_t l, uint8_t r, uint8_t c) {
     return dynamic_maps[l][r][c];
 }
 static void setup(void) {
+    mejiro_plover_reset();
+    memset(plover_state, 0, sizeof(plover_state));
+    plover_reports = 0;
     settings_word = UINT32_MAX;
     settings_writes = 0;
     memset(presses, 0, sizeof(presses));
@@ -132,8 +137,7 @@ static void setup(void) {
     steno_events = 0;
     steno_pending = 0;
     steno_packets = 0;
-    gemini_held = 0;
-    shortcut_active = discard_steno_send = false;
+    shortcut_active = false;
     keyboard_post_init_user();
     assert(keymap_config.nkro);
     // Tests select their own Alt maps; user-selected firmware defaults must
@@ -152,6 +156,7 @@ static void tick(uint32_t time) {
     matrix_scan_user();
 }
 static void all_up(void) {
+    assert(!steno_pending);
     assert(!native_mods);
     assert(!consumer_usage && !system_usage);
     for (unsigned i = 0; i < 256; i++)
@@ -483,6 +488,39 @@ static void test_steno_host_encoding(void) {
     set_mods(0);
     all_up();
 }
+static void test_plover_transport_routes(void) {
+    setup();
+    mejiro_mode = false;
+    steno_mode = true;
+    switch_context();
+    dynamic_maps[5][0][1] = STN_S1;
+    dynamic_maps[5][1][1] = STN_S1;
+    event(0, 1, true);
+    event(1, 13, true);
+    assert(plover_reports == 1 && plover_state[0] == 0x80);
+    event(2, 1, false);
+    assert(plover_reports == 1 && steno_pending == 1);
+    event(3, 13, false);
+    assert(plover_reports == 2 && steno_packets == 1);
+    all_up();
+
+    event(4, 1, true);
+    steno_mode = false;
+    switch_context();
+    assert(plover_reports == 4 && !steno_pending && steno_packets == 2);
+    event(5, 1, false);
+    assert(plover_reports == 4); // release remains on its original route
+    all_up();
+
+    setup();
+    steno_mode = true;
+    mejiro_mode = true;
+    switch_context();
+    event(0, 1, true);
+    event(1, 1, false);
+    assert(!plover_reports); // onboard Mejiro never leaks a Plover stroke
+    all_up();
+}
 static void test_steno_shortcuts(void) {
     const uint16_t modifiers[] = {KC_LCTL, KC_RALT, KC_LGUI};
     for (unsigned mode = 0; mode < 2; ++mode)
@@ -493,9 +531,10 @@ static void test_steno_shortcuts(void) {
             switch_context();
             dynamic_maps[5][3][4] = KC_NO;
             dynamic_maps[11][3][4] = modifiers[m];
-            event(0, 1, true); // Pending steno chord must be cancelled.
+            event(0, 1, true); // Onboard chord cancels; already-sent HID chord closes on reset.
             event(5, 40, true);
-            assert(shortcut_active && !steno_held && !steno_pending && !steno_packets);
+            assert(shortcut_active && !steno_held && !steno_pending);
+            assert(steno_packets == (mode ? 0U : 1U));
             unsigned steno_before = steno_events;
             event(10, 15, true); // Physical C, not a steno W.
             tick(50);
@@ -510,7 +549,7 @@ static void test_steno_shortcuts(void) {
             event(70, 1, true);
             event(75, 1, false);
             assert(steno_events == steno_before + 2);
-            if (!mode) assert(steno_packets == 1 && !steno_pending);
+            if (!mode) assert(steno_packets == 2 && !steno_pending);
             all_up();
         }
     setup();
@@ -612,6 +651,7 @@ static void test_saved_settings_and_platform_keys(void) {
     puts("adapter settings reboot, Mac navigation, JIS Alt+grave OK");
 }
 int main(void) {
+    test_plover_transport_routes();
     test_steno_shortcuts();
     test_saved_settings_and_platform_keys();
     test_profile_defaults();

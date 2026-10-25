@@ -1,5 +1,6 @@
 VIA_ENABLE = yes
-STENO_ENABLE = yes
+STENO_ENABLE = no
+PLOVER_HID_ENABLE = yes
 STRING_ENABLE = yes
 OS_DETECTION_ENABLE = yes
 COMBO_ENABLE = no
@@ -8,6 +9,7 @@ LDFLAGS += -L$(TOP_DIR)/platforms/chibios/boards/common/ld
 
 SRC += $(KEYBOARD_PATH_1)/mejiro_input.c
 SRC += $(KEYBOARD_PATH_1)/mejiro_layout.c
+SRC += $(KEYBOARD_PATH_1)/steno/plover.c
 SRC += $(KEYBOARD_PATH_1)/steno/chord.c
 SRC += $(KEYBOARD_PATH_1)/steno/engine.c
 
