@@ -42,6 +42,9 @@ enum hid_report_ids {
     REPORT_ID_COUNT = REPORT_ID_DIGITIZER
 };
 
+// The dedicated Plover interface uses the protocol-fixed ID, outside shared IDs.
+#define REPORT_ID_PLOVER_HID 0x50
+
 #define IS_VALID_REPORT_ID(id) ((id) >= REPORT_ID_ALL && (id) <= REPORT_ID_COUNT)
 
 /* Mouse buttons */
@@ -192,6 +195,11 @@ typedef struct {
     uint8_t  report_id;
     uint32_t usage;
 } PACKED report_programmable_button_t;
+
+typedef struct {
+    uint8_t report_id;
+    uint8_t data[8];
+} PACKED report_plover_hid_t;
 
 #ifdef MOUSE_EXTENDED_REPORT
 #    define MOUSE_REPORT_XY_MIN INT16_MIN

@@ -6,7 +6,7 @@
 #include "steno/engine.h"
 #include "layouts/catalog.h"
 #include "keymap_introspection.h"
-#include "process_steno.h"
+#include "steno/plover.h"
 #include "os_detection.h"
 #include "eeconfig.h"
 #include <string.h>
@@ -31,8 +31,7 @@ static uint16_t     held_codes[MJI_TOKEN_COUNT];
 static uint8_t      refs[256];
 static uint16_t     steno_keys[MJI_PHYSICAL_COUNT];
 static uint64_t     steno_held;
-static uint64_t     gemini_held;
-static bool         shortcut_active, discard_steno_send;
+static bool         shortcut_active;
 static bool         replay_down[256];
 static uint8_t      replay_saved_mods;
 
@@ -91,11 +90,6 @@ void mejiro_keyboard_replay_end(void) {
     send_keyboard_report();
 }
 
-bool send_steno_chord_user(steno_mode_t mode, uint8_t chord[]) {
-    (void)mode;
-    (void)chord;
-    return !discard_steno_send;
-}
 static bool shortcut_held(void) {
     if (!steno_mode) return false;
     for (uint8_t i = 0; i < MJI_TOKEN_COUNT; ++i) {
@@ -104,23 +98,18 @@ static bool shortcut_held(void) {
     }
     return false;
 }
-static void cancel_steno_input(void) {
-    // Drain QMK's pressed-key counter without transmitting a partial chord.
-    discard_steno_send = true;
-    for (uint8_t p = 0; p < MJI_PHYSICAL_COUNT; ++p) {
-        if (!(gemini_held & (UINT64_C(1) << p))) continue;
-        keyrecord_t release = {.event = {.key = {.row = p / MATRIX_COLS, .col = p % MATRIX_COLS}, .pressed = false}};
-        process_steno(steno_keys[p], &release);
-    }
-    discard_steno_send = false;
+static void reset_steno_input(void) {
+    // Plover owns chord assembly: releasing the HID state completes any
+    // already-transmitted stroke. Held physical keys stay ignored until up.
+    mejiro_plover_reset();
     input.ignored |= steno_held;
-    gemini_held = steno_held = 0;
+    steno_held = 0;
     memset(steno_keys, 0, sizeof(steno_keys));
     mejiro_reset_state();
 }
 static void sync_shortcut(void) {
     bool active = shortcut_held();
-    if (active && !shortcut_active) cancel_steno_input();
+    if (active && !shortcut_active) reset_steno_input();
     if (!active && shortcut_active) mejiro_engine_flush_keyboard();
     shortcut_active = active;
 }
@@ -162,7 +151,7 @@ static void clear_callback(void *user) {
     for (unsigned code = 1; code < 256; ++code)
         if (refs[code]) capture_key(code, false);
     if (get_mods()) mejiro_engine_record((mejiro_hid_event){.page = 7});
-    cancel_steno_input();
+    reset_steno_input();
     shortcut_active = false;
     memset(held_codes, 0, sizeof(held_codes));
     memset(refs, 0, sizeof(refs));
@@ -171,7 +160,6 @@ static void clear_callback(void *user) {
     host_mods  = 0;
     clear_keyboard();
     layer_clear();
-    steno_set_mode(STENO_MODE_GEMINI);
 }
 static void switch_context(void) {
     mji_reset(&input, steno_mode ? MJI_STENO : MJI_QWERTY);
@@ -392,7 +380,6 @@ void keyboard_post_init_user(void) {
         ready                      = select_layout(&config);
     }
     default_layer_set((layer_state_t)1 << MJI_QWERTY);
-    steno_set_mode(STENO_MODE_GEMINI);
 }
 
 bool pre_process_record_user(uint16_t keycode, keyrecord_t *record) {
@@ -418,7 +405,6 @@ bool pre_process_record_user(uint16_t keycode, keyrecord_t *record) {
                 input.physical |= mask;
             } else {
                 steno_held &= ~mask;
-                gemini_held &= ~mask;
                 input.physical &= ~mask;
                 steno_keys[p] = 0;
             }
@@ -429,8 +415,7 @@ bool pre_process_record_user(uint16_t keycode, keyrecord_t *record) {
                     mejiro_on_release(kc);
                 }
             } else {
-                if (pressed) gemini_held |= mask;
-                process_steno(kc, record);
+                mejiro_plover_key(kc, pressed);
             }
             return false;
         }

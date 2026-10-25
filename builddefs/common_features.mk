@@ -96,6 +96,19 @@ ifeq ($(strip $(MIDI_ENABLE)), yes)
     SRC += $(QUANTUM_DIR)/process_keycode/process_midi.c
 endif
 
+# Plover HID transport backported from QMK; legacy steno keycodes may still be
+# consumed by a keyboard's own input adapter without enabling serial steno.
+ifeq ($(strip $(PLOVER_HID_ENABLE)), yes)
+    ifeq ($(strip $(STENO_ENABLE)), yes)
+        $(call CATASTROPHIC_ERROR,Plover HID conflicts with serial steno,Disable STENO_ENABLE)
+    endif
+    ifneq ($(strip $(PLATFORM)),CHIBIOS)
+        $(call CATASTROPHIC_ERROR,Plover HID transport requires ChibiOS,This backport supports ChibiOS USB only)
+    endif
+    OPT_DEFS += -DPLOVER_HID_ENABLE
+    SRC += $(QUANTUM_DIR)/plover_hid.c
+endif
+
 VALID_STENO_PROTOCOL_TYPES := geminipr txbolt all
 STENO_PROTOCOL ?= all
 ifeq ($(strip $(STENO_ENABLE)), yes)

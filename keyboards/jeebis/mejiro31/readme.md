@@ -21,6 +21,10 @@ qmk compile -kb jeebis/mejiro31 -km en_default
 
 生成物はQMKルートの `jeebis_mejiro31_jp_default.uf2` / `jeebis_mejiro31_en_default.uf2`。
 
+## Ploverとの接続
+
+外部Plover向け速記はPlover HIDを使用する。Plover 5.1.0以降でMachineを `Plover HID` に設定する。シリアルポートの指定は不要。内蔵メジロ式との切り替えや通常入力は従来と同じ操作で使用できる。
+
 ## 書き込み
 
 PCBのBOOTボタンを押しながらUSBへ接続し、表示された `RPI-RP2` ドライブへ対応するUF2をコピーする。BOOTボタンはUSB端子から離れた側。
