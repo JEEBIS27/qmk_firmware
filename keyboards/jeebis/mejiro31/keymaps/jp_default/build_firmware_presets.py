@@ -14,11 +14,11 @@ if str(SHARED_DIR) not in sys.path:
 from firmware_preset_builder import PresetBuilderConfig, RewriteRule, run_builder
 
 ALT_EN_PATTERN = re.compile(
-    r"^static alt_layout_def_t alt_en_layout = ALT_LAYOUT\([a-z0-9_]+\);.*$",
+    r"^#define MJI_ENGLISH_LAYOUT mji_layout_[a-z0-9_]+.*$",
     re.MULTILINE,
 )
 ALT_JP_PATTERN = re.compile(
-    r"^static alt_layout_def_t alt_jp_layout = ALT_LAYOUT\([a-z0-9_]+\);.*$",
+    r"^#define MJI_JAPANESE_LAYOUT mji_layout_[a-z0-9_]+.*$",
     re.MULTILINE,
 )
 
@@ -31,7 +31,7 @@ CONFIG = PresetBuilderConfig(
     layout_fields=("english_layout", "japanese_layout"),
     description=(
         "Build firmware presets for jeebis/mejiro31:jp_default by temporarily "
-        "rewriting alt_en_layout / alt_jp_layout in keymap.c."
+        "selecting English / Japanese engine maps in keymap.c."
     ),
     list_format=lambda preset: (
         f"{preset['firmware_name']}: "
@@ -41,18 +41,18 @@ CONFIG = PresetBuilderConfig(
         RewriteRule(
             pattern=ALT_EN_PATTERN,
             replacement_factory=lambda preset: (
-                "static alt_layout_def_t alt_en_layout = "
-                f"ALT_LAYOUT({preset['english_layout']});  // 英語モード時のレイアウト"
+                "#define MJI_ENGLISH_LAYOUT "
+                f"mji_layout_{preset['english_layout']}"
             ),
-            error_message="Could not rewrite alt_en_layout in keymap.c.",
+            error_message="Could not select English layout in keymap.c.",
         ),
         RewriteRule(
             pattern=ALT_JP_PATTERN,
             replacement_factory=lambda preset: (
-                "static alt_layout_def_t alt_jp_layout = "
-                f"ALT_LAYOUT({preset['japanese_layout']});  // 日本語モード時のレイアウト"
+                "#define MJI_JAPANESE_LAYOUT "
+                f"mji_layout_{preset['japanese_layout']}"
             ),
-            error_message="Could not rewrite alt_jp_layout in keymap.c.",
+            error_message="Could not select Japanese layout in keymap.c.",
         ),
     ),
     output_subdir=".build/export",

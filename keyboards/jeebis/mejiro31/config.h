@@ -1,24 +1,11 @@
-/*
-Copyright 2025 JEEBIS <jeebis.iox@gmail.com>
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
+// SPDX-License-Identifier: GPL-2.0-or-later
 #pragma once
+// Six logical Tap maps and their six matching Hold maps.
+#define DYNAMIC_KEYMAP_LAYER_COUNT 12
+#define MJI_COMBO_MS 150
+#define MJI_CONTINUATION_MS 50
+#define MJI_LONG_HOLD_MS 300
+#define NKRO_DEFAULT_ON true
 
-#define TAPPING_TERM 200
-#define PERMISSIVE_HOLD
-#define QUICK_TAP_TERM 0
-#define COMBO_FIFO_ENABLE
-#define DYNAMIC_KEYMAP_LAYER_COUNT 6
+// All Tap/Hold decisions belong to the unified input engine.
+#define NO_ACTION_TAPPING

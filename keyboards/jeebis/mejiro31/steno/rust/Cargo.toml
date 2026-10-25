@@ -1,0 +1,18 @@
+[package]
+name = "mejiro-qmk"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "GPL-3.0-or-later"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+mejiro-engine = { path = "../../../../../../Mejiro_Engine" }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
