@@ -108,6 +108,8 @@ const uint16_t PROGMEM
                     {KC_NO, KC_NO, KC_NO, KC_NO, KC_LSFT, KC_TRNS, KC_RSFT, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
                     {KC_NO, KC_NO, KC_NO, KC_NO, KC_LALT, KC_LCTL, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
                 },
+            [12] = {{KC_NO}},
+            [13] = {{KC_NO}},
             [11] =
                 {
                     {KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},

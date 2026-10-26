@@ -132,9 +132,15 @@ static uint8_t first_source(uint64_t sources) {
 static bool single(const mji_token_t *t) {
     return t->sources && !(t->sources & (t->sources - 1));
 }
+// A visible but unassigned combo must not consume its two ordinary keys.
+static bool pair_enabled(mji_engine_t *e, const mji_pair_t *pair) {
+    mji_context_t c = context(e);
+    mji_binding_t b = e->callbacks.lookup(e->user, pair->logical, &c);
+    return b.tap || b.hold_code || b.hold_mods || b.hold_layer != MJI_NO_LAYER;
+}
 static bool candidate(mji_engine_t *e, uint8_t p) {
     for (uint8_t i = 0; i < e->pair_count; ++i)
-        if (e->pairs[i].a == p || e->pairs[i].b == p) return true;
+        if ((e->pairs[i].a == p || e->pairs[i].b == p) && pair_enabled(e, &e->pairs[i])) return true;
     return false;
 }
 
@@ -245,7 +251,7 @@ static int pending_pair(mji_engine_t *e, uint8_t id, bool vertical_only) {
         const mji_pair_t *pair = &e->pairs[i];
         if (vertical_only && pair->priority) continue;
         int other = pair->a == p ? pair->b : pair->b == p ? pair->a : -1;
-        if (other < 0 || !e->owner[other]) continue;
+        if (other < 0 || !e->owner[other] || !pair_enabled(e, pair)) continue;
         uint8_t      j = e->owner[other] - 1;
         mji_token_t *u = &e->tokens[j];
         if (j == id || u->state != MJI_WAIT || u->residual || u->released || !single(u)) continue;
@@ -362,7 +368,7 @@ void mji_event(mji_engine_t *e, uint8_t p, bool pressed, uint32_t now) {
         for (uint8_t i = 0; i < e->pair_count; ++i) {
             const mji_pair_t *pair  = &e->pairs[i];
             int               other = pair->a == p ? pair->b : pair->b == p ? pair->a : -1;
-            if (other < 0 || !e->owner[other]) continue;
+            if (other < 0 || !e->owner[other] || !pair_enabled(e, pair)) continue;
             int          id = e->owner[other] - 1;
             mji_token_t *t  = &e->tokens[id];
             if (!single(t) || t->released || (t->state != MJI_ACTIVE && t->state != MJI_READY && t->state != MJI_PREPARED && !t->residual)) continue;

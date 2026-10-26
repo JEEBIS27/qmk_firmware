@@ -17,7 +17,7 @@ static void test_web_protocol(void) {
     uint8_t packet[32];
     vial_unlocked = 0;
     request(packet, 0, 0, 0, 0);
-    assert(packet[3] == 0 && packet[12] == (2 | (MJI_DEFAULT_MEJIRO ? 4 : 0)) && packet[16] == 12 && packet[17] == WEB_LAYOUT_COUNT);
+    assert(packet[3] == 0 && packet[12] == (2 | (MJI_DEFAULT_MEJIRO ? 4 : 0)) && packet[16] == 14 && packet[17] == WEB_LAYOUT_COUNT);
     uint32_t saved = settings_word;
     request(packet, 1, 7, 1, 16);
     assert(packet[3] == 1 && settings_word == saved);
@@ -69,6 +69,44 @@ static void test_unlock_barrier(void) {
     event(801, 1, false); all_up();
     puts("unlock barrier suppresses engine output, tracks releases and resumes input OK");
 }
+static void test_extra_combos(void) {
+    const uint8_t pairs[][2] = {{0,12},{0,1},{12,13},{40,41},{22,23},{10,11}};
+    for (unsigned i = 0; i < 6; ++i) {
+        setup();
+        dynamic_maps[12][0][i] = KC_ESC;
+        event(0, pairs[i][0], true);
+        event(10, pairs[i][1], true);
+        tick(250);
+        event(251, pairs[i][0], false);
+        event(252, pairs[i][1], false);
+        tick(500);
+        assert(presses[KC_ESC] == 1);
+        setup();
+        dynamic_maps[13][0][i] = KC_LALT;
+        event(0, pairs[i][0], true);
+        event(10, pairs[i][1], true);
+        tick(500);
+        assert(native_mods & MOD_BIT(KC_LALT));
+        event(501, pairs[i][0], false);
+        event(502, pairs[i][1], false);
+        tick(800);
+        assert(!(native_mods & MOD_BIT(KC_LALT)));
+    }
+    setup();
+    dynamic_maps[12][0][6] = KC_F1; // Shift Keyboard, combo index 0.
+    assert(read_binding_code(1, 48) == KC_F1 && read_binding_code(0, 48) == KC_NO);
+    dynamic_maps[13][2][5] = KC_RALT; // Function Hold, combo index 5.
+    assert(read_binding_code(10, 53) == KC_RALT);
+    dynamic_maps[12][2][6] = KC_ESC;
+    mji_context_t steno = {.layers = {MJI_STENO}, .layer_count = 1};
+    mji_binding_t inactive = lookup_callback(NULL, 48, &steno);
+    assert(inactive.tap == KC_NO && inactive.hold_layer == MJI_NO_LAYER);
+    setup();
+    event(0, 0, true); event(10, 1, true); tick(250);
+    event(251, 0, false); event(252, 1, false); tick(500);
+    assert(presses[KC_GRV] == 1 && presses[KC_Q] == 1);
+    puts("six extension combos support real Tap/Hold; empty combos preserve normal keys OK");
+}
 static void test_declarative_defaults(void) {
     setup();
     keyboard_post_init_user();
@@ -79,6 +117,7 @@ static void test_declarative_defaults(void) {
 }
 int main(void) {
     test_declarative_defaults();
+    test_extra_combos();
     assert(adapter_regression_main() == 0);
     test_web_protocol();
     test_unlock_barrier();

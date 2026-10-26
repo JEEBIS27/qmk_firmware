@@ -1,7 +1,7 @@
 # Mejiro31 Vial / browser configurator
 
 All Mejiro31 keymaps now use Vial protocol 6, UID `M31WEB01`, dynamic
-12-layer Tap/Hold maps and the browser settings extension. Existing declarative
+12 logical Tap/Hold maps in 14 storage layers and the browser settings extension. Existing declarative
 language/preset definitions and the unified input engine are preserved.
 
 Use the same commands as before, from this repository:
@@ -54,7 +54,7 @@ connection. All 18 runtime layout tables remain compiled into the firmware.
 `web_layouts.h` defines persistent numeric IDs: append new entries, never reorder.
 
 Write the UF2 to the RP2040 BOOTSEL drive, then reconnect normally. The browser
-editor must expect protocol 6, UID `M31WEB01`, 12 layers and extension signature
+editor must expect protocol 6, UID `M31WEB01`, 14 storage layers and extension signature
 `M31WEB01`. It uses the Raw HID interface at usage page `0xff60`, usage `0x61`.
 The site source and protocol reference are maintained in
 [JEEBIS27/Mejiro31](https://github.com/JEEBIS27/Mejiro31).
@@ -62,8 +62,14 @@ The site source and protocol reference are maintained in
 Unlocking requires holding the top-left and top-right physical keys. While
 unlocking, the unified input engine is paused. Do not enable Vial's dynamic
 Combo/Tap Dance/QMK Settings: this keyboard's engine owns combo and Tap/Hold
-semantics. The additional 16 Vial positions are outputs of fixed combos, not
-extra physical keys. Layers 0..5 are Tap and 6..11 are their Hold counterparts.
+semantics. There are 22 fixed combo outputs, disabled when both Tap and Hold are empty.
+Steno does not allow combos. Layers 0..5 are Tap and 6..11 are their Hold
+counterparts. The original 16 outputs are virtual matrix positions. The six
+additional outputs are edited through the dedicated site: storage layers 12
+and 13 contain their Tap and Hold maps, respectively. Within each storage layer,
+the six outputs for logical layer L start at flat matrix offset L * 6.
+Back up before updating from 12-storage-layer firmware; the site imports old
+12x48 backups and appends six unassigned outputs to each logical map.
 The Vial firmware uses a separate user-settings version; back up settings before
 switching firmware variants. This keymap does not add browser flashing.
 
