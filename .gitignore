@@ -132,3 +132,6 @@ compile_commands.json
 via*.json
 /keyboards/**/keymaps/via/*
 /keyboards/**/keymaps/vial/*
+
+# Mejiro31 owns its site-compatible Vial keymap and protocol definition.
+!/keyboards/jeebis/mejiro31/keymaps/vial/*

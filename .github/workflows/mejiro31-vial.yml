@@ -1,0 +1,39 @@
+name: Mejiro31 Vial firmware
+on:
+  pull_request:
+    paths:
+      - 'keyboards/jeebis/mejiro31/**'
+      - '.github/workflows/mejiro31-vial.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi python3-venv
+          rustup toolchain install 1.88.0 --profile minimal
+          rustup target add --toolchain 1.88.0 thumbv6m-none-eabi
+      - name: Prepare pinned Vial and engine sources
+        run: python3 keyboards/jeebis/mejiro31/build_vial.py --prepare-only
+      - name: Install QMK Python dependencies
+        run: |
+          python3 -m venv .build/vial-python
+          .build/vial-python/bin/pip install qmk -r .build/mejiro31-vial/vial/requirements.txt
+      - name: Host adapter and site protocol tests
+        run: python3 keyboards/jeebis/mejiro31/tests/run_vial_tests.py --source-dir .build/mejiro31-vial/vial
+      - name: Build and verify both language UF2s
+        env:
+          RUSTUP_TOOLCHAIN: 1.88.0
+        run: |
+          export PATH="$PWD/.build/vial-python/bin:$PATH"
+          python3 keyboards/jeebis/mejiro31/build_vial.py --profile all --layout qwerty
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mejiro31-vial-qwerty
+          path: .build/mejiro31-vial/artifacts/
+          if-no-files-found: error

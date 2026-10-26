@@ -30,3 +30,11 @@ qmk compile -kb jeebis/mejiro31 -km en_default
 PCBのBOOTボタンを押しながらUSBへ接続し、表示された `RPI-RP2` ドライブへ対応するUF2をコピーする。BOOTボタンはUSB端子から離れた側。
 
 旧ファームウェアのVIA保存形式とは互換性がないため、保存配列を退避し、新形式の動的キーマップを初期化して使用する。
+
+## Vial対応版
+
+ブラウザーからリマッピングする場合は、[Vialキーマップの手順](keymaps/vial/readme.md)で専用UF2をビルドしてください。通常の`jp_default`／`en_default`のUF2にはVial本体とサイト用の通信は入りません。
+
+```sh
+python3 keyboards/jeebis/mejiro31/build_vial.py --profile jp --layout qwerty
+```
