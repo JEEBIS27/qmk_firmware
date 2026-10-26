@@ -1,3 +1,10 @@
+# QMK CLI calls this makefile directly rather than the root Makefile.
+ifeq ($(strip $(KEYBOARD)),jeebis/mejiro31)
+.DEFAULT_GOAL := build
+.PHONY: build all flash clean
+build all flash clean:
+	python3 keyboards/jeebis/mejiro31/build_vial.py --keymap $(KEYMAP) --action $(if $(filter flash clean,$@),$@,build)
+else
 # Determine what keyboard we are building and setup the build environment.
 #
 # We support folders up to 5 levels deep below `keyboards/`. This file is
@@ -625,3 +632,5 @@ define GEN_FILES
 $1: generated-files
 endef
 $(foreach O,$(OBJ),$(eval $(call GEN_FILES,$(patsubst %.a,%.o,$(O)))))
+
+endif # Mejiro31 Vial routing

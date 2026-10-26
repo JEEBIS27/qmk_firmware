@@ -5,15 +5,35 @@
 #include "steno/chord.h"
 #include "steno/engine.h"
 #include "layouts/catalog.h"
+#ifdef MJI_WEB_VIAL
+#    include "web_layouts.h"
+#    ifndef MJI_WEB_EN_DEFAULT
+#        define MJI_WEB_EN_DEFAULT MJI_WEB_LAYOUT_ID(MJI_ENGLISH_LAYOUT)
+#    endif
+#    ifndef MJI_WEB_JP_DEFAULT
+#        define MJI_WEB_JP_DEFAULT MJI_WEB_LAYOUT_ID(MJI_JAPANESE_LAYOUT)
+#    endif
+#endif
 #include "keymap_introspection.h"
 #include "steno/plover.h"
 #include "os_detection.h"
 #include "eeconfig.h"
+#ifdef MJI_WEB_VIAL
+#    include "dynamic_keymap.h"
+#    include "vial.h"
+#endif
 #include <string.h>
 
 // Tap layers 0..5; matching Hold maps are stored at 6..11.
 enum { MJI_QWERTY, MJI_SHIFTED, MJI_NUMBER, MJI_NUMBER_SHIFTED, MJI_FUNCTION, MJI_STENO, MJI_HOLD_OFFSET };
-enum { MJI_00 = SAFE_RANGE, MJI_000, MJI_MODE, MJI_JIS, MJI_ALT, MJI_MEJIRO, MJI_STICKY };
+#ifdef MJI_WEB_VIAL
+#    define MJI_CUSTOM_BASE QK_KB_0
+#    define mji_keycode_at dynamic_keymap_get_keycode
+#else
+#    define MJI_CUSTOM_BASE SAFE_RANGE
+#    define mji_keycode_at keycode_at_keymap_location
+#endif
+enum { MJI_00 = MJI_CUSTOM_BASE, MJI_000, MJI_MODE, MJI_JIS, MJI_ALT, MJI_MEJIRO, MJI_STICKY };
 
 #include "defaults.h"
 
@@ -115,13 +135,24 @@ static void sync_shortcut(void) {
 }
 
 // Versioned user word, independent of VIA's editable keymap storage.
-#define MJI_SETTINGS_MAGIC UINT32_C(0x4d310100)
+#ifdef MJI_WEB_VIAL
+#    define MJI_SETTINGS_MAGIC UINT32_C(0x4d320000)
+#    define MJI_SETTINGS_MASK UINT32_C(0x1fff)
+#    define MJI_LAYOUT_SETTINGS (((uint32_t)web_en_layout << 3) | ((uint32_t)web_jp_layout << 8))
+#    define MJI_DEFAULT_LAYOUT_SETTINGS (((uint32_t)MJI_WEB_EN_DEFAULT << 3) | ((uint32_t)MJI_WEB_JP_DEFAULT << 8))
+static uint8_t web_en_layout = MJI_WEB_EN_DEFAULT, web_jp_layout = MJI_WEB_JP_DEFAULT;
+#else
+#    define MJI_SETTINGS_MAGIC UINT32_C(0x4d310100)
+#    define MJI_SETTINGS_MASK UINT32_C(7)
+#    define MJI_LAYOUT_SETTINGS UINT32_C(0)
+#    define MJI_DEFAULT_LAYOUT_SETTINGS UINT32_C(0)
+#endif
 static void save_settings(void) {
-    uint32_t word = MJI_SETTINGS_MAGIC | input.layout.jis_host | ((uint32_t)input.layout.alt_enabled << 1) | ((uint32_t)mejiro_mode << 2);
+    uint32_t word = MJI_SETTINGS_MAGIC | input.layout.jis_host | ((uint32_t)input.layout.alt_enabled << 1) | ((uint32_t)mejiro_mode << 2) | MJI_LAYOUT_SETTINGS;
     if (eeconfig_read_user() != word) eeconfig_update_user(word);
 }
 void eeconfig_init_user(void) {
-    eeconfig_update_user(MJI_SETTINGS_MAGIC | MJI_DEFAULT_JIS | UINT32_C(2) | ((uint32_t)MJI_DEFAULT_MEJIRO << 2));
+    eeconfig_update_user(MJI_SETTINGS_MAGIC | MJI_DEFAULT_JIS | UINT32_C(2) | ((uint32_t)MJI_DEFAULT_MEJIRO << 2) | MJI_DEFAULT_LAYOUT_SETTINGS);
 }
 
 static uint8_t expand_mods(uint8_t mods) {
@@ -254,8 +285,8 @@ static mji_binding_t lookup_callback(void *user, uint16_t logical, const mji_con
                 layer = MJI_NUMBER_SHIFTED;
         }
         uint8_t  row = logical / MATRIX_COLS, col = logical % MATRIX_COLS;
-        uint16_t tap  = keycode_at_keymap_location(layer, row, col);
-        uint16_t hold = keycode_at_keymap_location(layer + MJI_HOLD_OFFSET, row, col);
+        uint16_t tap  = mji_keycode_at(layer, row, col);
+        uint16_t hold = mji_keycode_at(layer + MJI_HOLD_OFFSET, row, col);
         if (tap == KC_TRNS && hold == KC_TRNS) continue;
         mji_binding_t b = binding(tap, hold);
         b.layer         = layer;
@@ -359,6 +390,10 @@ static void key_callback(void *user, uint8_t source, uint16_t code, bool pressed
     report_mods(mods);
 }
 
+#ifdef MJI_WEB_VIAL
+#    include "web_protocol.h"
+#endif
+
 void keyboard_post_init_user(void) {
     mejiro_engine_init();
     mac = detected_host_os() == OS_MACOS || detected_host_os() == OS_IOS;
@@ -366,15 +401,27 @@ void keyboard_post_init_user(void) {
     keymap_config.nkro = true;
 #endif
     uint32_t settings = eeconfig_read_user();
-    if ((settings & ~UINT32_C(7)) != MJI_SETTINGS_MAGIC) {
+    if ((settings & ~MJI_SETTINGS_MASK) != MJI_SETTINGS_MAGIC) {
         eeconfig_init_user();
         settings = eeconfig_read_user();
     }
     mejiro_mode = (settings & 4) != 0;
+#ifdef MJI_WEB_VIAL
+    web_en_layout = (settings >> 3) & 31;
+    web_jp_layout = (settings >> 8) & 31;
+    if (web_en_layout >= WEB_LAYOUT_COUNT || web_jp_layout >= WEB_LAYOUT_COUNT) {
+        web_en_layout = MJI_WEB_EN_DEFAULT;
+        web_jp_layout = MJI_WEB_JP_DEFAULT;
+    }
+#endif
     mji_callbacks_t cb = {.lookup = lookup_callback, .key = key_callback, .mods = mods_callback, .clear = clear_callback, .decode = decode_callback, .encode = encode_callback};
     ready              = mji_init(&input, physical_pairs, sizeof(physical_pairs) / sizeof(*physical_pairs), (mji_timing_t){MJI_COMBO_MS, MJI_CONTINUATION_MS, MJI_LONG_HOLD_MS}, MJI_QWERTY, cb, NULL);
     if (ready) {
         mji_layout_config_t config = {.maps = {MJI_LAYOUT_MAP(MJI_ENGLISH_LAYOUT), MJI_LAYOUT_MAP(MJI_JAPANESE_LAYOUT)}, .alt_layers = (UINT32_C(1) << MJI_QWERTY) | (UINT32_C(1) << MJI_SHIFTED), .language = MJI_ENGLISH, .alt_enabled = true, .jis_host = MJI_DEFAULT_JIS};
+#ifdef MJI_WEB_VIAL
+        config.maps[0] = web_layouts[web_en_layout];
+        config.maps[1] = web_layouts[web_jp_layout];
+#endif
         config.jis_host = (settings & 1) != 0;
         config.alt_enabled = (settings & 2) != 0;
         ready                      = select_layout(&config);
@@ -388,6 +435,13 @@ bool pre_process_record_user(uint16_t keycode, keyrecord_t *record) {
     uint8_t  p       = record->event.key.row * MATRIX_COLS + record->event.key.col;
     uint64_t mask    = UINT64_C(1) << p;
     bool     pressed = record->event.pressed;
+#ifdef MJI_WEB_VIAL
+    if (web_pause_for_unlock()) {
+        if (pressed) { input.physical |= mask; input.ignored |= mask; }
+        else { input.physical &= ~mask; input.ignored &= ~mask; }
+        return false;
+    }
+#endif
     sync_shortcut();
     // Steno keys bypass keyboard compression, but share the mode-reset barrier.
     bool steno_layer = steno_mode && !shortcut_active;
@@ -397,7 +451,7 @@ bool pre_process_record_user(uint16_t keycode, keyrecord_t *record) {
     // A key routed through the keyboard engine keeps that release path even
     // if its modifier was released before it.
     if (steno_mode && !(input.ignored & mask) && (pressed || !input.owner[p])) {
-        uint16_t kc = pressed ? (steno_layer ? keycode_at_keymap_location(MJI_STENO, p / MATRIX_COLS, p % MATRIX_COLS) : KC_NO) : steno_keys[p];
+        uint16_t kc = pressed ? (steno_layer ? mji_keycode_at(MJI_STENO, p / MATRIX_COLS, p % MATRIX_COLS) : KC_NO) : steno_keys[p];
         if (is_stn_key(kc)) {
             if (pressed) {
                 steno_keys[p] = kc;
@@ -427,6 +481,9 @@ bool pre_process_record_user(uint16_t keycode, keyrecord_t *record) {
 }
 void matrix_scan_user(void) {
     if (!ready) return;
+#ifdef MJI_WEB_VIAL
+    if (web_pause_for_unlock()) return;
+#endif
     mji_tick(&input, timer_read32());
     sync_shortcut();
     // OS detection may finish after startup; don't change mapping mid-hold.

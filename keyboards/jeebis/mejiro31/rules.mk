@@ -1,4 +1,5 @@
 VIA_ENABLE = yes
+include $(KEYBOARD_PATH_1)/qmk/vial_rules.mk
 STENO_ENABLE = no
 PLOVER_HID_ENABLE = yes
 STRING_ENABLE = yes

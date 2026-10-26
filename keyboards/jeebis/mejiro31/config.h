@@ -9,3 +9,6 @@
 
 // All Tap/Hold decisions belong to the unified input engine.
 #define NO_ACTION_TAPPING
+
+// Vial identity is shared by every keymap.
+#include "qmk/vial_config.h"

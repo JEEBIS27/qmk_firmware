@@ -30,3 +30,16 @@ qmk compile -kb jeebis/mejiro31 -km en_default
 PCBのBOOTボタンを押しながらUSBへ接続し、表示された `RPI-RP2` ドライブへ対応するUF2をコピーする。BOOTボタンはUSB端子から離れた側。
 
 旧ファームウェアのVIA保存形式とは互換性がないため、保存配列を退避し、新形式の動的キーマップを初期化して使用する。
+
+## Vial対応（全キーマップ共通）
+
+Mejiro31は通常の日本語版・英語版・既存プリセットを含め、すべてVial対応です。従来のビルドコマンドでサイトにも接続できるUF2を生成します。
+
+```sh
+make jeebis/mejiro31:jp_default
+qmk compile -kb jeebis/mejiro31 -km en_default
+```
+
+内部で固定バージョンのVialコアを準備します。初回はネット接続が必要です。出力UF2は従来どおりリポジトリ直下にコピーされます。初期配列と既存の二段圧縮・Tap/Hold処理は維持します。サイトに接続しなくてもキーボードとして使用できます。
+
+[実装・依存関係・検証手順](keymaps/vial/readme.md)
