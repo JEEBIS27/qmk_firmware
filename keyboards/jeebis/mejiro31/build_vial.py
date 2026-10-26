@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import struct
@@ -79,7 +80,11 @@ def prepare(work, submodules):
     if 'case vial_lock: {\n            vial_unlock_in_progress = 0;' not in text:
         text = text.replace('case vial_lock: {', 'case vial_lock: {\n            vial_unlock_in_progress = 0;')
     core.write_text(text)
-    cargo = dest / 'steno/rust/Cargo.toml'
+    # Named keymaps share the keyboard's Vial definition.
+    build_vial = vial / 'builddefs/build_vial.mk'
+    text = build_vial.read_text().replace('$(KEYMAP_PATH)/vial.json', '$(VIAL_DEFINITION)')
+    build_vial.write_text(text)
+    cargo = dest / 'steno/rust/Cargo.toml' 
     cargo.write_text(cargo.read_text().replace('../../../../../../Mejiro_Engine', str(engine)))
     for path in [dest / 'steno/engine.c', dest / 'steno/engine.h']:
         path.write_text(path.read_text().replace('../../../../../Mejiro_Engine/native/mejiro.h', str(engine / 'native/mejiro.h')))
@@ -94,13 +99,17 @@ def prepare(work, submodules):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--work-dir', type=Path, default=ROOT / '.build/mejiro31-vial')
+    p.add_argument('--work-dir', type=Path, default=Path(os.environ.get('MJI_VIAL_WORK_DIR', str(ROOT / '.build/mejiro31-vial'))))
+    p.add_argument('--keymap', help='Existing Mejiro31 keymap name; uses its original defaults')
+    p.add_argument('--action', choices=['build','flash','clean'], default='build')
     p.add_argument('--profile', choices=['jp', 'en', 'all'], default='all')
     p.add_argument('--layout', choices=['qwerty', 'graphite'], default='qwerty')
     p.add_argument('--jobs', type=int, default=4)
     p.add_argument('--prepare-only', action='store_true')
     p.add_argument('--skip-submodules', action='store_true', help='Only for host tests or an already initialized cache')
     args = p.parse_args()
+    if args.keymap and (not args.keymap.replace('_','').replace('-','').isalnum() or not (KB / 'keymaps' / args.keymap / 'keymap.c').is_file()):
+        p.error('Unknown Mejiro31 keymap')
     work = args.work_dir.resolve()
     if work == ROOT or work in KB.parents or work.is_relative_to(KB):
         p.error('The build cache must be outside the keyboard sources')
@@ -111,14 +120,22 @@ def main():
         return
     output = work / 'artifacts'
     output.mkdir(exist_ok=True)
-    for profile in (['jp', 'en'] if args.profile == 'all' else [args.profile]):
-        shutil.rmtree(vial / '.build/obj_jeebis_mejiro31_vial', ignore_errors=True)
-        run('make', 'jeebis/mejiro31:vial', f'-j{args.jobs}', f'MEJIRO_PROFILE={int(profile == "en")}', f'MEJIRO_LAYOUT={int(args.layout == "graphite")}', cwd=vial)
-        uf2 = output / f'mejiro31_vial_{profile}_{args.layout}.uf2'
-        shutil.copyfile(vial / '.build/jeebis_mejiro31_vial.uf2', uf2)
+    variants = [(None, args.keymap)] if args.keymap else [(profile, 'vial') for profile in (['jp', 'en'] if args.profile == 'all' else [args.profile])]
+    for profile, keymap in variants:
+        shutil.rmtree(vial / f'.build/obj_jeebis_mejiro31_{keymap}', ignore_errors=True)
+        target = f'jeebis/mejiro31:{keymap}' + (f':{args.action}' if args.action != 'build' else '')
+        options = [] if args.keymap else [f'MEJIRO_PROFILE={int(profile == "en")}', f'MEJIRO_LAYOUT={int(args.layout == "graphite")}']
+        run('make', target, f'-j{args.jobs}', *options, cwd=vial)
+        if args.action == 'clean':
+            continue
+        filename = f'mejiro31_{keymap}.uf2' if args.keymap else f'mejiro31_vial_{profile}_{args.layout}.uf2'
+        uf2 = output / filename
+        shutil.copyfile(vial / f'.build/jeebis_mejiro31_{keymap}.uf2', uf2)
         digest = verify_uf2(uf2)
         uf2.with_suffix('.uf2.sha256').write_text(f'{digest}  {uf2.name}\n')
         print(f'Verified site-compatible UF2: {uf2}', flush=True)
+        if args.keymap:
+            shutil.copyfile(uf2, ROOT / f'jeebis_mejiro31_{keymap}.uf2')
 
 
 if __name__ == '__main__':

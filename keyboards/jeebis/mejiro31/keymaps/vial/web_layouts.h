@@ -21,3 +21,25 @@ static const mji_layout_map_t web_layouts[] = {
     MJI_LAYOUT_MAP(mji_layout_o24),
     MJI_LAYOUT_MAP(mji_layout_tomisuke),
 };
+
+// Translate existing declarative preset maps to persistent Vial defaults.
+#define MJI_WEB_LAYOUT_ID_mji_layout_qwerty 0
+#define MJI_WEB_LAYOUT_ID_mji_layout_graphite 1
+#define MJI_WEB_LAYOUT_ID_mji_layout_colemak 2
+#define MJI_WEB_LAYOUT_ID_mji_layout_colemak_dh 3
+#define MJI_WEB_LAYOUT_ID_mji_layout_dvorak 4
+#define MJI_WEB_LAYOUT_ID_mji_layout_workman 5
+#define MJI_WEB_LAYOUT_ID_mji_layout_handsdown_neu 6
+#define MJI_WEB_LAYOUT_ID_mji_layout_sturdy 7
+#define MJI_WEB_LAYOUT_ID_mji_layout_engram 8
+#define MJI_WEB_LAYOUT_ID_mji_layout_gallium 9
+#define MJI_WEB_LAYOUT_ID_mji_layout_canary 10
+#define MJI_WEB_LAYOUT_ID_mji_layout_astarte 11
+#define MJI_WEB_LAYOUT_ID_mji_layout_boo 12
+#define MJI_WEB_LAYOUT_ID_mji_layout_eucalyn 13
+#define MJI_WEB_LAYOUT_ID_mji_layout_eucalyn_biacco 14
+#define MJI_WEB_LAYOUT_ID_mji_layout_merlin 15
+#define MJI_WEB_LAYOUT_ID_mji_layout_o24 16
+#define MJI_WEB_LAYOUT_ID_mji_layout_tomisuke 17
+#define MJI_WEB_LAYOUT_ID_EXPAND(name) MJI_WEB_LAYOUT_ID_##name
+#define MJI_WEB_LAYOUT_ID(name) MJI_WEB_LAYOUT_ID_EXPAND(name)

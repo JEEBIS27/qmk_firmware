@@ -1,3 +1,11 @@
+# Mejiro31 is Vial-only. Preserve the ordinary QMK target syntax while using
+# the pinned Vial core; other keyboards retain the original build path.
+MJI_VIAL_GOALS := $(filter jeebis/mejiro31:%,$(MAKECMDGOALS))
+ifneq ($(strip $(MJI_VIAL_GOALS)),)
+.PHONY: $(subst :,\:,$(MJI_VIAL_GOALS))
+$(subst :,\:,$(MJI_VIAL_GOALS)):
+	+python3 keyboards/jeebis/mejiro31/build_vial.py --keymap $(word 2,$(subst :, ,$@)) --action $(or $(word 3,$(subst :, ,$@)),build)
+else
 ifndef VERBOSE
 .SILENT:
 endif
@@ -503,3 +511,5 @@ pytest:
 .PHONY: format-and-pytest
 format-and-pytest:
 	RUNTIME=docker ./util/docker_cmd.sh bash -lic "$(CONTAINER_PREAMBLE); qmk format-c --core-only -a && qmk format-python -a && qmk pytest"
+
+endif # Mejiro31 Vial routing

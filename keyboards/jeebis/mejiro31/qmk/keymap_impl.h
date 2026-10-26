@@ -5,6 +5,15 @@
 #include "steno/chord.h"
 #include "steno/engine.h"
 #include "layouts/catalog.h"
+#ifdef MJI_WEB_VIAL
+#    include "web_layouts.h"
+#    ifndef MJI_WEB_EN_DEFAULT
+#        define MJI_WEB_EN_DEFAULT MJI_WEB_LAYOUT_ID(MJI_ENGLISH_LAYOUT)
+#    endif
+#    ifndef MJI_WEB_JP_DEFAULT
+#        define MJI_WEB_JP_DEFAULT MJI_WEB_LAYOUT_ID(MJI_JAPANESE_LAYOUT)
+#    endif
+#endif
 #include "keymap_introspection.h"
 #include "steno/plover.h"
 #include "os_detection.h"

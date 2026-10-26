@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-#define MJI_WEB_VIAL
 #ifndef MJI_EN_PROFILE
 #    define MJI_EN_PROFILE 0
 #endif

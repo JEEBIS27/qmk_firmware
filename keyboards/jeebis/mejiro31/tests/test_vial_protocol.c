@@ -50,7 +50,8 @@ static void test_web_protocol(void) {
 }
 static void test_unlock_barrier(void) {
     setup();
-    event(0, 1, true); tick(200); assert(native_keys[KC_Q]);
+    const uint16_t expected_q = KC_Q; // setup() intentionally selects QWERTY for input regressions.
+    event(0, 1, true); tick(200); assert(native_keys[expected_q]);
     vial_unlock_in_progress = 1;
     tick(201); all_up();
     event(202, 0, true);
@@ -64,11 +65,20 @@ static void test_unlock_barrier(void) {
     assert(input.ignored & (UINT64_C(1) << 11));
     event(504, 11, false); all_up();
     event(600, 1, true); tick(800);
-    assert(native_keys[KC_Q]);
+    assert(native_keys[expected_q]);
     event(801, 1, false); all_up();
     puts("unlock barrier suppresses engine output, tracks releases and resumes input OK");
 }
+static void test_declarative_defaults(void) {
+    setup();
+    keyboard_post_init_user();
+    assert(web_en_layout == MJI_WEB_EN_DEFAULT && web_jp_layout == MJI_WEB_JP_DEFAULT);
+    assert(input.layout.maps[0].entries == web_layouts[MJI_WEB_EN_DEFAULT].entries);
+    assert(input.layout.maps[1].entries == web_layouts[MJI_WEB_JP_DEFAULT].entries);
+    puts("declarative language/preset defaults preserved in Vial storage OK");
+}
 int main(void) {
+    test_declarative_defaults();
     assert(adapter_regression_main() == 0);
     test_web_protocol();
     test_unlock_barrier();

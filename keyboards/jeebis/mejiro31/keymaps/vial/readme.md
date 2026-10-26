@@ -1,25 +1,38 @@
 # Mejiro31 Vial / browser configurator
 
-This keymap adds Vial protocol 6, UID `M31WEB01`, dynamic 12-layer
-Tap/Hold maps and the Mejiro31 browser settings extension. The existing
-`jp_default`, `en_default` and preset keymaps retain their ordinary QMK behavior.
-A normal QMK build of those keymaps is not compatible with the browser editor.
+All Mejiro31 keymaps now use Vial protocol 6, UID `M31WEB01`, dynamic
+12-layer Tap/Hold maps and the browser settings extension. Existing declarative
+language/preset definitions and the unified input engine are preserved.
 
-Vial requires its own quantum core. Installing this keyboard's files alone in
-ordinary QMK does not add that core. From the root of this repository, use:
+Use the same commands as before, from this repository:
+
+```sh
+make jeebis/mejiro31:jp_default
+qmk compile -kb jeebis/mejiro31 -km en_default
+```
+
+Both entry points transparently prepare a pinned Vial core under
+`.build/mejiro31-vial/` and build **this checkout's keyboard sources** with their
+original keymap names. The ordinary `jp_default` retains Graphite for English
+and QWERTY for Japanese; `en_default` retains QWERTY for both. Preset-builder
+edits are copied into the prepared tree, so their existing commands also produce
+site-compatible UF2s. All other keyboards keep their normal QMK build path.
+
+Vial requires its quantum core, so the two build entry points route Mejiro31
+through `build_vial.py`; there is no separate non-Vial Mejiro31 build choice.
+The helper fetches pinned Vial-QMK and Mejiro_Engine commits, preserves Plover
+HID through `plover-hid.patch`, and fixes unlock cancellation. It does not
+replace this repository's core or rewrite this checkout's keyboard definitions.
+Use `MJI_VIAL_WORK_DIR` to override the cache directory.
+Local edits are copied; use a clean checkout for reproducible release builds.
+
+For site-distributed variants with explicitly selected initial layouts, the
+internal helper also supports:
 
 ```sh
 python3 keyboards/jeebis/mejiro31/build_vial.py --profile jp --layout qwerty
 python3 keyboards/jeebis/mejiro31/build_vial.py --profile en --layout graphite
 ```
-
-The helper copies **this checkout's keyboard sources** into an isolated Vial-QMK
-tree under `.build/mejiro31-vial/`. It fetches pinned Vial-QMK and Mejiro_Engine
-commits, preserves the Plover HID transport through `plover-hid.patch`, and fixes
-unlock cancellation in the pinned Vial core. It does not rewrite this checkout
-or change the ordinary QMK build. Local keyboard edits are included in the copy.
-Use a clean Git checkout for reproducible release builds; the preparation marker
-records HEAD, but is not a hash of uncommitted edits.
 
 Prerequisites: Git, Python 3, Make, QMK CLI and its dependencies (install the
 prepared Vial tree's `requirements.txt` if necessary), Arm GNU Toolchain,
@@ -27,7 +40,8 @@ Rust >=1.88 and the `thumbv6m-none-eabi` Rust target. Ensure the compiler and QM
 CLI are on PATH. Prepare without compiling with `--prepare-only`; `--skip-submodules`
 is intended for host-only testing or an already initialized cache.
 
-Verified UF2 files and their SHA-256 checksums are written to:
+Named builds copy `jeebis_mejiro31_<keymap>.uf2` to this repository root, as before.
+All verified UF2 files and their SHA-256 checksums are also written to the cache:
 
 ```
 .build/mejiro31-vial/artifacts/mejiro31_vial_jp_qwerty.uf2
