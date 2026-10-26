@@ -3,7 +3,7 @@ ifeq ($(strip $(KEYBOARD)),jeebis/mejiro31)
 .DEFAULT_GOAL := build
 .PHONY: build all flash clean
 build all flash clean:
-	+python3 keyboards/jeebis/mejiro31/build_vial.py --keymap $(KEYMAP) --action $(if $(filter flash clean,$@),$@,build)
+	python3 keyboards/jeebis/mejiro31/build_vial.py --keymap $(KEYMAP) --action $(if $(filter flash clean,$@),$@,build)
 else
 # Determine what keyboard we are building and setup the build environment.
 #

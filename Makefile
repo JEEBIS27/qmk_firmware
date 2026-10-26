@@ -4,7 +4,7 @@ MJI_VIAL_GOALS := $(filter jeebis/mejiro31:%,$(MAKECMDGOALS))
 ifneq ($(strip $(MJI_VIAL_GOALS)),)
 .PHONY: $(subst :,\:,$(MJI_VIAL_GOALS))
 $(subst :,\:,$(MJI_VIAL_GOALS)):
-	+python3 keyboards/jeebis/mejiro31/build_vial.py --keymap $(word 2,$(subst :, ,$@)) --action $(or $(word 3,$(subst :, ,$@)),build)
+	python3 keyboards/jeebis/mejiro31/build_vial.py --keymap $(word 2,$(subst :, ,$@)) --action $(or $(word 3,$(subst :, ,$@)),build)
 else
 ifndef VERBOSE
 .SILENT:
