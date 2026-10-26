@@ -4,6 +4,7 @@ on:
     paths:
       - 'keyboards/jeebis/mejiro31/**'
       - '.github/workflows/mejiro31-vial.yml'
+      - '.github/workflows/lint.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,6 +25,12 @@ jobs:
         run: |
           python3 -m venv .build/vial-python
           .build/vial-python/bin/pip install qmk -r .build/mejiro31-vial/vial/requirements.txt
+      - name: Ordinary QMK regression suite
+        env:
+          RUSTUP_TOOLCHAIN: 1.88.0
+        run: |
+          ln -s "$PWD/.build/mejiro31-vial/Mejiro_Engine" ../Mejiro_Engine
+          sh keyboards/jeebis/mejiro31/tests/run.sh
       - name: Host adapter and site protocol tests
         run: python3 keyboards/jeebis/mejiro31/tests/run_vial_tests.py --source-dir .build/mejiro31-vial/vial
       - name: Build and verify both language UF2s

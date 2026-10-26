@@ -53,6 +53,14 @@ jobs:
             continue
           fi
 
+          # This fork maintains a Vial keymap and a unified input engine here.
+          # Upstream lint explicitly rejects Vial; native regressions and ARM
+          # builds are required instead by Mejiro31 Vial firmware CI.
+          if [[ "$KB" == "jeebis/mejiro31" ]]; then
+            echo "Mejiro31 is checked by the dedicated Vial firmware workflow"
+            continue
+          fi
+
           KEYMAP_ONLY=$(echo "$KEYBOARD_CHANGES" | grep -cv /keymaps/)
           if [[ $KEYMAP_ONLY -gt 0 ]]; then
             echo "linting ${KB}"
