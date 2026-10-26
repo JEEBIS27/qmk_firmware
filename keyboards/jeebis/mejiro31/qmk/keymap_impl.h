@@ -38,9 +38,11 @@ enum { MJI_00 = MJI_CUSTOM_BASE, MJI_000, MJI_MODE, MJI_JIS, MJI_ALT, MJI_MEJIRO
 #include "defaults.h"
 
 // Physical coordinates, independent of key assignments or language/layout.
-// logical is a free matrix-storage cell, not another wired switch.
+// Logical 0..47 use the original matrix cells; 48..53 use extension storage.
+// No additional physical switches or scan rows are introduced.
 static const mji_pair_t physical_pairs[] = {
     {1, 13, 24, 0}, {2, 14, 25, 0}, {3, 15, 26, 0}, {4, 16, 27, 0}, {5, 17, 31, 0}, {6, 18, 32, 0}, {7, 19, 33, 0}, {8, 20, 34, 0}, {9, 21, 35, 0}, {10, 22, 36, 0}, {11, 23, 37, 0}, {4, 5, 38, 1}, {16, 17, 39, 1}, {6, 7, 44, 1}, {18, 19, 45, 1}, {42, 43, 46, 1},
+    {0, 12, 48, 0}, {0, 1, 49, 1}, {12, 13, 50, 1}, {40, 41, 51, 1}, {22, 23, 52, 1}, {10, 11, 53, 1},
 };
 
 static mji_engine_t input;
@@ -272,6 +274,16 @@ static mji_binding_t binding(uint16_t tap, uint16_t hold) {
     if (b.tap == KC_TRNS) b.tap = KC_NO;
     return b;
 }
+static uint16_t read_binding_code(uint8_t layer, uint16_t logical) {
+    if (logical < 48) return mji_keycode_at(layer, logical / MATRIX_COLS, logical % MATRIX_COLS);
+#ifdef MJI_WEB_VIAL
+    if (logical < 54 && layer < 12) {
+        uint8_t index = (layer % 6) * 6 + logical - 48;
+        return dynamic_keymap_get_keycode(layer < 6 ? 12 : 13, index / MATRIX_COLS, index % MATRIX_COLS);
+    }
+#endif
+    return KC_NO;
+}
 static mji_binding_t lookup_callback(void *user, uint16_t logical, const mji_context_t *c) {
     (void)user;
     for (uint8_t i = 0; i < c->layer_count; i++) {
@@ -284,9 +296,12 @@ static mji_binding_t lookup_callback(void *user, uint16_t logical, const mji_con
             else if (layer == MJI_NUMBER)
                 layer = MJI_NUMBER_SHIFTED;
         }
-        uint8_t  row = logical / MATRIX_COLS, col = logical % MATRIX_COLS;
-        uint16_t tap  = mji_keycode_at(layer, row, col);
-        uint16_t hold = mji_keycode_at(layer + MJI_HOLD_OFFSET, row, col);
+        if (layer == MJI_STENO) {
+            for (uint8_t pair = 0; pair < sizeof(physical_pairs) / sizeof(*physical_pairs); ++pair)
+                if (physical_pairs[pair].logical == logical) return (mji_binding_t){.hold_layer = MJI_NO_LAYER};
+        }
+        uint16_t tap = read_binding_code(layer, logical);
+        uint16_t hold = read_binding_code(layer + MJI_HOLD_OFFSET, logical);
         if (tap == KC_TRNS && hold == KC_TRNS) continue;
         mji_binding_t b = binding(tap, hold);
         b.layer         = layer;

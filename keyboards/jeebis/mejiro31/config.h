@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #pragma once
-// Six logical Tap maps and their six matching Hold maps.
-#define DYNAMIC_KEYMAP_LAYER_COUNT 12
+// Six Tap + six Hold maps; storage layers 12/13 hold six extra combos per map.
+#define DYNAMIC_KEYMAP_LAYER_COUNT 14
 #define MJI_COMBO_MS 150
 #define MJI_CONTINUATION_MS 50
 #define MJI_LONG_HOLD_MS 300

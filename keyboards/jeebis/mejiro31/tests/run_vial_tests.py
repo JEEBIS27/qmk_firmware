@@ -17,7 +17,7 @@ with tempfile.TemporaryDirectory(prefix='mejiro-web-tests-') as work:
     (work / 'vial.h').write_text('extern int vial_unlocked;\nextern int vial_unlock_in_progress;\n')
     (work / 'via.h').write_text('bool via_eeprom_is_valid(void);\n')
     fixture_source = (kb / 'tests/test_qmk_adapter.c').read_text().replace('int main(void)', 'int adapter_regression_main(void)')
-    flags = ['-std=c11', '-Wall', '-Wextra', '-Werror', '-Wno-unused-parameter', '-g', '-DMJI_WEB_VIAL', '-DDYNAMIC_KEYMAP_LAYER_COUNT=12', '-DQMK_KEYBOARD_H="qmk_stub.h"']
+    flags = ['-std=c11', '-Wall', '-Wextra', '-Werror', '-Wno-unused-parameter', '-g', '-DMJI_WEB_VIAL', '-DDYNAMIC_KEYMAP_LAYER_COUNT=14', '-DQMK_KEYBOARD_H="qmk_stub.h"']
     for include in [work, kb / 'tests/qmk_stubs', kb, kb / 'keymaps/vial', source / 'quantum', source / 'platforms', source / 'quantum/sequencer', source / 'quantum/keymap_extras']:
         flags += ['-I', str(include)]
     for named in [False, True]:
