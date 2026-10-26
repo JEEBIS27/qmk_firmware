@@ -111,7 +111,7 @@ def main():
     if args.keymap and (not args.keymap.replace('_','').replace('-','').isalnum() or not (KB / 'keymaps' / args.keymap / 'keymap.c').is_file()):
         p.error('Unknown Mejiro31 keymap')
     work = args.work_dir.resolve()
-    if work == ROOT or work in KB.parents or work.is_relative_to(KB):
+    if work == ROOT or work.is_relative_to(KB):
         p.error('The build cache must be outside the keyboard sources')
     work.mkdir(parents=True, exist_ok=True)
     vial = prepare(work, not args.skip_submodules)
