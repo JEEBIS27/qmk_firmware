@@ -25,6 +25,7 @@ enum { MJI_ENGLISH, MJI_JAPANESE };
 typedef struct {
     mji_layout_map_t maps[2];
     uint32_t         alt_layers;
+    uint32_t         literal_symbol_layers; // Symbols on explicit Shift faces are already selected.
     uint8_t          language;
     bool             alt_enabled, jis_host;
 } mji_layout_config_t;

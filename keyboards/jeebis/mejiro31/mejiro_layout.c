@@ -34,9 +34,10 @@ static mji_key_t jis_symbol(uint16_t code, bool shifted) {
 mji_stroke_t mji_layout_resolve(const mji_layout_config_t *c, mji_key_t key, uint8_t layer, uint8_t mods) {
     // JIS Alt+Zenkaku/Hankaku is a shortcut, not a literal US grave symbol.
     if (c->jis_host && key.code == 0x35 && ((mods | key.mods) & 0x44)) return (mji_stroke_t){key.code, key.mods, 0};
-    bool    remapped       = false;
+    bool literal = layer < 32 && (c->literal_symbol_layers & (UINT32_C(1) << layer)) && symbol(key.code);
+    bool    remapped       = literal;
     uint8_t explicit_shift = key.mods & SHIFT;
-    if (c->alt_enabled && layer < 32 && (c->alt_layers & (UINT32_C(1) << layer)) && !((mods | key.mods) & ~SHIFT)) {
+    if (!literal && c->alt_enabled && layer < 32 && (c->alt_layers & (UINT32_C(1) << layer)) && !((mods | key.mods) & ~SHIFT)) {
         mji_layout_map_t map = c->maps[c->language == MJI_JAPANESE ? MJI_JAPANESE : MJI_ENGLISH];
         for (uint16_t i = 0; i < map.count; i++)
             if (map.entries[i].base == key.code) {
