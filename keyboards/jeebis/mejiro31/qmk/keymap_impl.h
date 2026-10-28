@@ -305,6 +305,11 @@ static mji_binding_t lookup_callback(void *user, uint16_t logical, const mji_con
         if (tap == KC_TRNS && hold == KC_TRNS) continue;
         mji_binding_t b = binding(tap, hold);
         b.layer         = layer;
+        // Seven physical thumb keys plus the right-thumb combo (42 + 43).
+        // Main-finger virtual positions on rows 2/3 remain remappable.
+        b.skip_alt = logical == 28 || logical == 29 || logical == 30 ||
+                     logical == 40 || logical == 41 || logical == 42 ||
+                     logical == 43 || logical == 46;
         return b;
     }
     return (mji_binding_t){.hold_layer = MJI_NO_LAYER};
@@ -432,7 +437,7 @@ void keyboard_post_init_user(void) {
     mji_callbacks_t cb = {.lookup = lookup_callback, .key = key_callback, .mods = mods_callback, .clear = clear_callback, .decode = decode_callback, .encode = encode_callback};
     ready              = mji_init(&input, physical_pairs, sizeof(physical_pairs) / sizeof(*physical_pairs), (mji_timing_t){MJI_COMBO_MS, MJI_CONTINUATION_MS, MJI_LONG_HOLD_MS}, MJI_QWERTY, cb, NULL);
     if (ready) {
-        mji_layout_config_t config = {.maps = {MJI_LAYOUT_MAP(MJI_ENGLISH_LAYOUT), MJI_LAYOUT_MAP(MJI_JAPANESE_LAYOUT)}, .alt_layers = (UINT32_C(1) << MJI_QWERTY) | (UINT32_C(1) << MJI_SHIFTED), .language = MJI_ENGLISH, .alt_enabled = true, .jis_host = MJI_DEFAULT_JIS};
+        mji_layout_config_t config = {.maps = {MJI_LAYOUT_MAP(MJI_ENGLISH_LAYOUT), MJI_LAYOUT_MAP(MJI_JAPANESE_LAYOUT)}, .alt_layers = (UINT32_C(1) << MJI_QWERTY) | (UINT32_C(1) << MJI_SHIFTED), .literal_symbol_layers = (UINT32_C(1) << MJI_SHIFTED) | (UINT32_C(1) << MJI_NUMBER_SHIFTED), .language = MJI_ENGLISH, .alt_enabled = true, .jis_host = MJI_DEFAULT_JIS};
 #ifdef MJI_WEB_VIAL
         config.maps[0] = web_layouts[web_en_layout];
         config.maps[1] = web_layouts[web_jp_layout];

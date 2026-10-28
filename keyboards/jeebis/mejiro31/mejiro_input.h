@@ -19,6 +19,7 @@ typedef struct {
     uint16_t hold_code;
     uint8_t  hold_mods;
     uint8_t  hold_layer;
+    bool     skip_alt; // Position is outside the alternative-layout typing area.
     uint8_t  layer; // Layer on which this complete Tap/Hold binding was found.
 } mji_binding_t;
 

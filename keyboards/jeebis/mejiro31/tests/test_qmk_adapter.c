@@ -650,7 +650,71 @@ static void test_saved_settings_and_platform_keys(void) {
     all_up();
     puts("adapter settings reboot, Mac navigation, JIS Alt+grave OK");
 }
+// Exercise the default Shift faces through physical input and host encoding.
+static void test_shift_face_literal_symbols(void) {
+    const uint8_t positions[] = {26, 24, 3, 15, 2, 14, 27};
+    const uint16_t codes[] = {KC_EQL, KC_SLSH, KC_LBRC, KC_RBRC, KC_LCBR, KC_RCBR, KC_PLUS};
+    for (unsigned jis = 0; jis < 2; ++jis) {
+        for (unsigned i = 0; i < sizeof(positions); ++i) {
+            setup();
+            mji_layout_config_t config = input.layout;
+            config.jis_host = jis;
+            assert(select_layout(&config));
+            event(0, 29, true); // Number
+            event(1, 28, true); // Shift
+            event(2, positions[i], true);
+            tick(100);
+            mji_key_t key;
+            assert(decode_callback(NULL, codes[i], &key));
+            mji_stroke_t expected = mji_layout_resolve(&config, key, MJI_NO_LAYER, 0);
+            assert(native_keys[expected.code]);
+            assert((pressed_mods[expected.code] & MOD_MASK_SHIFT) == (expected.mods & MOD_MASK_SHIFT));
+            event(110, positions[i], false);
+            event(111, 28, false);
+            event(112, 29, false);
+            all_up();
+        }
+        setup();
+        mji_layout_config_t config = input.layout;
+        config.jis_host = jis;
+        config.maps[0] = config.maps[1] = (mji_layout_map_t)MJI_LAYOUT_MAP(mji_layout_graphite);
+        assert(select_layout(&config));
+        event(0, 28, true);
+        event(1, 22, true); // Main-finger / position: Graphite Shift is <.
+        tick(100);
+        assert(native_keys[KC_COMM]);
+        assert(pressed_mods[KC_COMM] & MOD_MASK_SHIFT);
+        event(110, 22, false);
+        event(111, 28, false);
+        all_up();
+
+        setup();
+        config = input.layout;
+        config.jis_host = jis;
+        config.maps[0] = config.maps[1] = (mji_layout_map_t)MJI_LAYOUT_MAP(mji_layout_graphite);
+        assert(select_layout(&config));
+        dynamic_maps[1][3][7] = KC_QUES;
+        dynamic_maps[7][3][7] = KC_NO;
+        event(0, 28, true);
+        event(1, 43, true); // Thumb ? must not become Graphite <.
+        tick(100);
+        assert(native_keys[KC_SLSH]);
+        assert(pressed_mods[KC_SLSH] & MOD_MASK_SHIFT);
+        event(110, 43, false);
+        event(111, 28, false);
+        all_up();
+
+        mji_context_t context = {.layers = {MJI_QWERTY}, .layer_count = 1};
+        for (uint16_t logical = 0; logical < MJI_PHYSICAL_COUNT; ++logical) {
+            bool thumb = logical == 28 || logical == 29 || logical == 30 ||
+                         logical == 40 || logical == 41 || logical == 42 ||
+                         logical == 43 || logical == 46;
+            assert(lookup_callback(NULL, logical, &context).skip_alt == thumb);
+        }
+    }
+}
 int main(void) {
+    test_shift_face_literal_symbols();
     test_plover_transport_routes();
     test_steno_shortcuts();
     test_saved_settings_and_platform_keys();
