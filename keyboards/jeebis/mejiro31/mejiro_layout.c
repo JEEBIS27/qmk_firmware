@@ -35,9 +35,9 @@ mji_stroke_t mji_layout_resolve(const mji_layout_config_t *c, mji_key_t key, uin
     // JIS Alt+Zenkaku/Hankaku is a shortcut, not a literal US grave symbol.
     if (c->jis_host && key.code == 0x35 && ((mods | key.mods) & 0x44)) return (mji_stroke_t){key.code, key.mods, 0};
     bool literal = layer < 32 && (c->literal_symbol_layers & (UINT32_C(1) << layer)) && symbol(key.code);
-    bool    remapped       = literal;
+    bool    remapped       = false;
     uint8_t explicit_shift = key.mods & SHIFT;
-    if (!literal && c->alt_enabled && layer < 32 && (c->alt_layers & (UINT32_C(1) << layer)) && !((mods | key.mods) & ~SHIFT)) {
+    if (c->alt_enabled && layer < 32 && (c->alt_layers & (UINT32_C(1) << layer)) && !((mods | key.mods) & ~SHIFT)) {
         mji_layout_map_t map = c->maps[c->language == MJI_JAPANESE ? MJI_JAPANESE : MJI_ENGLISH];
         for (uint16_t i = 0; i < map.count; i++)
             if (map.entries[i].base == key.code) {
@@ -48,11 +48,11 @@ mji_stroke_t mji_layout_resolve(const mji_layout_config_t *c, mji_key_t key, uin
     }
     mji_stroke_t out = {key.code, key.mods, 0};
     if (symbol(key.code) && key.code != 0x32) {
-        bool shifted = ((remapped ? 0 : mods) | key.mods) & SHIFT;
+        bool shifted = (((remapped || literal) ? 0 : mods) | key.mods) & SHIFT;
         if (c->jis_host) {
             mji_key_t host = jis_symbol(key.code, shifted);
             out            = (mji_stroke_t){host.code, (key.mods & ~SHIFT) | host.mods, SHIFT};
-        } else if (remapped) {
+        } else if (remapped || literal) {
             // A map's symbol is literal: shifted '-' can intentionally map to
             // plain '='. Do not reapply the source key's Shift afterwards.
             out.clear_mods = SHIFT;

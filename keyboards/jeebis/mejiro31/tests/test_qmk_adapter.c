@@ -677,16 +677,40 @@ static void test_shift_face_literal_symbols(void) {
         setup();
         mji_layout_config_t config = input.layout;
         config.jis_host = jis;
-        config.maps[0] = config.maps[1] = (mji_layout_map_t)MJI_LAYOUT_MAP(mji_layout_dvorak);
+        config.maps[0] = config.maps[1] = (mji_layout_map_t)MJI_LAYOUT_MAP(mji_layout_graphite);
         assert(select_layout(&config));
         event(0, 28, true);
-        event(1, 22, true); // Keyboard Shift face: ?
+        event(1, 22, true); // Main-finger / position: Graphite Shift is <.
         tick(100);
-        assert(native_keys[KC_SLSH]);
-        assert(pressed_mods[KC_SLSH] & MOD_MASK_SHIFT);
+        assert(native_keys[KC_COMM]);
+        assert(pressed_mods[KC_COMM] & MOD_MASK_SHIFT);
         event(110, 22, false);
         event(111, 28, false);
         all_up();
+
+        setup();
+        config = input.layout;
+        config.jis_host = jis;
+        config.maps[0] = config.maps[1] = (mji_layout_map_t)MJI_LAYOUT_MAP(mji_layout_graphite);
+        assert(select_layout(&config));
+        dynamic_maps[1][3][7] = KC_QUES;
+        dynamic_maps[7][3][7] = KC_NO;
+        event(0, 28, true);
+        event(1, 43, true); // Thumb ? must not become Graphite <.
+        tick(100);
+        assert(native_keys[KC_SLSH]);
+        assert(pressed_mods[KC_SLSH] & MOD_MASK_SHIFT);
+        event(110, 43, false);
+        event(111, 28, false);
+        all_up();
+
+        mji_context_t context = {.layers = {MJI_QWERTY}, .layer_count = 1};
+        for (uint16_t logical = 0; logical < MJI_PHYSICAL_COUNT; ++logical) {
+            bool thumb = logical == 28 || logical == 29 || logical == 30 ||
+                         logical == 40 || logical == 41 || logical == 42 ||
+                         logical == 43 || logical == 46;
+            assert(lookup_callback(NULL, logical, &context).skip_alt == thumb);
+        }
     }
 }
 int main(void) {

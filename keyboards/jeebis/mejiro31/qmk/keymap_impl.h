@@ -259,6 +259,11 @@ static mji_binding_t lookup_callback(void *user, uint16_t logical, const mji_con
         if (tap == KC_TRNS && hold == KC_TRNS) continue;
         mji_binding_t b = binding(tap, hold);
         b.layer         = layer;
+        // Seven physical thumb keys plus the right-thumb combo (42 + 43).
+        // Main-finger virtual positions on rows 2/3 remain remappable.
+        b.skip_alt = logical == 28 || logical == 29 || logical == 30 ||
+                     logical == 40 || logical == 41 || logical == 42 ||
+                     logical == 43 || logical == 46;
         return b;
     }
     return (mji_binding_t){.hold_layer = MJI_NO_LAYER};

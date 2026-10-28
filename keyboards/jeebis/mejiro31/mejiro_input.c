@@ -51,16 +51,18 @@ static uint8_t output_mods(mji_engine_t *e) {
 static void sync_mods(mji_engine_t *e) {
     if (e->callbacks.mods) e->callbacks.mods(e->user, output_mods(e));
 }
-static mji_stroke_t resolve_stroke(mji_engine_t *e, uint16_t code, uint8_t layer, uint8_t mods) {
+static mji_stroke_t resolve_stroke(mji_engine_t *e, uint16_t code, uint8_t layer, uint8_t mods, bool skip_alt) {
     mji_key_t key = {code, 0};
     if (e->callbacks.decode && !e->callbacks.decode(e->user, code, &key)) return (mji_stroke_t){code, 0, 0};
-    mji_stroke_t stroke = mji_layout_resolve(&e->layout, key, layer, mods);
+    mji_layout_config_t config = e->layout;
+    if (skip_alt) config.alt_enabled = false;
+    mji_stroke_t stroke = mji_layout_resolve(&config, key, layer, mods);
     return e->callbacks.encode ? e->callbacks.encode(e->user, stroke, mods) : stroke;
 }
 static void resolve_binding(mji_engine_t *e, mji_token_t *t, const mji_context_t *c) {
     t->binding     = e->callbacks.lookup(e->user, t->logical, c);
-    t->tap_stroke  = resolve_stroke(e, t->binding.tap, t->binding.layer, c->mods);
-    t->hold_stroke = resolve_stroke(e, t->binding.hold_code, t->binding.layer, c->mods);
+    t->tap_stroke  = resolve_stroke(e, t->binding.tap, t->binding.layer, c->mods, t->binding.skip_alt);
+    t->hold_stroke = resolve_stroke(e, t->binding.hold_code, t->binding.layer, c->mods, t->binding.skip_alt);
 }
 static void output(mji_engine_t *e, uint8_t source, bool hold, bool pressed) {
     mji_token_t *t      = &e->tokens[source];

@@ -71,7 +71,9 @@ python3 keymaps/en_default/build_firmware_presets.py --list
 
 同じセルのTapとHoldが一組。Holdの `KC_NO` はfalse、両方 `KC_TRNS` の場合は下位の組へ透過する。Holdに修飾キーを置けばMod、`MO(n)`を置けばレイヤー、それ以外の対応済み機能を置けばその機能を保持する。
 
-Tap/Holdはこの二つのマップで指定する。QMKの `MT` / `LT` への互換分岐と標準Tap-Hold処理は廃止した。QMK形式の修飾付き出力の読み替え、通常の修飾/レイヤーアクション、Sticky用Shiftの `OSM` の読み替えは接続側の形式処理として残る。
+編集元は `qmk/defaults.h` のレイヤー別定義で、各位置を `KEY(Tap, Hold)` として並べる。例えば `KEY(KC_SPC, KC_LSFT)` はTapでSpace、Holdで左Shift、`KEY(KC_F, KC_NO)` はFのみ、`KEY(KC_NO, KC_LALT)` は左Altのみ。四つのマトリクス行は各12位置を6位置ずつ折り返して記載する。コンパイル時にこのペア定義から上記のTap/Hold保存マップを生成するため、離れた二つの面を別々に編集する必要はない。
+
+QMKの `MT` / `LT` への互換分岐と標準Tap-Hold処理は廃止した。QMK形式の修飾付き出力の読み替え、通常の修飾/レイヤーアクション、Sticky用Shiftの `OSM` の読み替えは接続側の形式処理として残る。
 
 コンボの保存位置は次のとおり。数字は0始まりの `row,col`。
 

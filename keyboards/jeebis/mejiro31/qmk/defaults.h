@@ -18,7 +18,7 @@
 #    define MJI_TEXT_RIGHT KC_LNG1
 #    define MJI_TEXT_SHIFT_LEFT KC_EXLM
 #    define MJI_TEXT_SHIFT_RIGHT KC_QUES
-#    define MJI_TEXT_SHIFT_COMBO KC_AT
+#    define MJI_TEXT_SHIFT_COMBO KC_HASH
 #    define MJI_NUM_LEFT KC_AMPR
 #    define MJI_NUM_RIGHT KC_PIPE
 #    define MJI_NUM_SHIFT_LEFT KC_NO
@@ -26,93 +26,100 @@
 #    define MJI_NUM_SHIFT_HOLD_LEFT KC_LCTL
 #    define MJI_NUM_SHIFT_HOLD_RIGHT KC_LALT
 #endif
-// Matrix cells without switches are the editable virtual combo positions.
-// Hold layer N + MJI_HOLD_OFFSET belongs to Tap layer N.
-const uint16_t PROGMEM
-    keymaps[][MATRIX_ROWS][MATRIX_COLS] =
-        {
-            [0] =
-                {
-                    {KC_GRV, KC_Q, KC_W, KC_E, KC_R, KC_T, KC_Y, KC_U, KC_I, KC_O, KC_P, KC_MINS},
-                    {KC_NO, KC_Z, KC_X, KC_C, KC_V, KC_B, KC_N, KC_M, KC_COMM, KC_DOT, KC_SLSH, KC_BSLS},
-                    {KC_A, KC_S, KC_D, KC_F, KC_SPC, MJI_MODE, KC_ENT, KC_G, KC_H, KC_J, KC_K, KC_L},
-                    {KC_SCLN, KC_QUOT, KC_ESC, KC_TAB, KC_NO, KC_NO, MJI_TEXT_LEFT, MJI_TEXT_RIGHT, KC_DEL, KC_BSPC, KC_AT, KC_NO},
-                },
-            [1] =
-                {
-                    {KC_TILD, KC_Q, KC_W, KC_E, KC_R, KC_T, KC_Y, KC_U, KC_I, KC_O, KC_P, KC_UNDS},
-                    {KC_NO, KC_Z, KC_X, KC_C, KC_V, KC_B, KC_N, KC_M, KC_LABK, KC_RABK, KC_QUES, KC_PIPE},
-                    {KC_A, KC_S, KC_D, KC_F, KC_SPC, MJI_MODE, KC_ENT, KC_G, KC_H, KC_J, KC_K, KC_L},
-                    {KC_SCLN, KC_QUOT, KC_ESC, KC_TAB, KC_NO, KC_NO, MJI_TEXT_SHIFT_LEFT, MJI_TEXT_SHIFT_RIGHT, KC_DEL, KC_BSPC, MJI_TEXT_SHIFT_COMBO, KC_NO},
-                },
-            [2] =
-                {
-                    {MJI_MEJIRO, MJI_00, KC_1, KC_2, KC_3, KC_MINS, KC_PGUP, KC_HOME, KC_UP, KC_END, KC_CAPS, MJI_ALT},
-                    {KC_NO, KC_0, KC_7, KC_8, KC_9, KC_DOT, KC_PGDN, KC_LEFT, KC_DOWN, KC_RIGHT, KC_NO, KC_NO},
-                    {MJI_000, KC_4, KC_5, KC_6, KC_SPC, KC_TRNS, KC_ENT, KC_COMM, KC_NO, KC_NO, KC_NO, KC_NO},
-                    {KC_NO, KC_NO, KC_ESC, KC_TAB, KC_NO, KC_NO, MJI_NUM_LEFT, MJI_NUM_RIGHT, KC_DEL, KC_BSPC, KC_HASH, KC_NO},
-                },
-            [3] =
-                {
-                    {MJI_MEJIRO, KC_PERC, KC_LCBR, KC_LBRC, KC_LPRN, KC_LABK, KC_PGUP, KC_HOME, KC_UP, KC_END, KC_CAPS, MJI_ALT},
-                    {KC_NO, KC_DLR, KC_RCBR, KC_RBRC, KC_RPRN, KC_RABK, KC_PGDN, KC_LEFT, KC_DOWN, KC_RIGHT, KC_NO, KC_NO},
-                    {KC_SLSH, KC_ASTR, KC_EQL, KC_PLUS, KC_SPC, KC_TRNS, KC_ENT, KC_CIRC, KC_NO, KC_NO, KC_NO, KC_NO},
-                    {KC_NO, KC_NO, KC_ESC, KC_TAB, KC_NO, KC_NO, MJI_NUM_SHIFT_LEFT, MJI_NUM_SHIFT_RIGHT, KC_DEL, KC_BSPC, KC_HASH, KC_NO},
-                },
-            [4] =
-                {
-                    {MJI_JIS, KC_F1, KC_F2, KC_F3, KC_F4, KC_F5, KC_BRIU, KC_MUTE, KC_VOLD, KC_VOLU, KC_PSCR, KC_TRNS},
-                    {KC_NO, KC_F6, KC_F7, KC_F8, KC_F9, KC_F10, KC_BRID, KC_MPRV, KC_MPLY, KC_MNXT, KC_NO, KC_TRNS},
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_SPC, KC_TRNS, KC_ENT, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_TRNS, KC_TRNS, KC_F11, KC_F12, KC_NO, KC_NO, KC_NO, KC_NO},
-                },
-            [5] =
-                {
-                    {STN_N1, STN_S1, STN_TL, STN_PL, STN_HL, STN_ST1, STN_ST3, STN_FR, STN_PR, STN_LR, STN_TR, STN_DR},
-                    {STN_N2, STN_S2, STN_KL, STN_WL, STN_RL, STN_ST2, STN_ST4, STN_RR, STN_BR, STN_GR, STN_SR, STN_ZR},
-                    {KC_NO, KC_NO, KC_NO, KC_NO, STN_N3, MJI_MODE, STN_N4, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                    {KC_NO, KC_NO, KC_NO, KC_NO, STN_A, STN_O, STN_E, STN_U, KC_NO, KC_NO, KC_NO, KC_NO},
-                },
-            [6] =
-                {
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                    {KC_LGUI, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_LSFT, MO(MJI_NUMBER), KC_RSFT, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_LALT, KC_LCTL, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                },
-            [7] =
-                {
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                    {KC_LGUI, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_LSFT, MO(MJI_NUMBER), KC_RSFT, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_LALT, KC_LCTL, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                },
-            [8] =
-                {
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                    {KC_LGUI, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_LGUI, MO(MJI_FUNCTION)},
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_LSFT, KC_TRNS, KC_RSFT, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_LALT, KC_LCTL, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                },
-            [9] =
-                {
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                    {KC_LGUI, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_LGUI, MO(MJI_FUNCTION)},
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_LSFT, KC_TRNS, KC_RSFT, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_LALT, KC_LCTL, MJI_NUM_SHIFT_HOLD_LEFT, MJI_NUM_SHIFT_HOLD_RIGHT, KC_NO, KC_NO, KC_NO, KC_NO},
-                },
-            [10] =
-                {
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_TRNS},
-                    {KC_LGUI, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_LGUI, KC_TRNS},
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_LSFT, KC_TRNS, KC_RSFT, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_LALT, KC_LCTL, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                },
-            [11] =
-                {
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, MO(MJI_NUMBER), KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                    {KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, KC_NO},
-                },
+// Edit each key as KEY(Tap, Hold). KC_NO means no action; KC_TRNS is transparent.
+// Each layer has four matrix rows, each with twelve positions (split 6 + 6).
+// Unwired matrix cells are the virtual combo positions, not extra switches.
+// The KEY parameter selects Tap or Hold when QMK's storage maps are generated.
+
+#define MJI_DEFAULT_KEYBOARD(KEY) { \
+    { KEY(KC_GRV, KC_NO), KEY(KC_Q, KC_NO), KEY(KC_W, KC_NO), KEY(KC_E, KC_NO), KEY(KC_R, KC_NO), KEY(KC_T, KC_NO), \
+      KEY(KC_Y, KC_NO), KEY(KC_U, KC_NO), KEY(KC_I, KC_NO), KEY(KC_O, KC_NO), KEY(KC_P, KC_NO), KEY(KC_MINS, KC_NO) }, \
+    { KEY(KC_NO, KC_LGUI), KEY(KC_Z, KC_NO), KEY(KC_X, KC_NO), KEY(KC_C, KC_NO), KEY(KC_V, KC_NO), KEY(KC_B, KC_NO), \
+      KEY(KC_N, KC_NO), KEY(KC_M, KC_NO), KEY(KC_COMM, KC_NO), KEY(KC_DOT, KC_NO), KEY(KC_SLSH, KC_NO), KEY(KC_BSLS, KC_NO) }, \
+    { KEY(KC_A, KC_NO), KEY(KC_S, KC_NO), KEY(KC_D, KC_NO), KEY(KC_F, KC_NO), KEY(KC_SPC, KC_LSFT), KEY(MJI_MODE, MO(MJI_NUMBER)), \
+      KEY(KC_ENT, KC_RSFT), KEY(KC_G, KC_NO), KEY(KC_H, KC_NO), KEY(KC_J, KC_NO), KEY(KC_K, KC_NO), KEY(KC_L, KC_NO) }, \
+    { KEY(KC_SCLN, KC_NO), KEY(KC_QUOT, KC_NO), KEY(KC_ESC, KC_NO), KEY(KC_TAB, KC_NO), KEY(KC_NO, KC_LALT), KEY(KC_NO, KC_LCTL), \
+      KEY(MJI_TEXT_LEFT, KC_RCTL), KEY(MJI_TEXT_RIGHT, KC_RALT), KEY(KC_DEL, KC_NO), KEY(KC_BSPC, KC_NO), KEY(KC_AT, KC_NO), KEY(KC_NO, KC_NO) }, \
+}
+
+#define MJI_DEFAULT_KEYBOARD_SHIFT(KEY) { \
+    { KEY(KC_TILD, KC_NO), KEY(KC_Q, KC_NO), KEY(KC_W, KC_NO), KEY(KC_E, KC_NO), KEY(KC_R, KC_NO), KEY(KC_T, KC_NO), \
+      KEY(KC_Y, KC_NO), KEY(KC_U, KC_NO), KEY(KC_I, KC_NO), KEY(KC_O, KC_NO), KEY(KC_P, KC_NO), KEY(KC_UNDS, KC_NO) }, \
+    { KEY(KC_NO, KC_LGUI), KEY(KC_Z, KC_NO), KEY(KC_X, KC_NO), KEY(KC_C, KC_NO), KEY(KC_V, KC_NO), KEY(KC_B, KC_NO), \
+      KEY(KC_N, KC_NO), KEY(KC_M, KC_NO), KEY(KC_LABK, KC_NO), KEY(KC_RABK, KC_NO), KEY(KC_QUES, KC_NO), KEY(KC_PIPE, KC_NO) }, \
+    { KEY(KC_A, KC_NO), KEY(KC_S, KC_NO), KEY(KC_D, KC_NO), KEY(KC_F, KC_NO), KEY(KC_SPC, KC_LSFT), KEY(MJI_MODE, MO(MJI_NUMBER)), \
+      KEY(KC_ENT, KC_RSFT), KEY(KC_G, KC_NO), KEY(KC_H, KC_NO), KEY(KC_J, KC_NO), KEY(KC_K, KC_NO), KEY(KC_L, KC_NO) }, \
+    { KEY(KC_SCLN, KC_NO), KEY(KC_QUOT, KC_NO), KEY(KC_ESC, KC_NO), KEY(KC_TAB, KC_NO), KEY(KC_NO, KC_LALT), KEY(KC_NO, KC_LCTL), \
+      KEY(MJI_TEXT_SHIFT_LEFT, KC_RCTL), KEY(MJI_TEXT_SHIFT_RIGHT, KC_RALT), KEY(KC_DEL, KC_NO), KEY(KC_BSPC, KC_NO), KEY(MJI_TEXT_SHIFT_COMBO, KC_NO), KEY(KC_NO, KC_NO) }, \
+}
+
+#define MJI_DEFAULT_NUMBER(KEY) { \
+    { KEY(MJI_MEJIRO, KC_NO), KEY(MJI_00, KC_NO), KEY(KC_1, KC_NO), KEY(KC_2, KC_NO), KEY(KC_3, KC_NO), KEY(KC_MINS, KC_NO), \
+      KEY(KC_PGUP, KC_NO), KEY(KC_HOME, KC_NO), KEY(KC_UP, KC_NO), KEY(KC_END, KC_NO), KEY(KC_CAPS, KC_NO), KEY(MJI_ALT, KC_NO) }, \
+    { KEY(KC_NO, KC_LGUI), KEY(KC_0, KC_NO), KEY(KC_7, KC_NO), KEY(KC_8, KC_NO), KEY(KC_9, KC_NO), KEY(KC_DOT, KC_NO), \
+      KEY(KC_PGDN, KC_NO), KEY(KC_LEFT, KC_NO), KEY(KC_DOWN, KC_NO), KEY(KC_RIGHT, KC_NO), KEY(KC_NO, KC_LGUI), KEY(KC_NO, MO(MJI_FUNCTION)) }, \
+    { KEY(MJI_000, KC_NO), KEY(KC_4, KC_NO), KEY(KC_5, KC_NO), KEY(KC_6, KC_NO), KEY(KC_SPC, KC_LSFT), KEY(KC_TRNS, KC_TRNS), \
+      KEY(KC_ENT, KC_RSFT), KEY(KC_COMM, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO) }, \
+    { KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_ESC, KC_NO), KEY(KC_TAB, KC_NO), KEY(KC_NO, KC_LALT), KEY(KC_NO, KC_LCTL), \
+      KEY(MJI_NUM_LEFT, KC_RCTL), KEY(MJI_NUM_RIGHT, KC_RALT), KEY(KC_DEL, KC_NO), KEY(KC_BSPC, KC_NO), KEY(KC_HASH, KC_NO), KEY(KC_NO, KC_NO) }, \
+}
+
+#define MJI_DEFAULT_NUMBER_SHIFT(KEY) { \
+    { KEY(MJI_MEJIRO, KC_NO), KEY(KC_PERC, KC_NO), KEY(KC_LCBR, KC_NO), KEY(KC_LBRC, KC_NO), KEY(KC_LPRN, KC_NO), KEY(KC_LABK, KC_NO), \
+      KEY(KC_PGUP, KC_NO), KEY(KC_HOME, KC_NO), KEY(KC_UP, KC_NO), KEY(KC_END, KC_NO), KEY(KC_CAPS, KC_NO), KEY(MJI_ALT, KC_NO) }, \
+    { KEY(KC_NO, KC_LGUI), KEY(KC_DLR, KC_NO), KEY(KC_RCBR, KC_NO), KEY(KC_RBRC, KC_NO), KEY(KC_RPRN, KC_NO), KEY(KC_RABK, KC_NO), \
+      KEY(KC_PGDN, KC_NO), KEY(KC_LEFT, KC_NO), KEY(KC_DOWN, KC_NO), KEY(KC_RIGHT, KC_NO), KEY(KC_NO, KC_LGUI), KEY(KC_NO, MO(MJI_FUNCTION)) }, \
+    { KEY(KC_SLSH, KC_NO), KEY(KC_ASTR, KC_NO), KEY(KC_EQL, KC_NO), KEY(KC_PLUS, KC_NO), KEY(KC_SPC, KC_LSFT), KEY(KC_TRNS, KC_TRNS), \
+      KEY(KC_ENT, KC_RSFT), KEY(KC_CIRC, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO) }, \
+    { KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_ESC, KC_NO), KEY(KC_TAB, KC_NO), KEY(KC_NO, KC_LALT), KEY(KC_NO, KC_LCTL), \
+      KEY(MJI_NUM_SHIFT_LEFT, MJI_NUM_SHIFT_HOLD_LEFT), KEY(MJI_NUM_SHIFT_RIGHT, MJI_NUM_SHIFT_HOLD_RIGHT), KEY(KC_DEL, KC_NO), KEY(KC_BSPC, KC_NO), KEY(KC_HASH, KC_NO), KEY(KC_NO, KC_NO) }, \
+}
+
+#define MJI_DEFAULT_FUNCTION(KEY) { \
+    { KEY(MJI_JIS, KC_NO), KEY(KC_F1, KC_NO), KEY(KC_F2, KC_NO), KEY(KC_F3, KC_NO), KEY(KC_F4, KC_NO), KEY(KC_F5, KC_NO), \
+      KEY(KC_BRIU, KC_NO), KEY(KC_MUTE, KC_NO), KEY(KC_VOLD, KC_NO), KEY(KC_VOLU, KC_NO), KEY(KC_PSCR, KC_NO), KEY(KC_TRNS, KC_TRNS) }, \
+    { KEY(KC_NO, KC_LGUI), KEY(KC_F6, KC_NO), KEY(KC_F7, KC_NO), KEY(KC_F8, KC_NO), KEY(KC_F9, KC_NO), KEY(KC_F10, KC_NO), \
+      KEY(KC_BRID, KC_NO), KEY(KC_MPRV, KC_NO), KEY(KC_MPLY, KC_NO), KEY(KC_MNXT, KC_NO), KEY(KC_NO, KC_LGUI), KEY(KC_TRNS, KC_TRNS) }, \
+    { KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_SPC, KC_LSFT), KEY(KC_TRNS, KC_TRNS), \
+      KEY(KC_ENT, KC_RSFT), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO) }, \
+    { KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_TRNS, KC_LALT), KEY(KC_TRNS, KC_LCTL), \
+      KEY(KC_F11, KC_RCTL), KEY(KC_F12, KC_RALT), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO) }, \
+}
+
+#define MJI_DEFAULT_STENO(KEY) { \
+    { KEY(STN_N1, KC_NO), KEY(STN_S1, KC_NO), KEY(STN_TL, KC_NO), KEY(STN_PL, KC_NO), KEY(STN_HL, KC_NO), KEY(STN_ST1, KC_NO), \
+      KEY(STN_ST3, KC_NO), KEY(STN_FR, KC_NO), KEY(STN_PR, KC_NO), KEY(STN_LR, KC_NO), KEY(STN_TR, KC_NO), KEY(STN_DR, KC_NO) }, \
+    { KEY(STN_N2, KC_NO), KEY(STN_S2, KC_NO), KEY(STN_KL, KC_NO), KEY(STN_WL, KC_NO), KEY(STN_RL, KC_NO), KEY(STN_ST2, KC_NO), \
+      KEY(STN_ST4, KC_NO), KEY(STN_RR, KC_NO), KEY(STN_BR, KC_NO), KEY(STN_GR, KC_NO), KEY(STN_SR, KC_NO), KEY(STN_ZR, KC_NO) }, \
+    { KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(STN_N3, KC_NO), KEY(MJI_MODE, MO(MJI_NUMBER)), \
+      KEY(STN_N4, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO) }, \
+    { KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(STN_A, KC_NO), KEY(STN_O, KC_NO), \
+      KEY(STN_E, KC_NO), KEY(STN_U, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO), KEY(KC_NO, KC_NO) }, \
+}
+
+// Storage adapter: keep QMK/VIA's existing Tap 0..5 / Hold 6..11 layout.
+// No editable key assignments belong below this line.
+#define MJI_DEFAULT_TAP(tap, hold) tap
+#define MJI_DEFAULT_HOLD(tap, hold) hold
+const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
+    [0] = MJI_DEFAULT_KEYBOARD(MJI_DEFAULT_TAP),
+    [1] = MJI_DEFAULT_KEYBOARD_SHIFT(MJI_DEFAULT_TAP),
+    [2] = MJI_DEFAULT_NUMBER(MJI_DEFAULT_TAP),
+    [3] = MJI_DEFAULT_NUMBER_SHIFT(MJI_DEFAULT_TAP),
+    [4] = MJI_DEFAULT_FUNCTION(MJI_DEFAULT_TAP),
+    [5] = MJI_DEFAULT_STENO(MJI_DEFAULT_TAP),
+    [6] = MJI_DEFAULT_KEYBOARD(MJI_DEFAULT_HOLD),
+    [7] = MJI_DEFAULT_KEYBOARD_SHIFT(MJI_DEFAULT_HOLD),
+    [8] = MJI_DEFAULT_NUMBER(MJI_DEFAULT_HOLD),
+    [9] = MJI_DEFAULT_NUMBER_SHIFT(MJI_DEFAULT_HOLD),
+    [10] = MJI_DEFAULT_FUNCTION(MJI_DEFAULT_HOLD),
+    [11] = MJI_DEFAULT_STENO(MJI_DEFAULT_HOLD),
 };
+#undef MJI_DEFAULT_TAP
+#undef MJI_DEFAULT_HOLD
+#undef MJI_DEFAULT_KEYBOARD
+#undef MJI_DEFAULT_KEYBOARD_SHIFT
+#undef MJI_DEFAULT_NUMBER
+#undef MJI_DEFAULT_NUMBER_SHIFT
+#undef MJI_DEFAULT_FUNCTION
+#undef MJI_DEFAULT_STENO
