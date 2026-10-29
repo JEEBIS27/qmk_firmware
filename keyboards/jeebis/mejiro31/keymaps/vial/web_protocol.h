@@ -7,6 +7,7 @@
 #pragma once
 #include "web_layouts.h"
 #include "via.h"
+#include "rule_protocol.h"
 // A different firmware build resets both its keymap and initial layout choices.
 void via_init_kb(void) {
     if (!via_eeprom_is_valid()) eeconfig_init_user();
@@ -34,6 +35,10 @@ static void web_reply(uint8_t *data, uint8_t status) {
     data[18] = mejiro_first_up_chord_send;
 }
 void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
+    if (length == 32 && data[0] == 0xfa && data[1] == 2) {
+        rule_protocol(data);
+        return;
+    }
     if (length != 32 || data[0] != 0xfa || data[1] != 1 || memcmp(data + 4, "M31WEB01", 8)) {
         data[0] = 0xff;
         return;

@@ -432,6 +432,7 @@ void keyboard_post_init_user(void) {
     mejiro_mode = (settings & 4) != 0;
 #ifdef MJI_WEB_VIAL
     mejiro_first_up_chord_send = (settings & UINT32_C(0x2000)) == 0;
+    mejiro_rules_load();
     web_en_layout = (settings >> 3) & 31;
     web_jp_layout = (settings >> 8) & 31;
     if (web_en_layout >= WEB_LAYOUT_COUNT || web_jp_layout >= WEB_LAYOUT_COUNT) {

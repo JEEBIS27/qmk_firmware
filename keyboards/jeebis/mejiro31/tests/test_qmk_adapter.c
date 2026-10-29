@@ -22,6 +22,64 @@ static uint32_t           settings_word;
 static unsigned           settings_writes;
 static uint16_t consumer_usage, system_usage;
 bool mejiro_first_up_chord_send = true;
+#ifdef MJI_WEB_VIAL
+static uint8_t mock_eeprom[12288];
+static mejiro_rule mock_rules[MEJIRO_RULE_CAPACITY];
+static int32_t mock_rule_count;
+void eeprom_read_block(void *destination, const void *address, size_t size) {
+    size_t offset = (uintptr_t)address;
+    assert(offset + size <= sizeof(mock_eeprom));
+    memcpy(destination, mock_eeprom + offset, size);
+}
+void eeprom_update_block(const void *source, void *address, size_t size) {
+    size_t offset = (uintptr_t)address;
+    assert(offset + size <= sizeof(mock_eeprom));
+    memcpy(mock_eeprom + offset, source, size);
+}
+int32_t mejiro_qmk_rule_clear_all(void) { mock_rule_count = 0; return 0; }
+int32_t mejiro_qmk_rule_count(void) { return mock_rule_count; }
+int32_t mejiro_qmk_rule_get(size_t index, mejiro_rule *output) {
+    if (index >= (size_t)mock_rule_count) return -3;
+    *output = mock_rules[index];
+    return 0;
+}
+static int mock_find(uint8_t kind, const uint8_t *key, size_t len) {
+    for (int i = 0; i < mock_rule_count; ++i)
+        if (mock_rules[i].kind == kind && mock_rules[i].key_len == len && !memcmp(mock_rules[i].key, key, len)) return i;
+    return -1;
+}
+int32_t mejiro_qmk_rule_set(const mejiro_rule *rule) {
+    if (rule->kind > 4 || rule->key_len > MEJIRO_RULE_KEY_CAPACITY ||
+        rule->value_len > MEJIRO_RULE_VALUE_CAPACITY || rule->row_len > MEJIRO_RULE_ROW_CAPACITY ||
+        (rule->kind != 4 && rule->row_len)) return -1;
+    int i = mock_find(rule->kind, rule->key, rule->key_len);
+    if (i < 0) {
+        if (mock_rule_count == MEJIRO_RULE_CAPACITY) return -2;
+        i = mock_rule_count++;
+    }
+    mock_rules[i] = *rule;
+    return 0;
+}
+int32_t mejiro_qmk_rule_hide(uint8_t kind, const uint8_t *key, size_t len) {
+    mejiro_rule rule = {.kind = kind, .hidden = 1, .key_len = (uint8_t)len};
+    if (len > MEJIRO_RULE_KEY_CAPACITY) return -1;
+    memcpy(rule.key, key, len);
+    int i = mock_find(kind, key, len);
+    if (i < 0) {
+        if (mock_rule_count == MEJIRO_RULE_CAPACITY) return -2;
+        i = mock_rule_count++;
+    }
+    mock_rules[i] = rule;
+    return 0;
+}
+int32_t mejiro_qmk_rule_clear(uint8_t kind, const uint8_t *key, size_t len) {
+    int i = mock_find(kind, key, len);
+    if (i < 0) return 0;
+    memmove(mock_rules + i, mock_rules + i + 1, (size_t)(mock_rule_count - i - 1) * sizeof(*mock_rules));
+    --mock_rule_count;
+    return 0;
+}
+#endif
 void host_consumer_send(uint16_t usage) { consumer_usage = usage; }
 void host_system_send(uint16_t usage) { system_usage = usage; }
 uint32_t eeconfig_read_user(void) { return settings_word; }
@@ -121,6 +179,9 @@ uint16_t keycode_at_keymap_location(uint8_t l, uint8_t r, uint8_t c) {
     return dynamic_maps[l][r][c];
 }
 static void setup(void) {
+#ifdef MJI_WEB_VIAL
+    mock_rule_count = 0;
+#endif
     mejiro_plover_reset();
     memset(plover_state, 0, sizeof(plover_state));
     plover_reports = 0;
