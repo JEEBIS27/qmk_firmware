@@ -71,7 +71,9 @@ python3 keymaps/en_default/build_firmware_presets.py --list
 
 同じセルのTapとHoldが一組。Holdの `KC_NO` はfalse、両方 `KC_TRNS` の場合は下位の組へ透過する。Holdに修飾キーを置けばMod、`MO(n)`を置けばレイヤー、それ以外の対応済み機能を置けばその機能を保持する。
 
-編集元は `qmk/defaults.h` のレイヤー別定義で、各位置を `KEY(Tap, Hold)` として並べる。例えば `KEY(KC_SPC, KC_LSFT)` はTapでSpace、Holdで左Shift、`KEY(KC_F, KC_NO)` はFのみ、`KEY(KC_NO, KC_LALT)` は左Altのみ。四つのマトリクス行は各12位置を6位置ずつ折り返して記載する。コンパイル時にこのペア定義から上記のTap/Hold保存マップを生成するため、離れた二つの面を別々に編集する必要はない。
+SpaceとEnterのHoldは全通常レイヤーで同じ左Shiftに統一する。左右Shift同時押しでCaps Lockを有効化するホスト設定でも、Space+EnterからCaps Lockが発動しないようにする。Vial保存済みキーマップのEnter Holdも`KC_LSFT`へ変更する必要がある。
+
+編集元は `qmk/defaults.h` のレイヤー別定義で、各位置を `KEY(Tap, Hold)` として並べる。例えば `KEY(KC_SPC, KC_LSFT)` はTapでSpace、Holdで左Shift、`KEY(KC_F, KC_NO)` はFのみ、`KEY(KC_NO, KC_LALT)` は左Altのみ。`KEY(KC_AT, LCA(KC_NO))`はTapで`@`、HoldでCtrl+Altとなり、通常キーを送らず両方の修飾だけを保持する。右親指同士のコンボはKeyboard通常面が`@`、Keyboard Shift・Number・Number Shiftが`#`で、いずれもHoldはCtrl+Alt。四つのマトリクス行は各12位置を6位置ずつ折り返して記載する。コンパイル時にこのペア定義から上記のTap/Hold保存マップを生成するため、離れた二つの面を別々に編集する必要はない。
 
 QMKの `MT` / `LT` への互換分岐と標準Tap-Hold処理は廃止した。QMK形式の修飾付き出力の読み替え、通常の修飾/レイヤーアクション、Sticky用Shiftの `OSM` の読み替えは接続側の形式処理として残る。
 

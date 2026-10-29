@@ -22,7 +22,8 @@ Vial requires its quantum core, so the two build entry points route Mejiro31
 through `build_vial.py`; there is no separate non-Vial Mejiro31 build choice.
 The helper fetches pinned Vial-QMK and the latest remote default-branch commit
 of Mejiro_Engine on every invocation, preserves Plover
-HID through `plover-hid.patch`, and fixes unlock cancellation. It does not
+HID through `plover-hid.patch`, applies `usb-queue-alignment.patch` to prevent
+RP2040 HardFaults on the 9-byte HID report, and fixes unlock cancellation. It does not
 replace this repository's core or rewrite this checkout's keyboard definitions.
 Use `MJI_VIAL_WORK_DIR` to override the cache directory.
 Local keyboard edits are copied; sibling Mejiro_Engine edits are not used.
@@ -43,7 +44,9 @@ python3 keyboards/jeebis/mejiro31/build_vial.py --profile en --layout graphite
 Prerequisites: Git, Python 3, Make, QMK CLI and its dependencies (install the
 prepared Vial tree's `requirements.txt` if necessary), Arm GNU Toolchain,
 Rust >=1.88 and the `thumbv6m-none-eabi` Rust target. Ensure the compiler and QMK
-CLI are on PATH. Prepare without compiling with `--prepare-only`; `--skip-submodules`
+CLI are on PATH. The linked USB descriptor and queue alignment checks use only
+the Python standard library.
+Prepare without compiling with `--prepare-only`; `--skip-submodules`
 is intended for host-only testing or an already initialized cache.
 
 Named builds copy `jeebis_mejiro31_<keymap>.uf2` to this repository root, as before.
@@ -93,7 +96,9 @@ python3 keyboards/jeebis/mejiro31/tests/run_vial_tests.py \
 
 This covers both language defaults, configuration persistence, lock checks,
 invalid settings, runtime layout changes, held-key cleanup and unlock barriers.
-The build helper verifies RP2040 UF2 blocks, address bounds, the extension
+Before copying build outputs, the helper checks the linked ELF's USB descriptors
+and every USB IN queue slot's alignment, including the Plover HID endpoint.
+The build helper also verifies RP2040 UF2 blocks, address bounds, the extension
 signature and SHA-256. These checks do **not** verify physical USB enumeration,
 WebHID access, flashing, or actual IME/Plover behavior. Those remain required
 before treating this as a hardware-validated release.

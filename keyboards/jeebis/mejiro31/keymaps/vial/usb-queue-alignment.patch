@@ -1,0 +1,68 @@
+diff --git a/tmk_core/protocol/chibios/usb_driver.h b/tmk_core/protocol/chibios/usb_driver.h
+index 26787e1eba..0f9d294a3a 100644
+--- a/tmk_core/protocol/chibios/usb_driver.h
++++ b/tmk_core/protocol/chibios/usb_driver.h
+@@ -24,6 +24,10 @@
+             NULL, /* SETUP buffer (not a SETUP endpoint) */
+ #endif
+ 
++// Each queue slot includes a size_t header. Align the payload size too, so
++// later slots remain word-aligned (notably the 9-byte Plover HID report).
++#define EPSIZE_ALIGN(n) (((n) + 3) & ~3)
++
+ /*
+  * Implementation notes:
+  *
+@@ -52,8 +56,8 @@
+             .usbp            = &USB_DRIVER,                                                             \
+             .ep              = ep_num,                                                                  \
+             .buffer_capacity = _buffer_capacity,                                                        \
+-            .buffer_size     = ep_size,                                                                 \
+-            .buffer          = (_Alignas(4) uint8_t[BQ_BUFFER_SIZE(_buffer_capacity, ep_size)]){0},     \
++            .buffer_size     = EPSIZE_ALIGN(ep_size),                                                                 \
++            .buffer          = (_Alignas(4) uint8_t[BQ_BUFFER_SIZE(_buffer_capacity, EPSIZE_ALIGN(ep_size))]){0},     \
+         }                                                                                               \
+     }
+ 
+@@ -77,8 +81,8 @@
+                 .usbp            = &USB_DRIVER,                                                        \
+                 .ep              = ep_num,                                                             \
+                 .buffer_capacity = _buffer_capacity,                                                   \
+-                .buffer_size     = ep_size,                                                            \
+-                .buffer          = (_Alignas(4) uint8_t[BQ_BUFFER_SIZE(_buffer_capacity, ep_size)]){0} \
++                .buffer_size     = EPSIZE_ALIGN(ep_size),                                                            \
++                .buffer          = (_Alignas(4) uint8_t[BQ_BUFFER_SIZE(_buffer_capacity, EPSIZE_ALIGN(ep_size))]){0} \
+             }                                                                                          \
+         }
+ 
+@@ -103,8 +107,8 @@
+                 .usbp            = &USB_DRIVER,                                                                    \
+                 .ep              = ep_num,                                                                         \
+                 .buffer_capacity = _buffer_capacity,                                                               \
+-                .buffer_size     = ep_size,                                                                        \
+-                .buffer          = (_Alignas(4) uint8_t[BQ_BUFFER_SIZE(_buffer_capacity, ep_size)]){0},            \
++                .buffer_size     = EPSIZE_ALIGN(ep_size),                                                                        \
++                .buffer          = (_Alignas(4) uint8_t[BQ_BUFFER_SIZE(_buffer_capacity, EPSIZE_ALIGN(ep_size))]){0},            \
+             }                                                                                                      \
+         }
+ 
+@@ -120,8 +124,8 @@
+                 .usbp            = &USB_DRIVER,                                                        \
+                 .ep              = ep_num,                                                             \
+                 .buffer_capacity = _buffer_capacity,                                                   \
+-                .buffer_size     = ep_size,                                                            \
+-                .buffer          = (_Alignas(4) uint8_t[BQ_BUFFER_SIZE(_buffer_capacity, ep_size)]){0} \
++                .buffer_size     = EPSIZE_ALIGN(ep_size),                                                            \
++                .buffer          = (_Alignas(4) uint8_t[BQ_BUFFER_SIZE(_buffer_capacity, EPSIZE_ALIGN(ep_size))]){0} \
+             }                                                                                          \
+         }
+ 
+@@ -144,7 +148,7 @@ typedef struct {
+     size_t buffer_capacity;
+ 
+     /**
+-     * @brief The size of each buffer in the queue, same as the endpoint size
++     * @brief The size of each buffer in the queue, rounded up to word alignment
+      */
+     size_t buffer_size;
+ 

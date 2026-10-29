@@ -266,6 +266,8 @@ static mji_binding_t binding(uint16_t tap, uint16_t hold) {
     }
     if (IS_MODIFIER_KEYCODE(hold))
         b.hold_mods = MOD_BIT(hold);
+    else if (IS_QK_MODS(hold) && QK_MODS_GET_BASIC_KEYCODE(hold) == KC_NO)
+        b.hold_mods = expand_mods(QK_MODS_GET_MODS(hold));
     else if (IS_QK_MOMENTARY(hold))
         b.hold_layer = QK_MOMENTARY_GET_LAYER(hold);
     else if (hold != KC_TRNS)

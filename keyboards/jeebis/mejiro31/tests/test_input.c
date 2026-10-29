@@ -580,6 +580,23 @@ static void test_random_release_balance(void) {
     }
     assert(!f.e.overflows);
 }
+static void test_plain_release_not_blocked_by_pending_press(void) {
+    setup();
+    f.e.timing = (mji_timing_t){150, 50, 300}; // Firmware timings.
+    at(0, OTHER, true);
+    at(160, E, true); // This start cannot resolve until 310ms.
+    at(170, OTHER, false);
+    expect(0, K_OTHER, true, 0);
+    expect(1, K_OTHER, false, 0);
+    assert(!f.held[K_OTHER]);
+    tick(250); // The host must not still see OTHER at its repeat deadline.
+    assert(f.count == 2);
+    tick(310);
+    expect(2, K_E, true, 0);
+    at(320, E, false);
+    expect(3, K_E, false, 0);
+    no_stuck();
+}
 static void test_residual_output_preserves_order(void) {
     setup();
     at(0, E, true);
@@ -587,10 +604,10 @@ static void test_residual_output_preserves_order(void) {
     at(8, R, true);
     at(10, E, false);
     tick(25);
-    assert(f.count == 1); // R is still unresolved; no C output yet.
+    assert(f.count == 2); // D releases now; R/C starts retain their order.
+    expect(1, K_D, false, 0);
     tick(48);
-    expect(1, 'r', true, 0);
-    expect(2, K_D, false, 0);
+    expect(2, 'r', true, 0);
     expect(3, K_C, true, 0);
     at(50, C, false);
     at(51, R, false);
@@ -606,7 +623,8 @@ static void test_released_residual_not_used_by_later_confirmation(void) {
     tick(25);
     at(30, C, false);
     tick(48);
-    expect(1, 'r', true, 0);
+    expect(1, K_D, false, 0);
+    expect(2, 'r', true, 0);
     at(50, R, false);
     no_stuck();
 }
@@ -718,6 +736,7 @@ int main(void) {
     RUN(test_invalid_and_duplicate_events);
     RUN(test_many_keys_held);
     RUN(test_random_release_balance);
+    RUN(test_plain_release_not_blocked_by_pending_press);
     RUN(test_residual_output_preserves_order);
     RUN(test_released_residual_not_used_by_later_confirmation);
     RUN(test_capacity_fails_closed);

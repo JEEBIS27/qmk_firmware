@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 import struct
 import subprocess
+import sys
 
 KB = Path(__file__).resolve().parent
 ROOT = KB.parents[2]
@@ -75,11 +76,12 @@ def prepare(work, submodules):
             raise ValueError('Refusing to replace a keyboard in an unmanaged Vial tree')
         shutil.rmtree(dest)
     shutil.copytree(KB, dest, ignore=shutil.ignore_patterns('target', '__pycache__', '*.uf2'))
-    patch = (KB / 'keymaps/vial/plover-hid.patch').read_bytes()
-    reverse = subprocess.run(['git', 'apply', '--reverse', '--check', '-'], cwd=vial, input=patch, capture_output=True)
-    if reverse.returncode:
-        subprocess.run(['git', 'apply', '--check', '-'], cwd=vial, input=patch, check=True)
-        subprocess.run(['git', 'apply', '-'], cwd=vial, input=patch, check=True)
+    for name in ['plover-hid.patch', 'usb-queue-alignment.patch']:
+        patch = (KB / 'keymaps/vial' / name).read_bytes()
+        reverse = subprocess.run(['git', 'apply', '--reverse', '--check', '-'], cwd=vial, input=patch, capture_output=True)
+        if reverse.returncode:
+            subprocess.run(['git', 'apply', '--check', '-'], cwd=vial, input=patch, check=True)
+            subprocess.run(['git', 'apply', '-'], cwd=vial, input=patch, check=True)
     # Allow cancellation during unlock and clear the polling barrier on lock.
     core = vial / 'quantum/via.c'
     text = core.read_text().replace('cmd != vial_unlock_start && cmd != vial_unlock_poll)', 'cmd != vial_unlock_start && cmd != vial_unlock_poll && cmd != vial_lock)')
@@ -140,6 +142,9 @@ def main():
         run('make', target, f'-j{args.jobs}', *options, cwd=vial)
         if args.action == 'clean':
             continue
+        # Validate the linked Vial core before publishing any firmware copies.
+        run(sys.executable, str(KB / 'tests/test_plover_usb.py'),
+            str(vial / f'.build/jeebis_mejiro31_{keymap}.elf'))
         filename = f'jeebis_mejiro31_{keymap}.uf2' if args.keymap else f'mejiro31_vial_{profile}_{args.layout}.uf2'
         uf2 = output / filename
         shutil.copyfile(vial / f'.build/jeebis_mejiro31_{keymap}.uf2', uf2)

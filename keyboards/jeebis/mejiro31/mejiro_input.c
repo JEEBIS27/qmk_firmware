@@ -292,6 +292,15 @@ static void close_token(mji_engine_t *e, uint8_t id, uint32_t now) {
     mji_token_t *t = &e->tokens[id];
     t->released    = true;
     t->ended       = now;
+    // A later unresolved start may block logical retirement, but must not
+    // prolong an already emitted key into the host's auto-repeat window.
+    // Keep the token/context queued; only release its live Tap output now.
+    if (t->emitted) {
+        t->emitted = false;
+        uint32_t epoch = e->epoch;
+        output(e, id, false, false);
+        if (epoch != e->epoch) return;
+    }
     enqueue(e, id, false);
 }
 static int start_token(mji_engine_t *e, uint64_t sources, uint16_t logical, uint32_t born, bool residual, bool ready) {

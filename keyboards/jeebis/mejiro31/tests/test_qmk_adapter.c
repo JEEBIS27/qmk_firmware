@@ -714,6 +714,91 @@ static void test_shift_face_literal_symbols(void) {
         }
     }
 }
+// Right-thumb combo: literal @/# on Tap; pure Ctrl+Alt on Hold.
+static void test_thumb_symbol_ctrl_alt(void) {
+    for (unsigned jis = 0; jis < 2; ++jis) {
+        for (uint8_t layer = MJI_QWERTY; layer <= MJI_NUMBER_SHIFTED; ++layer) {
+            for (unsigned hold = 0; hold < 2; ++hold) {
+                setup();
+                mji_layout_config_t config = input.layout;
+                config.jis_host = jis;
+                config.maps[0] = config.maps[1] = (mji_layout_map_t)MJI_LAYOUT_MAP(mji_layout_graphite);
+                assert(select_layout(&config));
+                mji_reset(&input, layer & ~1);
+                if (layer & 1) event(0, 28, true); // Real held Shift selects the face.
+                event(1, 42, true);
+                event(2, 43, true);
+                uint16_t symbol = layer == MJI_QWERTY ? KC_AT : KC_HASH;
+                mji_key_t key;
+                assert(decode_callback(NULL, symbol, &key));
+                mji_stroke_t expected = mji_layout_resolve(&config, key, MJI_NO_LAYER, 0);
+                if (hold) {
+                    tick(300);
+                    assert((native_mods & ~MOD_MASK_SHIFT) == (MOD_LCTL | MOD_LALT));
+                    assert(!presses[expected.code]);
+                    event(301, 9, true);
+                    tick(350);
+                    uint8_t next = layer < MJI_NUMBER ? KC_O : KC_END;
+                    assert(native_keys[next]);
+                    assert((pressed_mods[next] & ~MOD_MASK_SHIFT) == (MOD_LCTL | MOD_LALT));
+                    event(351, 9, false);
+                }
+                event(hold ? 400 : 10, 42, false);
+                event(hold ? 401 : 11, 43, false);
+                if (layer & 1) event(hold ? 402 : 12, 28, false);
+                if (!hold) {
+                    assert(presses[expected.code] == 1);
+                    assert(pressed_mods[expected.code] == expected.mods);
+                }
+                all_up();
+            }
+        }
+    }
+}
+static void test_release_before_pending_combo_timeout(void) {
+    setup();
+    input.timing = (mji_timing_t){150, 50, 300};
+    dynamic_maps[0][0][0] = KC_A;
+    event(0, 0, true);
+    assert(native_keys[KC_A]);
+    event(160, 1, true); // Q remains a combo candidate until 310ms.
+    event(170, 0, false);
+    assert(!native_keys[KC_A]);
+    tick(250);
+    assert(!native_keys[KC_A] && presses[KC_A] == 1);
+    tick(310);
+    assert(native_keys[KC_Q]);
+    event(320, 1, false);
+    all_up();
+}
+static void test_space_enter_share_shift(void) {
+    for (uint8_t layer = MJI_QWERTY; layer <= MJI_FUNCTION; ++layer) {
+        assert(keymaps[layer + MJI_HOLD_OFFSET][2][4] == KC_LSFT);
+        assert(keymaps[layer + MJI_HOLD_OFFSET][2][6] == KC_LSFT);
+        for (unsigned space_first = 0; space_first < 2; ++space_first) {
+            setup();
+            mji_reset(&input, layer);
+            event(0, 28, true);
+            assert(!native_mods);
+            event(1, 30, true);
+            // Never emit Left+Right Shift: that can activate host Caps Lock.
+            assert(native_mods == MOD_LSFT);
+            event(10, space_first ? 28 : 30, false);
+            assert(native_mods == MOD_LSFT);
+            if (!space_first) {
+                assert(presses[KC_ENT] == 1);
+                assert(pressed_mods[KC_ENT] == MOD_LSFT);
+            }
+            event(11, space_first ? 30 : 28, false);
+            assert(presses[KC_ENT] == 1 && presses[KC_SPC] == 0);
+            all_up();
+            event(20, 28, true);
+            tick(400); // A subsequent long Space also releases cleanly.
+            event(401, 28, false);
+            all_up();
+        }
+    }
+}
 static void test_quick_thumb_mod_suppression(void) {
     const uint8_t positions[] = {28, 30, 46};
     for (unsigned i = 0; i < sizeof(positions); ++i) {
@@ -740,6 +825,9 @@ static void test_quick_thumb_mod_suppression(void) {
 }
 int main(void) {
     test_quick_thumb_mod_suppression();
+    test_space_enter_share_shift();
+    test_release_before_pending_combo_timeout();
+    test_thumb_symbol_ctrl_alt();
     test_shift_face_literal_symbols();
     test_plover_transport_routes();
     test_steno_shortcuts();

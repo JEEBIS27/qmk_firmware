@@ -62,6 +62,18 @@ class BuildTests(unittest.TestCase):
             block[32:40] = b'M31WEB01'
             struct.pack_into('<I', block, 508, 0x0ab16f30)
             (vial / '.build/jeebis_mejiro31_jp_default.uf2').write_bytes(block)
+            # A rejected ELF must never be copied or advertised as verified.
+            with patch.object(builder, 'ROOT', root), patch.object(builder, 'KB', kb), \
+                 patch.object(builder, 'prepare', return_value=vial), \
+                 patch.object(builder, 'run', side_effect=[None, subprocess.CalledProcessError(1, 'USB ELF check')]) as commands, \
+                 patch('sys.argv', ['build_vial.py', '--work-dir', str(root / 'work'), '--keymap', 'jp_default']):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    builder.main()
+                self.assertEqual(commands.call_args.args[1:],
+                                 (str(kb / 'tests/test_plover_usb.py'),
+                                  str(vial / '.build/jeebis_mejiro31_jp_default.elf')))
+            self.assertFalse((root / '.build/jeebis_mejiro31_jp_default.uf2').exists())
+            self.assertFalse((root / 'jeebis_mejiro31_jp_default.uf2').exists())
             with patch.object(builder, 'ROOT', root), patch.object(builder, 'KB', kb), \
                  patch.object(builder, 'prepare', return_value=vial), patch.object(builder, 'run'), \
                  patch('sys.argv', ['build_vial.py', '--work-dir', str(root / 'work'), '--keymap', 'jp_default']):
