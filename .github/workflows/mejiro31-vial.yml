@@ -21,7 +21,9 @@ jobs:
           sudo apt-get install -y build-essential gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi python3-venv
           rustup toolchain install 1.88.0 --profile minimal
           rustup target add --toolchain 1.88.0 thumbv6m-none-eabi
-      - name: Prepare pinned Vial and engine sources
+      - name: Test engine refresh and build metadata
+        run: python3 keyboards/jeebis/mejiro31/tests/test_build_vial.py
+      - name: Prepare pinned Vial and latest engine sources
         run: python3 keyboards/jeebis/mejiro31/build_vial.py --prepare-only
       - name: Install QMK Python dependencies
         run: |
@@ -45,5 +47,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: mejiro31-vial-defaults
-          path: .build/mejiro31-vial/artifacts/
+          path: .build/*.uf2*
           if-no-files-found: error

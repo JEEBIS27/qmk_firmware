@@ -20,11 +20,17 @@ site-compatible UF2s. All other keyboards keep their normal QMK build path.
 
 Vial requires its quantum core, so the two build entry points route Mejiro31
 through `build_vial.py`; there is no separate non-Vial Mejiro31 build choice.
-The helper fetches pinned Vial-QMK and Mejiro_Engine commits, preserves Plover
+The helper fetches pinned Vial-QMK and the latest remote default-branch commit
+of Mejiro_Engine on every invocation, preserves Plover
 HID through `plover-hid.patch`, and fixes unlock cancellation. It does not
 replace this repository's core or rewrite this checkout's keyboard definitions.
 Use `MJI_VIAL_WORK_DIR` to override the cache directory.
-Local edits are copied; use a clean checkout for reproducible release builds.
+Local keyboard edits are copied; sibling Mejiro_Engine edits are not used.
+Engine fetch failures stop the build rather than falling back to a cached commit.
+The engine commit is printed in the build log and recorded with the Vial and
+keyboard commits in each `*.uf2.json` sidecar beside the UF2 (including root copies).
+The sidecar also records the UF2 SHA-256 and keymap. Engine updates can change
+build results or require compatibility changes.
 
 For site-distributed variants with explicitly selected initial layouts, the
 internal helper also supports:
@@ -41,11 +47,14 @@ CLI are on PATH. Prepare without compiling with `--prepare-only`; `--skip-submod
 is intended for host-only testing or an already initialized cache.
 
 Named builds copy `jeebis_mejiro31_<keymap>.uf2` to this repository root, as before.
-All verified UF2 files and their SHA-256 checksums are also written to the cache:
+All verified UF2 files, SHA-256 checksums and build metadata are written directly
+to the QMK root’s `.build/` directory, independently of the source cache location:
 
 ```
-.build/mejiro31-vial/artifacts/mejiro31_vial_jp_qwerty.uf2
-.build/mejiro31-vial/artifacts/mejiro31_vial_en_graphite.uf2
+.build/jeebis_mejiro31_jp_default.uf2
+.build/jeebis_mejiro31_en_default.uf2
+.build/mejiro31_vial_jp_qwerty.uf2
+.build/mejiro31_vial_en_graphite.uf2
 ```
 
 `--profile all` builds both languages; `--layout` supports QWERTY and Graphite

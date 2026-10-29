@@ -14,7 +14,8 @@ ROOT = KB.parents[2]
 VIAL_URL = 'https://github.com/vial-kb/vial-qmk.git'
 VIAL_REF = 'dd43959ae5c08d8a28d38a1acf7b04e86b14a344'
 ENGINE_URL = 'https://github.com/JEEBIS27/Mejiro_Engine.git'
-ENGINE_REF = '4528859a881b92e2ae83e9c70c7fff45ebfe9962'
+# Remote HEAD follows the repository's default branch, including branch renames.
+ENGINE_REF = 'HEAD'
 
 
 def run(*args, cwd=None):
@@ -28,9 +29,16 @@ def checkout(path, url, ref):
         run('git', 'init', str(path))
         run('git', 'remote', 'add', 'origin', url, cwd=path)
     current = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=path, capture_output=True, text=True)
-    if current.stdout.strip() != ref:
+    if ref == 'HEAD' or current.returncode or current.stdout.strip() != ref:
         run('git', 'fetch', '--depth', '1', url, ref, cwd=path)
         run('git', 'checkout', '--detach', 'FETCH_HEAD', cwd=path)
+    return subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=path, text=True).strip()
+
+
+def write_build_metadata(uf2, sources, variant, digest):
+    metadata = {'format': 'mejiro31-build-v1', 'filename': uf2.name,
+                'sha256': digest, 'sources': sources, **variant}
+    uf2.with_suffix('.uf2.json').write_text(json.dumps(metadata, indent=2) + '\n')
 
 
 def verify_uf2(path):
@@ -58,7 +66,8 @@ def verify_uf2(path):
 def prepare(work, submodules):
     vial, engine = work / 'vial', work / 'Mejiro_Engine'
     checkout(vial, VIAL_URL, VIAL_REF)
-    checkout(engine, ENGINE_URL, ENGINE_REF)
+    engine_revision = checkout(engine, ENGINE_URL, ENGINE_REF)
+    print(f'Mejiro_Engine ({ENGINE_URL}, remote {ENGINE_REF}): {engine_revision}', flush=True)
     dest = vial / 'keyboards/jeebis/mejiro31'
     marker = vial / '.mejiro31-vial-build.json'
     if dest.exists():
@@ -93,7 +102,9 @@ def prepare(work, submodules):
     if submodules:
         run('git', 'submodule', 'update', '--init', '--depth', '1', 'lib/chibios', 'lib/chibios-contrib', 'lib/pico-sdk', 'lib/printf', cwd=vial)
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
-    marker.write_text(json.dumps({'vial': VIAL_REF, 'engine': ENGINE_REF, 'keyboard_head': revision}, indent=2) + '\n')
+    marker.write_text(json.dumps({'vial': VIAL_REF, 'engine': engine_revision,
+                                 'engine_url': ENGINE_URL, 'engine_ref': ENGINE_REF,
+                                 'keyboard_head': revision}, indent=2) + '\n')
     return vial
 
 
@@ -118,8 +129,9 @@ def main():
     print(f'Prepared Vial source: {vial}', flush=True)
     if args.prepare_only:
         return
-    output = work / 'artifacts'
+    output = ROOT / '.build'
     output.mkdir(exist_ok=True)
+    sources = json.loads((vial / '.mejiro31-vial-build.json').read_text())
     variants = [(None, args.keymap)] if args.keymap else [(profile, 'vial') for profile in (['jp', 'en'] if args.profile == 'all' else [args.profile])]
     for profile, keymap in variants:
         shutil.rmtree(vial / f'.build/obj_jeebis_mejiro31_{keymap}', ignore_errors=True)
@@ -128,14 +140,20 @@ def main():
         run('make', target, f'-j{args.jobs}', *options, cwd=vial)
         if args.action == 'clean':
             continue
-        filename = f'mejiro31_{keymap}.uf2' if args.keymap else f'mejiro31_vial_{profile}_{args.layout}.uf2'
+        filename = f'jeebis_mejiro31_{keymap}.uf2' if args.keymap else f'mejiro31_vial_{profile}_{args.layout}.uf2'
         uf2 = output / filename
         shutil.copyfile(vial / f'.build/jeebis_mejiro31_{keymap}.uf2', uf2)
         digest = verify_uf2(uf2)
         uf2.with_suffix('.uf2.sha256').write_text(f'{digest}  {uf2.name}\n')
+        variant = {'keymap': keymap}
+        if profile is not None:
+            variant.update(profile=profile, layout=args.layout)
+        write_build_metadata(uf2, sources, variant, digest)
         print(f'Verified site-compatible UF2: {uf2}', flush=True)
         if args.keymap:
-            shutil.copyfile(uf2, ROOT / f'jeebis_mejiro31_{keymap}.uf2')
+            named_uf2 = ROOT / f'jeebis_mejiro31_{keymap}.uf2'
+            shutil.copyfile(uf2, named_uf2)
+            write_build_metadata(named_uf2, sources, variant, digest)
 
 
 if __name__ == '__main__':
