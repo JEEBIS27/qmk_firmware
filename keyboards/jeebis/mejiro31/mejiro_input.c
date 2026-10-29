@@ -40,7 +40,18 @@ static mji_context_t context(mji_engine_t *e) {
     return get_context(e, false);
 }
 static uint8_t output_mods(mji_engine_t *e) {
-    uint8_t mods = context(e).mods;
+    // Logical Hold is available immediately for lookup. Publish its modifiers
+    // only once used by a successor or held through the initial combo window.
+    uint8_t mods = 0;
+    for (uint8_t i = 0; i < MJI_TOKEN_COUNT; ++i) {
+        mji_token_t *t = &e->tokens[i];
+        if (t->state != MJI_ACTIVE && t->state != MJI_PREPARED) continue;
+        if (t->residual && t->released) continue;
+        uint32_t end = t->released ? t->ended : e->now;
+        if (!t->binding.tap || t->used || t->mods_exposed || t->residual || elapsed(end, t->born) >= e->timing.combo_ms)
+            mods |= t->binding.hold_mods;
+    }
+    if (e->sticky_target >= 0) mods |= UINT8_C(0x02);
     if (e->output_target >= 0) {
         mji_token_t *t      = &e->tokens[e->output_target];
         mji_stroke_t stroke = e->output_is_hold ? t->hold_stroke : t->tap_stroke;
@@ -163,6 +174,7 @@ static void activate(mji_engine_t *e, uint8_t id) {
     // Every preceding Hold contributes, even if only modifiers and not a layer.
     for (uint8_t i = 0; i < MJI_TOKEN_COUNT; ++i)
         if ((e->tokens[i].state == MJI_ACTIVE || e->tokens[i].state == MJI_PREPARED) && !(e->tokens[i].residual && e->tokens[i].released) && i != id && has_hold(&e->tokens[i])) e->tokens[i].used = true;
+    t->mods_exposed = !!(e->physical & ~t->sources);
     t->activated = ++e->serial;
     t->state     = MJI_ACTIVE;
     if (has_hold(t)) {
@@ -346,6 +358,7 @@ void mji_tick(mji_engine_t *e, uint32_t now) {
         }
     }
     drain(e);
+    sync_mods(e);
 }
 
 void mji_event(mji_engine_t *e, uint8_t p, bool pressed, uint32_t now) {
@@ -413,7 +426,15 @@ void mji_event(mji_engine_t *e, uint8_t p, bool pressed, uint32_t now) {
             if (remaining) start_token(e, remaining, first_source(remaining), now, true, false);
         }
     }
+    // A physical successor may still be waiting for its own combo. Expose
+    // already active providers now, without waiting for that resolution.
+    for (uint8_t i = 0; i < MJI_TOKEN_COUNT; ++i) {
+        mji_token_t *t = &e->tokens[i];
+        if (t->state == MJI_ACTIVE && !t->released && (e->physical & ~t->sources))
+            t->mods_exposed = true;
+    }
     drain(e);
+    sync_mods(e);
 }
 
 bool mji_set_layout(mji_engine_t *e, const mji_layout_config_t *config) {

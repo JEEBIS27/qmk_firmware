@@ -56,7 +56,7 @@ typedef struct {
     mji_binding_t binding;
     mji_stroke_t  tap_stroke, hold_stroke;
     mji_state_t   state;
-    bool          released, used, emitted, residual;
+    bool          released, used, emitted, residual, mods_exposed;
 } mji_token_t;
 typedef struct {
     uint8_t token;

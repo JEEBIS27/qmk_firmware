@@ -28,7 +28,7 @@ typedef struct {
     bool          defined[4][64];
     report_t      log[4096];
     unsigned      count, clears;
-    uint8_t       mods;
+    uint8_t       mods, seen_mods;
     bool          held[512];
     uint32_t      clock;
 } fixture_t;
@@ -53,6 +53,7 @@ static void key(void *user, uint8_t source, uint16_t code, bool pressed, uint8_t
 }
 static void mods(void *user, uint8_t value) {
     ((fixture_t *)user)->mods = value;
+    ((fixture_t *)user)->seen_mods |= value;
 }
 static void clear(void *user) {
     fixture_t *s = user;
@@ -264,15 +265,39 @@ static void test_repress_single(void) {
 static void test_dual_tap(void) {
     setup();
     at(0, SPACE, true);
-    assert(f.mods == SFT);
+    assert(!f.mods && !f.seen_mods);
     at(20, SPACE, false);
     expect(0, K_SPACE, true, 0);
     expect(1, K_SPACE, false, 0);
     no_stuck();
 }
+static void test_quick_pending_tap_without_mods(void) {
+    setup();
+    bind(0, C, DUAL(K_C, CTL));
+    at(0, C, true);
+    assert(!f.seen_mods);
+    at(5, C, false);
+    expect(0, K_C, true, 0);
+    expect(1, K_C, false, 0);
+    assert(f.count == 2 && !f.seen_mods);
+    no_stuck();
+
+    setup();
+    bind(0, C, DUAL(K_C, CTL));
+    at(0, C, true);
+    tick(40);
+    assert(f.mods == CTL && f.seen_mods == CTL);
+    at(45, C, false);
+    expect(0, K_C, true, 0);
+    no_stuck();
+}
 static void test_dual_long(void) {
     setup();
     at(0, SPACE, true);
+    tick(39);
+    assert(!f.mods && !f.seen_mods);
+    tick(40);
+    assert(f.mods == SFT);
     tick(200);
     at(210, SPACE, false);
     assert(!f.count);
@@ -671,6 +696,7 @@ int main(void) {
     RUN(test_repress_pair);
     RUN(test_repress_single);
     RUN(test_dual_tap);
+    RUN(test_quick_pending_tap_without_mods);
     RUN(test_dual_long);
     RUN(test_roll_is_hold);
     RUN(test_combined_mods);

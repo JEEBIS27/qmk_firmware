@@ -11,7 +11,7 @@
 static uint8_t pressed_mods[256];
 
 struct stub_keymap_config keymap_config;
-static uint8_t            native_mods;
+static uint8_t            native_mods, reported_mods;
 static bool               native_keys[256];
 static uint32_t           now;
 static unsigned           presses[256], steno_events;
@@ -35,7 +35,7 @@ void clear_oneshot_mods(void) {}
 void set_oneshot_mods(uint8_t m) {
     (void)m;
 }
-void send_keyboard_report(void) {}
+void send_keyboard_report(void) { reported_mods |= native_mods; }
 void clear_keyboard(void) {
     memset(native_keys, 0, sizeof(native_keys));
     native_mods = 0;
@@ -127,6 +127,7 @@ static void setup(void) {
     settings_writes = 0;
     memset(presses, 0, sizeof(presses));
     clear_keyboard();
+    reported_mods = 0;
     memcpy(dynamic_maps, keymaps, sizeof(dynamic_maps));
     memset(held_codes, 0, sizeof(held_codes));
     memset(refs, 0, sizeof(refs));
@@ -181,7 +182,7 @@ static void test_dynamic_combo_tap_hold(void) {
     dynamic_maps[6][2][2] = KC_LALT;
     event(0, 3, true);
     event(5, 15, true);
-    assert(native_mods == MOD_LALT);
+    assert(!native_mods);
     event(10, 3, false);
     event(11, 15, false);
     assert(input.sticky_waiting);
@@ -713,7 +714,32 @@ static void test_shift_face_literal_symbols(void) {
         }
     }
 }
+static void test_quick_thumb_mod_suppression(void) {
+    const uint8_t positions[] = {28, 30, 46};
+    for (unsigned i = 0; i < sizeof(positions); ++i) {
+        setup();
+        input.timing = (mji_timing_t){150, 50, 300};
+        uint8_t p = positions[i];
+        if (p == 46) {
+            event(0, 42, true);
+            event(1, 43, true);
+            event(20, 42, false);
+            event(21, 43, false);
+        } else {
+            event(0, p, true);
+            assert(!native_mods);
+            event(20, p, false);
+        }
+        // US @ needs Shift for its Tap; Ctrl/Alt must never leak from Hold.
+        assert(!(reported_mods & (MOD_MASK_CTRL | MOD_MASK_ALT)));
+        if (p != 46) assert(!reported_mods);
+        assert(presses[p == 28 ? KC_SPC : p == 30 ? KC_ENT :
+                       input.layout.jis_host ? JP_AT : KC_2] == 1);
+        all_up();
+    }
+}
 int main(void) {
+    test_quick_thumb_mod_suppression();
     test_shift_face_literal_symbols();
     test_plover_transport_routes();
     test_steno_shortcuts();
