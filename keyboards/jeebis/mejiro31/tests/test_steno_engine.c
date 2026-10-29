@@ -242,6 +242,22 @@ int main(void) {
     for (unsigned i = 0; i < 300; ++i) mejiro_engine_process("KA-", 3);
     assert(text_len == 600); // A full text recorder must not eat live steno.
     assert(mejiro_engine_recording_failed() && !mejiro_qmk_is_recording(0));
+    mejiro_engine_init();
+    mejiro_rule rule = {.kind = 0, .key_len = 3, .value_len = 3};
+    memcpy(rule.key, "KA-", 3);
+    memcpy(rule.value, "き", 3);
+    assert(mejiro_qmk_rule_set(&rule) == 0 && mejiro_qmk_rule_count() == 1);
+    mejiro_rule loaded = {0};
+    assert(mejiro_qmk_rule_get(0, &loaded) == 0 && memcmp(loaded.value, "き", 3) == 0);
+    clear_output();
+    mejiro_engine_process("KA-", 3);
+    assert(strcmp(text, "ki") == 0);
+    assert(mejiro_qmk_rule_hide(0, (const uint8_t *)"KA-", 3) == 0);
+    clear_output();
+    mejiro_engine_process("KA-", 3);
+    assert(strcmp(text, "ka") == 0);
+    assert(mejiro_qmk_rule_clear(0, (const uint8_t *)"KA-", 3) == 0);
+    assert(mejiro_qmk_rule_count() == 0);
     puts("steno Rust engine + QMK adapter, mixed batch recording and overflow OK");
     return 0;
 }

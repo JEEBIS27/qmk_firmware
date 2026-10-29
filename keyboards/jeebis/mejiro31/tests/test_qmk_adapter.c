@@ -21,6 +21,7 @@ static uint16_t           dynamic_maps[14][4][12];
 static uint32_t           settings_word;
 static unsigned           settings_writes;
 static uint16_t consumer_usage, system_usage;
+bool mejiro_first_up_chord_send = true;
 void host_consumer_send(uint16_t usage) { consumer_usage = usage; }
 void host_system_send(uint16_t usage) { system_usage = usage; }
 uint32_t eeconfig_read_user(void) { return settings_word; }

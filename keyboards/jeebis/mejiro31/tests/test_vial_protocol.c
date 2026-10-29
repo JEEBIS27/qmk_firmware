@@ -17,11 +17,24 @@ static void test_web_protocol(void) {
     uint8_t packet[32];
     vial_unlocked = 0;
     request(packet, 0, 0, 0, 0);
-    assert(packet[3] == 0 && packet[12] == (2 | (MJI_DEFAULT_MEJIRO ? 4 : 0)) && packet[16] == 14 && packet[17] == WEB_LAYOUT_COUNT);
+    assert(packet[3] == 0 && packet[12] == (2 | (MJI_DEFAULT_MEJIRO ? 4 : 0)) && packet[16] == 14 && packet[17] == WEB_LAYOUT_COUNT && packet[18] == 1);
     uint32_t saved = settings_word;
+    request(packet, 2, 0, 0, 0);
+    assert(packet[3] == 1 && settings_word == saved && packet[18] == 1);
     request(packet, 1, 7, 1, 16);
     assert(packet[3] == 1 && settings_word == saved);
     vial_unlocked = 1;
+    request(packet, 2, 0, 0, 0);
+    assert(packet[3] == 0 && packet[18] == 0 && !mejiro_first_up_chord_send);
+    assert(settings_word & UINT32_C(0x2000));
+    keyboard_post_init_user();
+    assert(!mejiro_first_up_chord_send);
+    request(packet, 2, 0, 0, 0);
+    packet[18] = 1;
+    raw_hid_receive_kb(packet, 32);
+    assert(packet[3] == 0 && packet[18] == 1 && mejiro_first_up_chord_send);
+    assert(!(settings_word & UINT32_C(0x2000)));
+    saved = settings_word;
     request(packet, 1, 6, WEB_LAYOUT_COUNT, 0);
     assert(packet[3] == 2 && settings_word == saved);
     // Hold a real key while changing context: no stuck output may survive.

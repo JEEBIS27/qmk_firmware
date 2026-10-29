@@ -71,6 +71,13 @@ editor must expect protocol 6, UID `M31WEB01`, 14 storage layers and extension s
 The site source and protocol reference are maintained in
 [JEEBIS27/Mejiro31](https://github.com/JEEBIS27/Mejiro31).
 
+The settings extension reports `First up chords send` in response byte 18
+(1 = send when the first key is released, 0 = wait until all chord keys are
+released). Set it with command `FA 01 02`, signature `M31WEB01` in bytes 4–11,
+and the requested value in byte 18. Writes require Vial unlock. This flag is
+stored in the keyboard's user settings and restored at startup. The existing
+layout command (`FA 01 01`) leaves this flag unchanged.
+
 Unlocking requires holding the top-left and top-right physical keys. While
 unlocking, the unified input engine is paused. Do not enable Vial's dynamic
 Combo/Tap Dance/QMK Settings: this keyboard's engine owns combo and Tap/Hold
