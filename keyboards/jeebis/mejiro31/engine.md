@@ -210,3 +210,7 @@ python tests/test_plover_usb.py ../../../../.build/jeebis_mejiro31_jp_default.el
 
 Plover HID使用時はPlover側にも対応版の導入が必要。内蔵版は更新したEngineをリンクしたUF2を書き込むと利用できる。
 ビルドは `just build`（隣接するローカルEngineを使用）で行う。全押し・左右切り替え・記号キー・両手復帰は実際のストローク確定処理を通すホスト回帰テストに含める。
+
+### `just build` のARMツールチェーン
+
+`arm-none-eabi-gcc` がPATHにあればそのコンパイラーを使う。見つからずNixが使える場合は、ビルドスクリプトが `nix shell nixpkgs#gcc-arm-embedded` の環境で自分自身を再実行する。手動でPATHを追加する必要はない。初回はNixのパッケージ取得に時間がかかる場合がある。Nixもない場合はArm GNU embedded toolchainの導入を案内して終了する。`just sync`（`--prepare-only`）にはコンパイラーを要求しない。

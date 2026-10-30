@@ -2,6 +2,7 @@
 """Check engine refresh and the metadata shipped with named UF2 builds."""
 import importlib.util
 import json
+import os
 from pathlib import Path
 import struct
 import subprocess
@@ -19,6 +20,39 @@ def git(path, *args):
 
 
 class BuildTests(unittest.TestCase):
+    def test_cli_keeps_installed_compiler_and_prepare_only_needs_none(self):
+        with patch.object(builder, 'main') as main, patch.object(builder.shutil, 'which', return_value='/tools/arm-none-eabi-gcc'):
+            with patch('sys.argv', ['build_vial.py', '--profile', 'jp']):
+                builder.run_cli()
+            main.assert_called_once_with()
+        with patch.object(builder, 'main') as main, patch.object(builder.shutil, 'which') as which:
+            with patch('sys.argv', ['build_vial.py', '--prepare-only']):
+                builder.run_cli()
+            main.assert_called_once_with()
+            which.assert_not_called()
+
+    def test_cli_supplies_missing_compiler_through_nix_and_preserves_arguments(self):
+        with patch.object(builder.shutil, 'which', side_effect=[None, '/tools/nix']), \
+             patch.object(builder.subprocess, 'run', return_value=subprocess.CompletedProcess([], 7)) as run, \
+             patch.dict(os.environ, {'MEJIRO_NIX_TOOLCHAIN': '0'}), \
+             patch('sys.argv', ['build_vial.py', '--engine-source', '/path with spaces/Engine', '--profile', 'en']):
+            with self.assertRaises(SystemExit) as result:
+                builder.run_cli()
+            self.assertEqual(result.exception.code, 7)
+            command = run.call_args.args[0]
+            self.assertEqual(command[:6], ['/tools/nix', '--extra-experimental-features', 'nix-command flakes', 'shell', 'nixpkgs#gcc-arm-embedded', '--command'])
+            self.assertEqual(command[-4:], ['--engine-source', '/path with spaces/Engine', '--profile', 'en'])
+            self.assertEqual(run.call_args.kwargs['env']['MEJIRO_NIX_TOOLCHAIN'], '1')
+
+    def test_cli_reports_missing_tools_without_recursing(self):
+        for nix, marker, message in [(None, '0', 'was not found'), ('/tools/nix', '1', 'does not provide')]:
+            with self.subTest(nix=nix, marker=marker), \
+                 patch.object(builder.shutil, 'which', side_effect=[None, nix]), \
+                 patch.dict(os.environ, {'MEJIRO_NIX_TOOLCHAIN': marker}), \
+                 patch('sys.argv', ['build_vial.py']):
+                with self.assertRaisesRegex(SystemExit, message):
+                    builder.run_cli()
+
     def test_engine_follows_remote_default_and_fails_without_remote(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)

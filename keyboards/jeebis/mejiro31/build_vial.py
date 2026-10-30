@@ -188,5 +188,28 @@ def main():
             intermediate.unlink(missing_ok=True)
 
 
+def run_cli():
+    # Keep an explicitly installed toolchain. Nix users can build without
+    # changing their login-shell PATH or relying on a machine-specific store path.
+    arguments = sys.argv[1:]
+    if '--prepare-only' in arguments or '--help' in arguments or '-h' in arguments:
+        return main()
+    if shutil.which('arm-none-eabi-gcc'):
+        return main()
+    nix = shutil.which('nix')
+    if not nix:
+        raise SystemExit('arm-none-eabi-gcc was not found. Install the Arm GNU embedded toolchain, or install Nix to supply it automatically.')
+    if os.environ.get('MEJIRO_NIX_TOOLCHAIN') == '1':
+        raise SystemExit('The Nix build environment does not provide arm-none-eabi-gcc.')
+    print('arm-none-eabi-gcc is missing; entering the Nix ARM toolchain environment.', flush=True)
+    environment = dict(os.environ, MEJIRO_NIX_TOOLCHAIN='1')
+    result = subprocess.run([
+        nix, '--extra-experimental-features', 'nix-command flakes',
+        'shell', 'nixpkgs#gcc-arm-embedded', '--command',
+        sys.executable, str(Path(__file__).resolve()), *arguments,
+    ], env=environment)
+    raise SystemExit(result.returncode)
+
+
 if __name__ == '__main__':
-    main()
+    run_cli()
