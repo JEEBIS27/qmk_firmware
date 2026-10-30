@@ -40,7 +40,7 @@ class BuildTests(unittest.TestCase):
                 builder.run_cli()
             self.assertEqual(result.exception.code, 7)
             command = run.call_args.args[0]
-            self.assertEqual(command[:6], ['/tools/nix', '--extra-experimental-features', 'nix-command flakes', 'shell', 'nixpkgs#gcc-arm-embedded', '--command'])
+            self.assertEqual(command[:6], ['/tools/nix', '--extra-experimental-features', 'nix-command flakes', 'develop', f'path:{builder.ROOT / "nix"}', '--command'])
             self.assertEqual(command[-4:], ['--engine-source', '/path with spaces/Engine', '--profile', 'en'])
             self.assertEqual(run.call_args.kwargs['env']['MEJIRO_NIX_TOOLCHAIN'], '1')
 

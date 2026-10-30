@@ -211,6 +211,22 @@ python tests/test_plover_usb.py ../../../../.build/jeebis_mejiro31_jp_default.el
 Plover HID使用時はPlover側にも対応版の導入が必要。内蔵版は更新したEngineをリンクしたUF2を書き込むと利用できる。
 ビルドは `just build`（隣接するローカルEngineを使用）で行う。全押し・左右切り替え・記号キー・両手復帰は実際のストローク確定処理を通すホスト回帰テストに含める。
 
-### `just build` のARMツールチェーン
+### NixによるQMK開発環境
 
-`arm-none-eabi-gcc` がPATHにあればそのコンパイラーを使う。見つからずNixが使える場合は、ビルドスクリプトが `nix shell nixpkgs#gcc-arm-embedded` の環境で自分自身を再実行する。手動でPATHを追加する必要はない。初回はNixのパッケージ取得に時間がかかる場合がある。Nixもない場合はArm GNU embedded toolchainの導入を案内して終了する。`just sync`（`--prepare-only`）にはコンパイラーを要求しない。
+QMKリポジトリの `nix/flake.nix` と `nix/flake.lock` に開発環境を定義する。QMK CLI、ARM/AVRコンパイラー、書き込みツール、Make、Git、just、rustup、ARM検査用のpyelftools・Unicornを含む。Nixpkgsの版はlockファイルで固定する。
+
+```sh
+just dev                # 開発環境へ入る
+just dev --command arm-none-eabi-gcc --version
+just build              # 環境の外からでも、同じNix環境でJP/ENをビルド
+just test               # 同じ環境でホスト回帰テスト
+```
+
+初回だけRustツールチェーンとRP2040用ターゲットを用意する（導入済みなら不要）。
+
+```sh
+just dev --command rustup toolchain install stable --profile minimal
+just dev --command rustup target add thumbv6m-none-eabi
+```
+
+Rustツールチェーンはrustupで管理し、既存のユーザー設定を使用する。`just build`・`just test` に手動のPATH追加は不要。初回はNixのパッケージ取得に時間がかかる場合がある。直接 `build_vial.py` を実行してコンパイラーが見つからない場合も、このプロジェクトのNix開発環境で再実行する。`just sync`（`--prepare-only`）にはコンパイラーを要求しない。
