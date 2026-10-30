@@ -208,6 +208,8 @@ python tests/test_plover_usb.py ../../../../.build/jeebis_mejiro31_jp_default.el
 | `nk` | を | を | ません |
 | `ntk` | Enter | は | て |
 
+片手モードの `U*` はUndo、`AU*` はBackspace。左は `#U-`／`#AU-`、右は `-U*`／`-AU*` で入力モードを維持する。
+
 Plover HID使用時はPlover側にも対応版の導入が必要。内蔵版は更新したEngineをリンクしたUF2を書き込むと利用できる。
 ビルドは `just build`（隣接するローカルEngineを使用）で行う。全押し・左右切り替え・記号キー・両手復帰は実際のストローク確定処理を通すホスト回帰テストに含める。
 

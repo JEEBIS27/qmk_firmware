@@ -75,6 +75,12 @@ static void test_one_hand_mode(void) {
     CHORD(STN_N1, STN_TL, STN_HL, STN_RL); // #TIA- = てる, not 手伝う
     assert(strcmp(text, "teru") == 0);
     clear_output();
+    CHORD(STN_N1, STN_ST1); // #U- = one-hand Undo (てる: 2 kana)
+    assert(tap_len == 2 && taps[0] == KC_BSPC && taps[1] == KC_BSPC);
+    clear_output();
+    CHORD(STN_N1, STN_RL, STN_ST1); // #AU- = one Backspace
+    assert(tap_len == 1 && taps[0] == KC_BSPC);
+    clear_output();
     CHORD(STN_N1, STN_KL, STN_RL, STN_ST1); // #KAU- = こと
     assert(strcmp(text, "koto") == 0);
     clear_output();
@@ -93,6 +99,12 @@ static void test_one_hand_mode(void) {
     clear_output();
     CHORD(STN_DR, STN_LR, STN_FR, STN_RR); // -TIA* = てる, not 手伝う
     assert(strcmp(text, "teru") == 0);
+    clear_output();
+    CHORD(STN_DR, STN_ST3); // -U* = one-hand Undo
+    assert(tap_len == 2 && taps[0] == KC_BSPC && taps[1] == KC_BSPC);
+    clear_output();
+    CHORD(STN_DR, STN_RR, STN_ST3); // -AU* = one Backspace
+    assert(tap_len == 1 && taps[0] == KC_BSPC);
     clear_output();
     CHORD(STN_ST3); // -U = う, not Undo
     assert(strcmp(text, "u") == 0 && tap_len == 0);
