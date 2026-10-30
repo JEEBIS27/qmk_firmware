@@ -49,15 +49,16 @@ the Python standard library.
 Prepare without compiling with `--prepare-only`; `--skip-submodules`
 is intended for host-only testing or an already initialized cache.
 
-Named builds copy `jeebis_mejiro31_<keymap>.uf2` to this repository root, as before.
+Named builds also copy the UF2 to this repository root. Standard Japanese and
+English builds are named `mejiro31_jp.uf2` and `mejiro31_en.uf2`; Vial support
+and initial layout are not part of the filename. Building another initial layout
+for the same language replaces that language’s output; metadata records the variant.
 All verified UF2 files, SHA-256 checksums and build metadata are written directly
 to the QMK root’s `.build/` directory, independently of the source cache location:
 
 ```
-.build/jeebis_mejiro31_jp_default.uf2
-.build/jeebis_mejiro31_en_default.uf2
-.build/mejiro31_vial_jp_qwerty.uf2
-.build/mejiro31_vial_en_graphite.uf2
+.build/mejiro31_jp.uf2
+.build/mejiro31_en.uf2
 ```
 
 `--profile all` builds both languages; `--layout` supports QWERTY and Graphite
@@ -70,6 +71,13 @@ editor must expect protocol 6, UID `M31WEB01`, 14 storage layers and extension s
 `M31WEB01`. It uses the Raw HID interface at usage page `0xff60`, usage `0x61`.
 The site source and protocol reference are maintained in
 [JEEBIS27/Mejiro31](https://github.com/JEEBIS27/Mejiro31).
+
+The settings extension reports `First up chords send` in response byte 18
+(1 = send when the first key is released, 0 = wait until all chord keys are
+released). Set it with command `FA 01 02`, signature `M31WEB01` in bytes 4–11,
+and the requested value in byte 18. Writes require Vial unlock. This flag is
+stored in the keyboard's user settings and restored at startup. The existing
+layout command (`FA 01 01`) leaves this flag unchanged.
 
 Unlocking requires holding the top-left and top-right physical keys. While
 unlocking, the unified input engine is paused. Do not enable Vial's dynamic

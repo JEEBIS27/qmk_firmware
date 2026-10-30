@@ -139,18 +139,20 @@ static void sync_shortcut(void) {
 // Versioned user word, independent of VIA's editable keymap storage.
 #ifdef MJI_WEB_VIAL
 #    define MJI_SETTINGS_MAGIC UINT32_C(0x4d320000)
-#    define MJI_SETTINGS_MASK UINT32_C(0x1fff)
+#    define MJI_SETTINGS_MASK UINT32_C(0x3fff)
 #    define MJI_LAYOUT_SETTINGS (((uint32_t)web_en_layout << 3) | ((uint32_t)web_jp_layout << 8))
+#    define MJI_CHORD_SETTINGS ((uint32_t)!mejiro_first_up_chord_send << 13)
 #    define MJI_DEFAULT_LAYOUT_SETTINGS (((uint32_t)MJI_WEB_EN_DEFAULT << 3) | ((uint32_t)MJI_WEB_JP_DEFAULT << 8))
 static uint8_t web_en_layout = MJI_WEB_EN_DEFAULT, web_jp_layout = MJI_WEB_JP_DEFAULT;
 #else
 #    define MJI_SETTINGS_MAGIC UINT32_C(0x4d310100)
 #    define MJI_SETTINGS_MASK UINT32_C(7)
 #    define MJI_LAYOUT_SETTINGS UINT32_C(0)
+#    define MJI_CHORD_SETTINGS UINT32_C(0)
 #    define MJI_DEFAULT_LAYOUT_SETTINGS UINT32_C(0)
 #endif
 static void save_settings(void) {
-    uint32_t word = MJI_SETTINGS_MAGIC | input.layout.jis_host | ((uint32_t)input.layout.alt_enabled << 1) | ((uint32_t)mejiro_mode << 2) | MJI_LAYOUT_SETTINGS;
+    uint32_t word = MJI_SETTINGS_MAGIC | input.layout.jis_host | ((uint32_t)input.layout.alt_enabled << 1) | ((uint32_t)mejiro_mode << 2) | MJI_LAYOUT_SETTINGS | MJI_CHORD_SETTINGS;
     if (eeconfig_read_user() != word) eeconfig_update_user(word);
 }
 void eeconfig_init_user(void) {
@@ -429,6 +431,8 @@ void keyboard_post_init_user(void) {
     }
     mejiro_mode = (settings & 4) != 0;
 #ifdef MJI_WEB_VIAL
+    mejiro_first_up_chord_send = (settings & UINT32_C(0x2000)) == 0;
+    mejiro_rules_load();
     web_en_layout = (settings >> 3) & 31;
     web_jp_layout = (settings >> 8) & 31;
     if (web_en_layout >= WEB_LAYOUT_COUNT || web_jp_layout >= WEB_LAYOUT_COUNT) {

@@ -12,16 +12,83 @@ static void request(uint8_t *packet, uint8_t op, uint8_t flags, uint8_t en, uint
     packet[12] = flags; packet[13] = en; packet[14] = jp;
     raw_hid_receive_kb(packet, 32);
 }
+static void rule_request(uint8_t *packet, uint8_t op) {
+    memset(packet, 0, 32);
+    packet[0] = 0xfa; packet[1] = 2; packet[2] = op;
+    memcpy(packet + 4, "M31RUL01", 8);
+}
+static void rule_transfer(uint8_t *packet, const mejiro_rule *rule, uint8_t action) {
+    rule_request(packet, 2); raw_hid_receive_kb(packet, 32); assert(packet[3] == 0);
+    for (uint8_t i = 0; i < 9; ++i) {
+        rule_request(packet, 3);
+        packet[12] = i;
+        memcpy(packet + 16, (const uint8_t *)rule + i * 16, 16);
+        raw_hid_receive_kb(packet, 32);
+        assert(packet[3] == 0);
+    }
+    rule_request(packet, 4); packet[12] = action;
+    raw_hid_receive_kb(packet, 32);
+    assert(packet[3] == 0);
+}
+static void test_rule_protocol(void) {
+    setup();
+    uint8_t packet[32];
+    rule_request(packet, 0); raw_hid_receive_kb(packet, 32);
+    assert(packet[3] == 0 && packet[12] == 0 && packet[13] == 24 && packet[14] == 1);
+    vial_unlocked = 0;
+    rule_request(packet, 2); raw_hid_receive_kb(packet, 32);
+    assert(packet[3] == 1);
+    vial_unlocked = 1;
+    mejiro_rule rule = {.kind = 0, .key_len = 3, .value_len = 3};
+    memcpy(rule.key, "KA-", 3);
+    memcpy(rule.value, "き", 3);
+    rule_transfer(packet, &rule, 0);
+    rule_request(packet, 0); raw_hid_receive_kb(packet, 32);
+    assert(packet[12] == 1);
+    mejiro_rule actual = {0};
+    for (uint8_t i = 0; i < 9; ++i) {
+        rule_request(packet, 1); packet[12] = 0; packet[13] = i;
+        raw_hid_receive_kb(packet, 32);
+        assert(packet[3] == 0);
+        memcpy((uint8_t *)&actual + i * 16, packet + 16, 16);
+    }
+    assert(!memcmp(&actual, &rule, sizeof(rule)));
+    setup(); // Runtime is cleared, then restored from the committed EEPROM bank.
+    assert(mejiro_qmk_rule_count() == 1);
+    vial_unlocked = 1;
+    rule_transfer(packet, &rule, 1);
+    assert(mock_rules[0].hidden);
+    setup();
+    assert(mejiro_qmk_rule_count() == 1 && mock_rules[0].hidden);
+    vial_unlocked = 1;
+    rule_transfer(packet, &rule, 2);
+    setup();
+    assert(mejiro_qmk_rule_count() == 0);
+    puts("dictionary transport, lock, EEPROM restore, hide and clear OK");
+}
 static void test_web_protocol(void) {
     setup();
     uint8_t packet[32];
     vial_unlocked = 0;
     request(packet, 0, 0, 0, 0);
-    assert(packet[3] == 0 && packet[12] == (2 | (MJI_DEFAULT_MEJIRO ? 4 : 0)) && packet[16] == 14 && packet[17] == WEB_LAYOUT_COUNT);
+    assert(packet[3] == 0 && packet[12] == (2 | (MJI_DEFAULT_MEJIRO ? 4 : 0)) && packet[16] == 14 && packet[17] == WEB_LAYOUT_COUNT && packet[18] == 1);
     uint32_t saved = settings_word;
+    request(packet, 2, 0, 0, 0);
+    assert(packet[3] == 1 && settings_word == saved && packet[18] == 1);
     request(packet, 1, 7, 1, 16);
     assert(packet[3] == 1 && settings_word == saved);
     vial_unlocked = 1;
+    request(packet, 2, 0, 0, 0);
+    assert(packet[3] == 0 && packet[18] == 0 && !mejiro_first_up_chord_send);
+    assert(settings_word & UINT32_C(0x2000));
+    keyboard_post_init_user();
+    assert(!mejiro_first_up_chord_send);
+    request(packet, 2, 0, 0, 0);
+    packet[18] = 1;
+    raw_hid_receive_kb(packet, 32);
+    assert(packet[3] == 0 && packet[18] == 1 && mejiro_first_up_chord_send);
+    assert(!(settings_word & UINT32_C(0x2000)));
+    saved = settings_word;
     request(packet, 1, 6, WEB_LAYOUT_COUNT, 0);
     assert(packet[3] == 2 && settings_word == saved);
     // Hold a real key while changing context: no stuck output may survive.
@@ -120,6 +187,7 @@ int main(void) {
     test_extra_combos();
     assert(adapter_regression_main() == 0);
     test_web_protocol();
+    test_rule_protocol();
     test_unlock_barrier();
     return 0;
 }

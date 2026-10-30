@@ -10,6 +10,7 @@ extern void mejiro_qmk_init(void);
 extern void mejiro_qmk_reset(void);
 extern int32_t mejiro_qmk_process(const uint8_t *, size_t, mejiro_event *);
 extern int32_t mejiro_qmk_ack(uint64_t, uint32_t);
+extern bool mejiro_qmk_pending_sokuon(void);
 extern int32_t mejiro_qmk_preview(const uint8_t *, size_t, mejiro_translation *);
 extern int32_t mejiro_qmk_preview_kana(const uint8_t *, size_t, mejiro_translation *);
 extern bool mejiro_qmk_is_recording(size_t);
@@ -274,9 +275,6 @@ void mejiro_engine_process(const char *stroke, uint8_t length) {
     if (!length) return;
     // Batch import is record-only; the host already received these key events.
     mejiro_engine_flush_keyboard();
-    // A keyboard sending Japanese through an IME remains in Romaji mode.
-    if (length == 3 && memcmp(stroke, "#-n", 3) == 0) return;
-
     mejiro_translation preview;
     if (mejiro_qmk_preview((const uint8_t *)stroke, length, &preview) != 0) return;
     // A slot toggle intended to stop a failed capture must not accidentally
@@ -292,6 +290,11 @@ void mejiro_engine_process(const char *stroke, uint8_t length) {
     uint32_t units = 0;
     if (preview.request == 0 && mejiro_qmk_preview_kana((const uint8_t *)stroke, length, &kana) == 0) {
         units = kana_units(&kana);
+        // The Kana preview includes a final small-tsu even when the Romaji
+        // renderer defers it. A small-tsu carried from the previous stroke
+        // is emitted with this stroke instead. Count only committed kana.
+        if (mejiro_qmk_pending_sokuon()) ++units;
+        if (preview.next.pending_sokuon && units) --units;
     } else if (preview.request == 2 && undo_count) {
         units = undo_units[undo_count - 1];
     } else if (preview.request == 6 && preview.argument < MEJIRO_MACROS) {

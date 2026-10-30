@@ -64,11 +64,32 @@ def verify_uf2(path):
     return hashlib.sha256(raw).hexdigest()
 
 
-def prepare(work, submodules):
+def prepare(work, submodules, engine_source=None):
     vial, engine = work / 'vial', work / 'Mejiro_Engine'
+    if engine_source is None:
+        engine_revision = checkout(engine, ENGINE_URL, ENGINE_REF)
+        engine_metadata = {'engine': engine_revision, 'engine_url': ENGINE_URL,
+                           'engine_ref': ENGINE_REF}
+    else:
+        engine = Path(engine_source).resolve()
+        for relative in ['Cargo.toml', 'Cargo.lock', 'native/mejiro.h', 'src/lib.rs']:
+            if not (engine / relative).is_file():
+                raise ValueError(f'Missing Engine source: {engine / relative}')
+        engine_revision = subprocess.check_output(
+            ['git', '-C', str(engine), 'rev-parse', 'HEAD'], text=True).strip()
+        dirty = bool(subprocess.check_output(
+            ['git', '-C', str(engine), 'status', '--porcelain'], text=True).strip())
+        digest = hashlib.sha256()
+        paths = [engine / name for name in ['Cargo.toml', 'Cargo.lock', 'native/Cargo.toml', 'native/mejiro.h']]
+        paths += sorted((engine / 'src').rglob('*.rs'))
+        paths += sorted((engine / 'native/src').rglob('*.rs'))
+        for path in paths:
+            digest.update(str(path.relative_to(engine)).encode() + b'\0' + path.read_bytes() + b'\0')
+        engine_metadata = {'engine': engine_revision, 'engine_source': str(engine),
+                           'engine_ref': 'local', 'engine_dirty': dirty,
+                           'engine_source_sha256': digest.hexdigest()}
     checkout(vial, VIAL_URL, VIAL_REF)
-    engine_revision = checkout(engine, ENGINE_URL, ENGINE_REF)
-    print(f'Mejiro_Engine ({ENGINE_URL}, remote {ENGINE_REF}): {engine_revision}', flush=True)
+    print(f'Mejiro_Engine: {engine_metadata}', flush=True)
     dest = vial / 'keyboards/jeebis/mejiro31'
     marker = vial / '.mejiro31-vial-build.json'
     if dest.exists():
@@ -104,8 +125,7 @@ def prepare(work, submodules):
     if submodules:
         run('git', 'submodule', 'update', '--init', '--depth', '1', 'lib/chibios', 'lib/chibios-contrib', 'lib/pico-sdk', 'lib/printf', cwd=vial)
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
-    marker.write_text(json.dumps({'vial': VIAL_REF, 'engine': engine_revision,
-                                 'engine_url': ENGINE_URL, 'engine_ref': ENGINE_REF,
+    marker.write_text(json.dumps({'vial': VIAL_REF, **engine_metadata,
                                  'keyboard_head': revision}, indent=2) + '\n')
     return vial
 
@@ -113,6 +133,7 @@ def prepare(work, submodules):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--work-dir', type=Path, default=Path(os.environ.get('MJI_VIAL_WORK_DIR', str(ROOT / '.build/mejiro31-vial'))))
+    p.add_argument('--engine-source', type=Path, help='Use a local Engine working tree, including uncommitted changes; default: remote HEAD')
     p.add_argument('--keymap', help='Existing Mejiro31 keymap name; uses its original defaults')
     p.add_argument('--action', choices=['build','flash','clean'], default='build')
     p.add_argument('--profile', choices=['jp', 'en', 'all'], default='all')
@@ -127,7 +148,8 @@ def main():
     if work == ROOT or work.is_relative_to(KB):
         p.error('The build cache must be outside the keyboard sources')
     work.mkdir(parents=True, exist_ok=True)
-    vial = prepare(work, not args.skip_submodules)
+    vial = (prepare(work, not args.skip_submodules, args.engine_source)
+            if args.engine_source is not None else prepare(work, not args.skip_submodules))
     print(f'Prepared Vial source: {vial}', flush=True)
     if args.prepare_only:
         return
@@ -145,7 +167,8 @@ def main():
         # Validate the linked Vial core before publishing any firmware copies.
         run(sys.executable, str(KB / 'tests/test_plover_usb.py'),
             str(vial / f'.build/jeebis_mejiro31_{keymap}.elf'))
-        filename = f'jeebis_mejiro31_{keymap}.uf2' if args.keymap else f'mejiro31_vial_{profile}_{args.layout}.uf2'
+        language = profile or {'jp_default': 'jp', 'en_default': 'en'}.get(keymap)
+        filename = f'mejiro31_{language}.uf2' if language else f'mejiro31_{keymap}.uf2'
         uf2 = output / filename
         shutil.copyfile(vial / f'.build/jeebis_mejiro31_{keymap}.uf2', uf2)
         digest = verify_uf2(uf2)
@@ -156,9 +179,13 @@ def main():
         write_build_metadata(uf2, sources, variant, digest)
         print(f'Verified site-compatible UF2: {uf2}', flush=True)
         if args.keymap:
-            named_uf2 = ROOT / f'jeebis_mejiro31_{keymap}.uf2'
+            named_uf2 = ROOT / filename
             shutil.copyfile(uf2, named_uf2)
             write_build_metadata(named_uf2, sources, variant, digest)
+        # Only the verified, compact names are public firmware outputs.
+        for intermediate in [vial / f'.build/jeebis_mejiro31_{keymap}.uf2',
+                             vial / f'jeebis_mejiro31_{keymap}.uf2']:
+            intermediate.unlink(missing_ok=True)
 
 
 if __name__ == '__main__':
