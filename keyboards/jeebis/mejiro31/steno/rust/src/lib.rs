@@ -72,9 +72,18 @@ pub unsafe extern "C" fn mejiro_qmk_process(
     len: usize,
     event: *mut CEvent,
 ) -> i32 {
-    unsafe {
+    let status = unsafe {
         mejiro_engine::ffi::mejiro_core_session_process(ENGINE.0.get().cast(), stroke, len, event)
+    };
+    if status == 0 {
+        let session = unsafe { &mut *ENGINE.0.get() };
+        // Commit opposite-hand fallback even for #-n, but keep the IME bridge
+        // in Romaji. In left-hand mode #n is instead an ordinary verb input.
+        if session.state().mode != Mode::Romaji {
+            session.process("#-n").unwrap();
+        }
     }
+    status
 }
 
 #[unsafe(no_mangle)]

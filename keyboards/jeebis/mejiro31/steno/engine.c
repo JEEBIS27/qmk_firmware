@@ -274,9 +274,6 @@ void mejiro_engine_process(const char *stroke, uint8_t length) {
     if (!length) return;
     // Batch import is record-only; the host already received these key events.
     mejiro_engine_flush_keyboard();
-    // A keyboard sending Japanese through an IME remains in Romaji mode.
-    if (length == 3 && memcmp(stroke, "#-n", 3) == 0) return;
-
     mejiro_translation preview;
     if (mejiro_qmk_preview((const uint8_t *)stroke, length, &preview) != 0) return;
     // A slot toggle intended to stop a failed capture must not accidentally

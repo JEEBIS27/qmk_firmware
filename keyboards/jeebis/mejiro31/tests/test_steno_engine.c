@@ -58,7 +58,55 @@ static void chord(const uint16_t *keys, size_t count) {
 }
 #define CHORD(...) do { const uint16_t keys[] = {__VA_ARGS__}; chord(keys, sizeof(keys) / sizeof(*keys)); } while (0)
 
+static void test_one_hand_mode(void) {
+    mejiro_engine_init();
+    clear_output();
+    // Actual physical symbol keys: # on the left, * on the right.
+    CHORD(STN_N1, STN_S1, STN_TL, STN_KL, STN_WL, STN_PL,
+          STN_HL, STN_RL, STN_ST1, STN_N3, STN_A, STN_O);
+    assert(text_len == 0 && tap_len == 0);
+    CHORD(STN_N1, STN_KL, STN_RL, STN_ST1); // #KAU- = こと
+    assert(strcmp(text, "koto") == 0);
+    clear_output();
+    CHORD(STN_N1, STN_N3); // #n = しない, not macro replay
+    assert(strcmp(text, "shinai") == 0);
+    clear_output();
+    CHORD(STN_SR, STN_LR, STN_GR, STN_BR, STN_PR, STN_FR,
+          STN_RR, STN_ST3, STN_N4, STN_U, STN_E, STN_DR);
+    assert(text_len == 0 && tap_len == 0);
+    CHORD(STN_ST3); // -U = う, not Undo
+    assert(strcmp(text, "u") == 0 && tap_len == 0);
+    clear_output();
+    mejiro_engine_process("#-n", 3); // return to both hands without leaving Romaji
+    CHORD(STN_KL, STN_RL);
+    assert(strcmp(text, "ka") == 0);
+    clear_output();
+    CHORD(STN_SR, STN_LR, STN_GR, STN_BR, STN_PR, STN_FR,
+          STN_RR, STN_ST3, STN_N4, STN_U, STN_E, STN_DR);
+    clear_output();
+    CHORD(STN_N4); // right n is Space in one-hand mode
+    assert(text_len == 0 && tap_len == 1 && taps[0] == KC_SPC);
+    clear_output();
+    CHORD(STN_KL, STN_RL, STN_LR, STN_RR); // KA-TA returns to both hands
+    assert(strcmp(text, "kata") == 0);
+    clear_output();
+    CHORD(STN_ST3); // Undo is restored immediately
+    assert(text_len == 0 && tap_len == 2 && taps[0] == KC_BSPC && taps[1] == KC_BSPC);
+    clear_output();
+    // Full all-key chord returns to both hands without adding an undo entry.
+    CHORD(STN_N1, STN_S1, STN_TL, STN_KL, STN_WL, STN_PL,
+          STN_HL, STN_RL, STN_ST1, STN_N3, STN_A, STN_O);
+    CHORD(STN_N1, STN_S1, STN_TL, STN_KL, STN_WL, STN_PL,
+          STN_HL, STN_RL, STN_ST1, STN_N3, STN_A, STN_O,
+          STN_SR, STN_LR, STN_GR, STN_BR, STN_PR, STN_FR,
+          STN_RR, STN_ST3, STN_N4, STN_U, STN_E, STN_DR);
+    assert(text_len == 0 && tap_len == 0);
+    CHORD(STN_ST3);
+    assert(text_len == 0 && tap_len == 1 && taps[0] == KC_BSPC);
+}
+
 int main(void) {
+    test_one_hand_mode();
     // Both with and without an alternate system: select first, then one IME key.
     for (unsigned available = 0; available < 2; ++available) {
         alternate_available = available != 0;
