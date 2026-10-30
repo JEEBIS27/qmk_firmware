@@ -93,6 +93,11 @@ pub extern "C" fn mejiro_qmk_ack(ticket: u64, units: u32) -> i32 {
         .map_or(-1, |_| 0)
 }
 
+#[unsafe(no_mangle)]
+pub extern "C" fn mejiro_qmk_pending_sokuon() -> bool {
+    unsafe { &*ENGINE.0.get() }.state().pending_sokuon()
+}
+
 // A kana preview supplies the host's deletion metric without changing the
 // committed Romaji session. It is only a hint until the adapter emits keys.
 #[unsafe(no_mangle)]

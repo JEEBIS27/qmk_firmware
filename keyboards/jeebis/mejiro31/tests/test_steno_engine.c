@@ -196,6 +196,28 @@ int main(void) {
     assert(tap_len == 2 && taps[0] == KC_BSPC && taps[1] == KC_BSPC);
     clear_output();
 
+    // KA-TAtk renders "かた" and carries its final small-tsu. The first
+    // Undo must erase two kana, while the next stroke owns the deferred っ.
+    mejiro_engine_init();
+    mejiro_engine_process("KA-TAtk", 7);
+    assert(strcmp(text, "kata") == 0);
+    clear_output();
+    mejiro_engine_process("-U", 2);
+    assert(tap_len == 2 && taps[0] == KC_BSPC && taps[1] == KC_BSPC);
+    clear_output();
+    mejiro_engine_init();
+    mejiro_engine_process("KA-TAtk", 7);
+    clear_output();
+    mejiro_engine_process("TA-", 3);
+    assert(strcmp(text, "tta") == 0);
+    clear_output();
+    mejiro_engine_process("-U", 2);
+    assert(tap_len == 2 && taps[0] == KC_BSPC && taps[1] == KC_BSPC);
+    clear_output();
+    mejiro_engine_process("-U", 2);
+    assert(tap_len == 2 && taps[0] == KC_BSPC && taps[1] == KC_BSPC);
+    clear_output();
+
     CHORD(STN_N3, STN_DR);                 // n-*
     CHORD(STN_O, STN_E);                   // k-k after a nominalizable word
     assert(strcmp(text, "shiteirunoga") == 0);
