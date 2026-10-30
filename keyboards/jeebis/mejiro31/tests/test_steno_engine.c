@@ -69,8 +69,11 @@ static void test_one_hand_mode(void) {
     CHORD(STN_KL, STN_HL, STN_RL); // KIA- = け
     CHORD(STN_KL, STN_HL, STN_N3); // KIn- = きん
     CHORD(STN_KL, STN_HL, STN_RL, STN_A); // KIAt- = けつ
-    CHORD(STN_N1, STN_KL, STN_HL, STN_RL); // #KIA- = registered verb けす
-    assert(strcmp(text, "kikekinnketsukesu") == 0);
+    CHORD(STN_N1, STN_KL, STN_HL, STN_RL); // #KIA- = generated verb ける
+    assert(strcmp(text, "kikekinnketsukeru") == 0);
+    clear_output();
+    CHORD(STN_N1, STN_TL, STN_HL, STN_RL); // #TIA- = てる, not 手伝う
+    assert(strcmp(text, "teru") == 0);
     clear_output();
     CHORD(STN_N1, STN_KL, STN_RL, STN_ST1); // #KAU- = こと
     assert(strcmp(text, "koto") == 0);
@@ -85,8 +88,11 @@ static void test_one_hand_mode(void) {
     CHORD(STN_GR, STN_FR, STN_RR); // -KIA = け
     CHORD(STN_GR, STN_FR, STN_N4); // -KIn = きん
     CHORD(STN_GR, STN_FR, STN_RR, STN_U); // -KIAt = けつ
-    CHORD(STN_GR, STN_FR, STN_RR, STN_DR); // -KIA* = registered verb けす
-    assert(strcmp(text, "kikekinnketsukesu") == 0);
+    CHORD(STN_GR, STN_FR, STN_RR, STN_DR); // -KIA* = generated verb ける
+    assert(strcmp(text, "kikekinnketsukeru") == 0);
+    clear_output();
+    CHORD(STN_DR, STN_LR, STN_FR, STN_RR); // -TIA* = てる, not 手伝う
+    assert(strcmp(text, "teru") == 0);
     clear_output();
     CHORD(STN_ST3); // -U = う, not Undo
     assert(strcmp(text, "u") == 0 && tap_len == 0);
