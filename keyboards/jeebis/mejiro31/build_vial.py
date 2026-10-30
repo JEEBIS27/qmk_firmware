@@ -167,7 +167,8 @@ def main():
         # Validate the linked Vial core before publishing any firmware copies.
         run(sys.executable, str(KB / 'tests/test_plover_usb.py'),
             str(vial / f'.build/jeebis_mejiro31_{keymap}.elf'))
-        filename = f'jeebis_mejiro31_{keymap}.uf2' if args.keymap else f'mejiro31_vial_{profile}_{args.layout}.uf2'
+        language = profile or {'jp_default': 'jp', 'en_default': 'en'}.get(keymap)
+        filename = f'mejiro31_{language}.uf2' if language else f'mejiro31_{keymap}.uf2'
         uf2 = output / filename
         shutil.copyfile(vial / f'.build/jeebis_mejiro31_{keymap}.uf2', uf2)
         digest = verify_uf2(uf2)
@@ -178,9 +179,13 @@ def main():
         write_build_metadata(uf2, sources, variant, digest)
         print(f'Verified site-compatible UF2: {uf2}', flush=True)
         if args.keymap:
-            named_uf2 = ROOT / f'jeebis_mejiro31_{keymap}.uf2'
+            named_uf2 = ROOT / filename
             shutil.copyfile(uf2, named_uf2)
             write_build_metadata(named_uf2, sources, variant, digest)
+        # Only the verified, compact names are public firmware outputs.
+        for intermediate in [vial / f'.build/jeebis_mejiro31_{keymap}.uf2',
+                             vial / f'jeebis_mejiro31_{keymap}.uf2']:
+            intermediate.unlink(missing_ok=True)
 
 
 if __name__ == '__main__':

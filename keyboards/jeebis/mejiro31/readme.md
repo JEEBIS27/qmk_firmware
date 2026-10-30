@@ -19,7 +19,7 @@ qmk compile -kb jeebis/mejiro31 -km en_default
 
 両方とも同じ統一入力エンジンを使用する。日英の代替配列と、ホストのJIS/USは独立した設定。初期値と設定方法は [engine.md](engine.md) を参照。
 
-生成物はQMKルートの`.build/jeebis_mejiro31_jp_default.uf2` / `.build/jeebis_mejiro31_en_default.uf2`です。同じ場所にチェックサムとビルド情報も保存します。従来互換のコピーはQMKルートの `jeebis_mejiro31_jp_default.uf2` / `jeebis_mejiro31_en_default.uf2`。
+生成物はQMKルートの`.build/mejiro31_jp.uf2` / `.build/mejiro31_en.uf2`です。同じ場所にチェックサムとビルド情報も保存します。同名のコピーはQMKルートの `mejiro31_jp.uf2` / `mejiro31_en.uf2`。
 
 ## Ploverとの接続
 

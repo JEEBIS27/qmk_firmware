@@ -49,15 +49,16 @@ the Python standard library.
 Prepare without compiling with `--prepare-only`; `--skip-submodules`
 is intended for host-only testing or an already initialized cache.
 
-Named builds copy `jeebis_mejiro31_<keymap>.uf2` to this repository root, as before.
+Named builds also copy the UF2 to this repository root. Standard Japanese and
+English builds are named `mejiro31_jp.uf2` and `mejiro31_en.uf2`; Vial support
+and initial layout are not part of the filename. Building another initial layout
+for the same language replaces that language’s output; metadata records the variant.
 All verified UF2 files, SHA-256 checksums and build metadata are written directly
 to the QMK root’s `.build/` directory, independently of the source cache location:
 
 ```
-.build/jeebis_mejiro31_jp_default.uf2
-.build/jeebis_mejiro31_en_default.uf2
-.build/mejiro31_vial_jp_qwerty.uf2
-.build/mejiro31_vial_en_graphite.uf2
+.build/mejiro31_jp.uf2
+.build/mejiro31_en.uf2
 ```
 
 `--profile all` builds both languages; `--layout` supports QWERTY and Graphite

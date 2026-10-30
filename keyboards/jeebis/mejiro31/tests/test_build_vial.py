@@ -72,21 +72,21 @@ class BuildTests(unittest.TestCase):
                 self.assertEqual(commands.call_args.args[1:],
                                  (str(kb / 'tests/test_plover_usb.py'),
                                   str(vial / '.build/jeebis_mejiro31_jp_default.elf')))
-            self.assertFalse((root / '.build/jeebis_mejiro31_jp_default.uf2').exists())
-            self.assertFalse((root / 'jeebis_mejiro31_jp_default.uf2').exists())
+            self.assertFalse((root / '.build/mejiro31_jp.uf2').exists())
+            self.assertFalse((root / 'mejiro31_jp.uf2').exists())
             with patch.object(builder, 'ROOT', root), patch.object(builder, 'KB', kb), \
                  patch.object(builder, 'prepare', return_value=vial), patch.object(builder, 'run'), \
                  patch('sys.argv', ['build_vial.py', '--work-dir', str(root / 'work'), '--keymap', 'jp_default']):
                 builder.main()
-            for uf2 in [root / 'jeebis_mejiro31_jp_default.uf2',
-                        root / '.build/jeebis_mejiro31_jp_default.uf2']:
+            for uf2 in [root / 'mejiro31_jp.uf2',
+                        root / '.build/mejiro31_jp.uf2']:
                 metadata = json.loads(uf2.with_suffix('.uf2.json').read_text())
                 self.assertEqual(metadata['sources'], sources)
                 self.assertEqual(metadata['filename'], uf2.name)
                 self.assertEqual(metadata['keymap'], 'jp_default')
                 self.assertEqual(metadata['sha256'], builder.verify_uf2(uf2))
             self.assertFalse((root / 'work/artifacts').exists())
-            checksum = root / '.build/jeebis_mejiro31_jp_default.uf2.sha256'
+            checksum = root / '.build/mejiro31_jp.uf2.sha256'
             self.assertEqual(checksum.read_text().split()[0], metadata['sha256'])
 
 
