@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #pragma once
-// Six Tap + six Hold maps; storage layers 12/13 hold six extra combos per map.
-#define DYNAMIC_KEYMAP_LAYER_COUNT 14
-// Keep Vial's keymap/macro area below 4 KiB; two 4 KiB dictionary banks
-// occupy the remainder of the 12 KiB logical EEPROM.
+// Six Tap + six Hold maps; storage layers 12/13 retain six extra combos; 14/15 store four thumb combos.
+#define DYNAMIC_KEYMAP_LAYER_COUNT 16
+// Keep Vial's keymap/macro area below 4 KiB; two 16 KiB dictionary banks
+// occupy the remainder of the 36 KiB logical EEPROM.
 #define DYNAMIC_KEYMAP_EEPROM_MAX_ADDR 4095
-#define WEAR_LEVELING_BACKING_SIZE 24576
+#define WEAR_LEVELING_BACKING_SIZE 73728
+#define WEAR_LEVELING_LOGICAL_SIZE 36864
 #define MJI_COMBO_MS 150
 #define MJI_CONTINUATION_MS 50
 #define MJI_LONG_HOLD_MS 300

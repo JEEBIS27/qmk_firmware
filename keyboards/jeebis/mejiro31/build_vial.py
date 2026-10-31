@@ -15,8 +15,8 @@ ROOT = KB.parents[2]
 VIAL_URL = 'https://github.com/vial-kb/vial-qmk.git'
 VIAL_REF = 'dd43959ae5c08d8a28d38a1acf7b04e86b14a344'
 ENGINE_URL = 'https://github.com/JEEBIS27/Mejiro_Engine.git'
-# Remote HEAD follows the repository's default branch, including branch renames.
-ENGINE_REF = 'HEAD'
+# Pin the runtime dictionary ABI and latest shared engine behavior.
+ENGINE_REF = '81f6f12bc19eba2f93f890b4a0d31410480d1ff6'
 
 
 def run(*args, cwd=None):
@@ -55,7 +55,7 @@ def verify_uf2(path):
             raise ValueError('Invalid UF2 magic')
         if flags != 0x2000 or family != 0xe48bff56 or size != 256 or number != index or total != len(raw) // 512:
             raise ValueError('Invalid RP2040 UF2 metadata')
-        if address % 256 or address < 0x10000000 or address + size > 0x10200000 - 8192 or address in addresses:
+        if address % 256 or address < 0x10000000 or address + size > 0x10200000 - 73728 or address in addresses:
             raise ValueError('Invalid UF2 flash address')
         addresses.add(address)
         payload.extend(block[32:32 + size])

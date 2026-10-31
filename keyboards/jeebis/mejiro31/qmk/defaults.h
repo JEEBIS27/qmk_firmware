@@ -118,6 +118,8 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     // Additional combo Tap/Hold storage used by Vial.
     [12] = {{KC_NO}},
     [13] = {{KC_NO}},
+    [14] = {{KC_NO}},
+    [15] = {{KC_NO}},
 };
 #undef MJI_DEFAULT_TAP
 #undef MJI_DEFAULT_HOLD
