@@ -4,15 +4,18 @@
 #include "eeprom.h"
 #include "steno/engine.h"
 
-#define MJI_RULE_BANK_SIZE 4096U
+#define MJI_RULE_BANK_SIZE 16384U
 #define MJI_RULE_BANK_A 4096U
-#define MJI_RULE_BANK_B 8192U
+#define MJI_RULE_BANK_B 20480U
 #define MJI_RULE_CHUNKS 9U
 #define MJI_RULE_HEADER_SIZE 10U
 
 _Static_assert(sizeof(mejiro_rule) == 144, "Mejiro rule wire layout changed");
 _Static_assert(MJI_RULE_HEADER_SIZE + MEJIRO_RULE_CAPACITY * sizeof(mejiro_rule) <= MJI_RULE_BANK_SIZE,
                "Mejiro rules exceed one EEPROM bank");
+
+_Static_assert(MJI_RULE_BANK_A + MJI_RULE_BANK_SIZE <= MJI_RULE_BANK_B, "Dictionary banks overlap");
+_Static_assert(MJI_RULE_BANK_B + MJI_RULE_BANK_SIZE <= 36864U, "Dictionary banks exceed EEPROM");
 
 static uint16_t rule_bank = MJI_RULE_BANK_A;
 static uint16_t rule_generation;
@@ -37,7 +40,7 @@ static void rule_eeprom_write(uint16_t address, const void *input, size_t length
 static bool rule_bank_valid(uint16_t base, uint16_t *generation) {
     uint8_t header[MJI_RULE_HEADER_SIZE];
     rule_eeprom_read(base, header, sizeof(header));
-    if (memcmp(header, "M31D", 4) || header[4] != 1 || header[5] > MEJIRO_RULE_CAPACITY) return false;
+    if (memcmp(header, "M31D", 4) || header[4] != 2 || header[5] > MEJIRO_RULE_CAPACITY) return false;
     uint16_t crc = 0xffff;
     mejiro_rule rule;
     for (uint8_t i = 0; i < header[5]; ++i) {
@@ -108,7 +111,7 @@ static bool mejiro_rules_save(void) {
     }
     uint16_t generation = rule_generation + 1;
     uint8_t header[MJI_RULE_HEADER_SIZE] = {
-        'M', '3', '1', 'D', 1, (uint8_t)count,
+        'M', '3', '1', 'D', 2, (uint8_t)count,
         (uint8_t)generation, (uint8_t)(generation >> 8),
         (uint8_t)crc, (uint8_t)(crc >> 8),
     };

@@ -64,7 +64,7 @@ static void test_rule_protocol(void) {
     rule_transfer(packet, &rule, 2);
     setup();
     assert(mejiro_qmk_rule_count() == 0);
-    // Fill the existing 4 KiB bank through the actual transport, then reload it.
+    // Fill the 16 KiB bank through the actual transport, then reload it.
     for (uint8_t i = 0; i < MEJIRO_RULE_CAPACITY; ++i) {
         rule.key_len = 2;
         rule.key[0] = 'A' + i / 26;

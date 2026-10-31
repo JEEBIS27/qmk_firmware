@@ -24,7 +24,7 @@ static unsigned           settings_writes;
 static uint16_t consumer_usage, system_usage;
 bool mejiro_first_up_chord_send = true;
 #ifdef MJI_WEB_VIAL
-static uint8_t mock_eeprom[12288];
+static uint8_t mock_eeprom[36864];
 static mejiro_rule mock_rules[MEJIRO_RULE_CAPACITY];
 static int32_t mock_rule_count;
 void eeprom_read_block(void *destination, const void *address, size_t size) {
