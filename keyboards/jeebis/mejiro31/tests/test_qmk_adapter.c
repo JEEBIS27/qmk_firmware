@@ -19,6 +19,7 @@ static unsigned           steno_packets;
 static int                steno_pending;
 static uint16_t           dynamic_maps[14][4][12];
 static uint32_t           settings_word;
+static uint32_t timing_word;
 static unsigned           settings_writes;
 static uint16_t consumer_usage, system_usage;
 bool mejiro_first_up_chord_send = true;
@@ -82,6 +83,8 @@ int32_t mejiro_qmk_rule_clear(uint8_t kind, const uint8_t *key, size_t len) {
 #endif
 void host_consumer_send(uint16_t usage) { consumer_usage = usage; }
 void host_system_send(uint16_t usage) { system_usage = usage; }
+uint32_t eeconfig_read_kb(void) { return timing_word; }
+void eeconfig_update_kb(uint32_t value) { timing_word = value; }
 uint32_t eeconfig_read_user(void) { return settings_word; }
 void eeconfig_update_user(uint32_t value) { settings_word = value; ++settings_writes; }
 void                      set_mods(uint8_t m) {

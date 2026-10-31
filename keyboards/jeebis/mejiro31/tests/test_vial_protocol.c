@@ -110,6 +110,17 @@ static void test_web_protocol(void) {
     raw_hid_receive_kb(packet, 32); assert(packet[0] == 0xff);
     setup(); request(packet, 0, 0, 0, 0); // Ready flag is checked before all writes.
     ready = false; request(packet, 1, 6, 0, 0); assert(packet[3] == 3);
+    ready = true; request(packet, 0, 0, 0, 0);
+    assert(packet[19] == 1 && input.timing.combo_ms == MJI_COMBO_MS);
+    packet[2] = 3; packet[20] = 100; packet[21] = 0;
+    packet[22] = 40; packet[23] = 0; packet[24] = 250; packet[25] = 0;
+    vial_unlocked = 0; raw_hid_receive_kb(packet, 32); assert(packet[3] == 1);
+    vial_unlocked = 1; packet[20] = 100; packet[22] = 40; packet[24] = 250; packet[25] = 0;
+    raw_hid_receive_kb(packet, 32); assert(packet[3] == 0);
+    assert(input.timing.combo_ms == 100 && input.timing.continuation_ms == 40 && input.timing.long_hold_ms == 250);
+    assert(web_load_timing().combo_ms == 100 && web_load_timing().long_hold_ms == 250);
+    packet[24] = 30; packet[25] = 0;
+    raw_hid_receive_kb(packet, 32); assert(packet[3] == 2 && input.timing.long_hold_ms == 250);
     eeprom_valid = false; via_init_kb();
     assert(((settings_word >> 3) & 31) == MJI_WEB_EN_DEFAULT);
     assert(((settings_word >> 8) & 31) == MJI_WEB_JP_DEFAULT);

@@ -156,6 +156,9 @@ static void save_settings(void) {
     if (eeconfig_read_user() != word) eeconfig_update_user(word);
 }
 void eeconfig_init_user(void) {
+#ifdef MJI_WEB_VIAL
+    eeconfig_update_kb(0); // Reset timing defaults with the other initial settings.
+#endif
     eeconfig_update_user(MJI_SETTINGS_MAGIC | MJI_DEFAULT_JIS | UINT32_C(2) | ((uint32_t)MJI_DEFAULT_MEJIRO << 2) | MJI_DEFAULT_LAYOUT_SETTINGS);
 }
 
@@ -441,7 +444,11 @@ void keyboard_post_init_user(void) {
     }
 #endif
     mji_callbacks_t cb = {.lookup = lookup_callback, .key = key_callback, .mods = mods_callback, .clear = clear_callback, .decode = decode_callback, .encode = encode_callback};
-    ready              = mji_init(&input, physical_pairs, sizeof(physical_pairs) / sizeof(*physical_pairs), (mji_timing_t){MJI_COMBO_MS, MJI_CONTINUATION_MS, MJI_LONG_HOLD_MS}, MJI_QWERTY, cb, NULL);
+    mji_timing_t timing = {MJI_COMBO_MS, MJI_CONTINUATION_MS, MJI_LONG_HOLD_MS};
+#ifdef MJI_WEB_VIAL
+    timing = web_load_timing();
+#endif
+    ready              = mji_init(&input, physical_pairs, sizeof(physical_pairs) / sizeof(*physical_pairs), timing, MJI_QWERTY, cb, NULL);
     if (ready) {
         mji_layout_config_t config = {.maps = {MJI_LAYOUT_MAP(MJI_ENGLISH_LAYOUT), MJI_LAYOUT_MAP(MJI_JAPANESE_LAYOUT)}, .alt_layers = (UINT32_C(1) << MJI_QWERTY) | (UINT32_C(1) << MJI_SHIFTED), .literal_symbol_layers = (UINT32_C(1) << MJI_SHIFTED) | (UINT32_C(1) << MJI_NUMBER_SHIFTED), .language = MJI_ENGLISH, .alt_enabled = true, .jis_host = MJI_DEFAULT_JIS};
 #ifdef MJI_WEB_VIAL
