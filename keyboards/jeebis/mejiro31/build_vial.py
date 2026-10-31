@@ -15,8 +15,8 @@ ROOT = KB.parents[2]
 VIAL_URL = 'https://github.com/vial-kb/vial-qmk.git'
 VIAL_REF = 'dd43959ae5c08d8a28d38a1acf7b04e86b14a344'
 ENGINE_URL = 'https://github.com/JEEBIS27/Mejiro_Engine.git'
-# Remote HEAD follows the repository's default branch, including branch renames.
-ENGINE_REF = 'HEAD'
+# Pin the runtime dictionary ABI and latest shared engine behavior.
+ENGINE_REF = '936c3b48c853da963f09eec8ff8e8efffe73fbe7'
 
 
 def run(*args, cwd=None):

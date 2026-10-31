@@ -34,7 +34,7 @@ static void test_rule_protocol(void) {
     setup();
     uint8_t packet[32];
     rule_request(packet, 0); raw_hid_receive_kb(packet, 32);
-    assert(packet[3] == 0 && packet[12] == 0 && packet[13] == 24 && packet[14] == 1);
+    assert(packet[3] == 0 && packet[12] == 0 && packet[13] == MEJIRO_RULE_CAPACITY && packet[14] == 1);
     vial_unlocked = 0;
     rule_request(packet, 2); raw_hid_receive_kb(packet, 32);
     assert(packet[3] == 1);
@@ -64,6 +64,21 @@ static void test_rule_protocol(void) {
     rule_transfer(packet, &rule, 2);
     setup();
     assert(mejiro_qmk_rule_count() == 0);
+    // Fill the existing 4 KiB bank through the actual transport, then reload it.
+    for (uint8_t i = 0; i < MEJIRO_RULE_CAPACITY; ++i) {
+        rule.key_len = 2;
+        rule.key[0] = 'A' + i / 26;
+        rule.key[1] = 'A' + i % 26;
+        rule_transfer(packet, &rule, 0);
+    }
+    setup();
+    assert(mejiro_qmk_rule_count() == MEJIRO_RULE_CAPACITY);
+    for (uint8_t i = 0; i < MEJIRO_RULE_CAPACITY; ++i) {
+        assert(mock_rules[i].key[0] == 'A' + i / 26);
+        assert(mock_rules[i].key[1] == 'A' + i % 26);
+    }
+    mejiro_qmk_rule_clear_all();
+    assert(mejiro_rules_save());
     puts("dictionary transport, lock, EEPROM restore, hide and clear OK");
 }
 static void test_web_protocol(void) {
