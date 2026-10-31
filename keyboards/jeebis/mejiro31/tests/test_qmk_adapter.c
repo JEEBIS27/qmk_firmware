@@ -17,7 +17,7 @@ static uint32_t           now;
 static unsigned           presses[256], steno_events;
 static unsigned           steno_packets;
 static int                steno_pending;
-static uint16_t           dynamic_maps[14][4][12];
+static uint16_t           dynamic_maps[16][4][12];
 static uint32_t           settings_word;
 static uint32_t timing_word;
 static unsigned           settings_writes;
@@ -178,7 +178,7 @@ void mejiro_on_release(uint16_t c) {
     steno_events++;
 }
 uint16_t keycode_at_keymap_location(uint8_t l, uint8_t r, uint8_t c) {
-    assert(l < 14 && r < 4 && c < 12);
+    assert(l < 16 && r < 4 && c < 12);
     return dynamic_maps[l][r][c];
 }
 static void setup(void) {
