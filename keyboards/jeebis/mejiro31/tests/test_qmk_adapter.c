@@ -17,13 +17,14 @@ static uint32_t           now;
 static unsigned           presses[256], steno_events;
 static unsigned           steno_packets;
 static int                steno_pending;
-static uint16_t           dynamic_maps[14][4][12];
+static uint16_t           dynamic_maps[16][4][12];
 static uint32_t           settings_word;
+static uint32_t timing_word;
 static unsigned           settings_writes;
 static uint16_t consumer_usage, system_usage;
 bool mejiro_first_up_chord_send = true;
 #ifdef MJI_WEB_VIAL
-static uint8_t mock_eeprom[12288];
+static uint8_t mock_eeprom[36864];
 static mejiro_rule mock_rules[MEJIRO_RULE_CAPACITY];
 static int32_t mock_rule_count;
 void eeprom_read_block(void *destination, const void *address, size_t size) {
@@ -82,6 +83,8 @@ int32_t mejiro_qmk_rule_clear(uint8_t kind, const uint8_t *key, size_t len) {
 #endif
 void host_consumer_send(uint16_t usage) { consumer_usage = usage; }
 void host_system_send(uint16_t usage) { system_usage = usage; }
+uint32_t eeconfig_read_kb(void) { return timing_word; }
+void eeconfig_update_kb(uint32_t value) { timing_word = value; }
 uint32_t eeconfig_read_user(void) { return settings_word; }
 void eeconfig_update_user(uint32_t value) { settings_word = value; ++settings_writes; }
 void                      set_mods(uint8_t m) {
@@ -175,7 +178,7 @@ void mejiro_on_release(uint16_t c) {
     steno_events++;
 }
 uint16_t keycode_at_keymap_location(uint8_t l, uint8_t r, uint8_t c) {
-    assert(l < 14 && r < 4 && c < 12);
+    assert(l < 16 && r < 4 && c < 12);
     return dynamic_maps[l][r][c];
 }
 static void setup(void) {

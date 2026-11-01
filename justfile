@@ -6,15 +6,20 @@ default:
     @"{{just_executable()}}" --list
 
 kb := 'keyboards/jeebis/mejiro31'
+nix := "nix --extra-experimental-features 'nix-command flakes'"
+
+# 固定したQMK/Rust開発環境へ入る（--commandも渡せる）
+dev *args:
+    {{nix}} develop 'path:{{justfile_directory()}}/nix' "$@"
 
 
 # 隣のローカルEngineでVial UF2を作成（事前syncは不要）
 build *args:
-    python3 {{kb}}/build_vial.py --engine-source ../Mejiro_Engine "$@"
+    {{nix}} develop 'path:{{justfile_directory()}}/nix' --command python3 {{kb}}/build_vial.py --engine-source ../Mejiro_Engine "$@"
 
 # ローカルEngineを使うホストテスト
 test:
-    bash {{kb}}/tests/run.sh
+    {{nix}} develop 'path:{{justfile_directory()}}/nix' --command bash {{kb}}/tests/run.sh
 
 # 通常の開発チェック（USB・実機は別）
 check: test

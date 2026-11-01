@@ -15,8 +15,8 @@ ROOT = KB.parents[2]
 VIAL_URL = 'https://github.com/vial-kb/vial-qmk.git'
 VIAL_REF = 'dd43959ae5c08d8a28d38a1acf7b04e86b14a344'
 ENGINE_URL = 'https://github.com/JEEBIS27/Mejiro_Engine.git'
-# Remote HEAD follows the repository's default branch, including branch renames.
-ENGINE_REF = 'HEAD'
+# Pin the runtime dictionary ABI and latest shared engine behavior.
+ENGINE_REF = 'b7a52cfe88be66691d2bb35d6f672084e02a50c5'
 
 
 def run(*args, cwd=None):
@@ -55,7 +55,7 @@ def verify_uf2(path):
             raise ValueError('Invalid UF2 magic')
         if flags != 0x2000 or family != 0xe48bff56 or size != 256 or number != index or total != len(raw) // 512:
             raise ValueError('Invalid RP2040 UF2 metadata')
-        if address % 256 or address < 0x10000000 or address + size > 0x10200000 - 8192 or address in addresses:
+        if address % 256 or address < 0x10000000 or address + size > 0x10200000 - 73728 or address in addresses:
             raise ValueError('Invalid UF2 flash address')
         addresses.add(address)
         payload.extend(block[32:32 + size])
@@ -188,5 +188,28 @@ def main():
             intermediate.unlink(missing_ok=True)
 
 
+def run_cli():
+    # Keep an explicitly installed toolchain. Nix users can build without
+    # changing their login-shell PATH or relying on a machine-specific store path.
+    arguments = sys.argv[1:]
+    if '--prepare-only' in arguments or '--help' in arguments or '-h' in arguments:
+        return main()
+    if shutil.which('arm-none-eabi-gcc'):
+        return main()
+    nix = shutil.which('nix')
+    if not nix:
+        raise SystemExit('arm-none-eabi-gcc was not found. Install the Arm GNU embedded toolchain, or install Nix to supply it automatically.')
+    if os.environ.get('MEJIRO_NIX_TOOLCHAIN') == '1':
+        raise SystemExit('The Nix build environment does not provide arm-none-eabi-gcc.')
+    print('arm-none-eabi-gcc is missing; entering the project QMK Nix development environment.', flush=True)
+    environment = dict(os.environ, MEJIRO_NIX_TOOLCHAIN='1')
+    result = subprocess.run([
+        nix, '--extra-experimental-features', 'nix-command flakes',
+        'develop', f'path:{ROOT / "nix"}', '--command',
+        'python3', str(Path(__file__).resolve()), *arguments,
+    ], env=environment)
+    raise SystemExit(result.returncode)
+
+
 if __name__ == '__main__':
-    main()
+    run_cli()
