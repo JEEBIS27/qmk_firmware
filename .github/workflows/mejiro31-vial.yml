@@ -48,4 +48,5 @@ jobs:
         with:
           name: mejiro31-vial-defaults
           path: .build/*.uf2*
+          include-hidden-files: true
           if-no-files-found: error

@@ -39,10 +39,12 @@ enum { MJI_00 = MJI_CUSTOM_BASE, MJI_000, MJI_MODE, MJI_JIS, MJI_ALT, MJI_MEJIRO
 
 // Physical coordinates, independent of key assignments or language/layout.
 // Logical 0..47 use the original matrix cells; 48..53 use extension storage.
+// Logical 54..57 use the new thumb-combo storage layers 14/15.
 // No additional physical switches or scan rows are introduced.
 static const mji_pair_t physical_pairs[] = {
     {1, 13, 24, 0}, {2, 14, 25, 0}, {3, 15, 26, 0}, {4, 16, 27, 0}, {5, 17, 31, 0}, {6, 18, 32, 0}, {7, 19, 33, 0}, {8, 20, 34, 0}, {9, 21, 35, 0}, {10, 22, 36, 0}, {11, 23, 37, 0}, {4, 5, 38, 1}, {16, 17, 39, 1}, {6, 7, 44, 1}, {18, 19, 45, 1}, {42, 43, 46, 1},
     {0, 12, 48, 0}, {0, 1, 49, 1}, {12, 13, 50, 1}, {40, 41, 51, 1}, {22, 23, 52, 1}, {10, 11, 53, 1},
+    {28, 40, 54, 0}, {28, 41, 55, 0}, {30, 42, 56, 0}, {30, 43, 57, 0},
 };
 
 static mji_engine_t input;
@@ -284,6 +286,10 @@ static mji_binding_t binding(uint16_t tap, uint16_t hold) {
 static uint16_t read_binding_code(uint8_t layer, uint16_t logical) {
     if (logical < 48) return mji_keycode_at(layer, logical / MATRIX_COLS, logical % MATRIX_COLS);
 #ifdef MJI_WEB_VIAL
+    if (logical >= 54 && logical < 58 && layer < 12) {
+        uint8_t index = (layer % 6) * 4 + logical - 54;
+        return dynamic_keymap_get_keycode(layer < 6 ? 14 : 15, index / MATRIX_COLS, index % MATRIX_COLS);
+    }
     if (logical < 54 && layer < 12) {
         uint8_t index = (layer % 6) * 6 + logical - 48;
         return dynamic_keymap_get_keycode(layer < 6 ? 12 : 13, index / MATRIX_COLS, index % MATRIX_COLS);

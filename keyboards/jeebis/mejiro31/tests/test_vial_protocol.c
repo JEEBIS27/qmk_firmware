@@ -34,7 +34,7 @@ static void test_rule_protocol(void) {
     setup();
     uint8_t packet[32];
     rule_request(packet, 0); raw_hid_receive_kb(packet, 32);
-    assert(packet[3] == 0 && packet[12] == 0 && packet[13] == 24 && packet[14] == 1);
+    assert(packet[3] == 0 && packet[12] == 0 && packet[13] == MEJIRO_RULE_CAPACITY && packet[14] == 1);
     vial_unlocked = 0;
     rule_request(packet, 2); raw_hid_receive_kb(packet, 32);
     assert(packet[3] == 1);
@@ -64,6 +64,21 @@ static void test_rule_protocol(void) {
     rule_transfer(packet, &rule, 2);
     setup();
     assert(mejiro_qmk_rule_count() == 0);
+    // Fill the 16 KiB bank through the actual transport, then reload it.
+    for (uint8_t i = 0; i < MEJIRO_RULE_CAPACITY; ++i) {
+        rule.key_len = 2;
+        rule.key[0] = 'A' + i / 26;
+        rule.key[1] = 'A' + i % 26;
+        rule_transfer(packet, &rule, 0);
+    }
+    setup();
+    assert(mejiro_qmk_rule_count() == MEJIRO_RULE_CAPACITY);
+    for (uint8_t i = 0; i < MEJIRO_RULE_CAPACITY; ++i) {
+        assert(mock_rules[i].key[0] == 'A' + i / 26);
+        assert(mock_rules[i].key[1] == 'A' + i % 26);
+    }
+    mejiro_qmk_rule_clear_all();
+    assert(mejiro_rules_save());
     puts("dictionary transport, lock, EEPROM restore, hide and clear OK");
 }
 static void test_web_protocol(void) {
@@ -71,7 +86,7 @@ static void test_web_protocol(void) {
     uint8_t packet[32];
     vial_unlocked = 0;
     request(packet, 0, 0, 0, 0);
-    assert(packet[3] == 0 && packet[12] == (2 | (MJI_DEFAULT_MEJIRO ? 4 : 0)) && packet[16] == 14 && packet[17] == WEB_LAYOUT_COUNT && packet[18] == 1);
+    assert(packet[3] == 0 && packet[12] == (2 | (MJI_DEFAULT_MEJIRO ? 4 : 0)) && packet[16] == 16 && packet[17] == WEB_LAYOUT_COUNT && packet[18] == 1);
     uint32_t saved = settings_word;
     request(packet, 2, 0, 0, 0);
     assert(packet[3] == 1 && settings_word == saved && packet[18] == 1);
@@ -148,10 +163,10 @@ static void test_unlock_barrier(void) {
     puts("unlock barrier suppresses engine output, tracks releases and resumes input OK");
 }
 static void test_extra_combos(void) {
-    const uint8_t pairs[][2] = {{0,12},{0,1},{12,13},{40,41},{22,23},{10,11}};
-    for (unsigned i = 0; i < 6; ++i) {
+    const uint8_t pairs[][2] = {{0,12},{0,1},{12,13},{40,41},{22,23},{10,11},{28,40},{28,41},{30,42},{30,43}};
+    for (unsigned i = 0; i < 10; ++i) {
         setup();
-        dynamic_maps[12][0][i] = KC_ESC;
+        dynamic_maps[i < 6 ? 12 : 14][0][i < 6 ? i : i - 6] = KC_ESC;
         event(0, pairs[i][0], true);
         event(10, pairs[i][1], true);
         tick(250);
@@ -160,7 +175,7 @@ static void test_extra_combos(void) {
         tick(500);
         assert(presses[KC_ESC] == 1);
         setup();
-        dynamic_maps[13][0][i] = KC_LALT;
+        dynamic_maps[i < 6 ? 13 : 15][0][i < 6 ? i : i - 6] = KC_LALT;
         event(0, pairs[i][0], true);
         event(10, pairs[i][1], true);
         tick(500);

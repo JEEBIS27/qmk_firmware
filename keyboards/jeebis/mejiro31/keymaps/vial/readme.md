@@ -20,8 +20,7 @@ site-compatible UF2s. All other keyboards keep their normal QMK build path.
 
 Vial requires its quantum core, so the two build entry points route Mejiro31
 through `build_vial.py`; there is no separate non-Vial Mejiro31 build choice.
-The helper fetches pinned Vial-QMK and the latest remote default-branch commit
-of Mejiro_Engine on every invocation, preserves Plover
+The helper fetches pinned Vial-QMK and the pinned Mejiro_Engine commit, preserves Plover
 HID through `plover-hid.patch`, applies `usb-queue-alignment.patch` to prevent
 RP2040 HardFaults on the 9-byte HID report, and fixes unlock cancellation. It does not
 replace this repository's core or rewrite this checkout's keyboard definitions.
