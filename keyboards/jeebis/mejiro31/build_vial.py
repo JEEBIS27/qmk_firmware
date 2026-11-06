@@ -16,7 +16,7 @@ VIAL_URL = 'https://github.com/vial-kb/vial-qmk.git'
 VIAL_REF = 'dd43959ae5c08d8a28d38a1acf7b04e86b14a344'
 ENGINE_URL = 'https://github.com/JEEBIS27/Mejiro_Engine.git'
 # Pin the runtime dictionary ABI and latest shared engine behavior.
-ENGINE_REF = 'b7a52cfe88be66691d2bb35d6f672084e02a50c5'
+ENGINE_REF = 'ef07fbcdfa830f46d8705483b3b7d08d21187817'
 
 
 def run(*args, cwd=None):
