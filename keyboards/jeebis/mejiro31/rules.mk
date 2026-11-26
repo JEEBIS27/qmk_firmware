@@ -5,7 +5,10 @@ PLOVER_HID_ENABLE = yes
 STRING_ENABLE = yes
 OS_DETECTION_ENABLE = yes
 COMBO_ENABLE = no
-USE_PROCESS_STACKSIZE = 0x8000
+# The Rust session's registered-verb path (e.g. KNAnt-ntk*) can exceed
+# 32 KiB on Cortex-M0+, before sending any keys. Keep room for callers
+# and other inflections in the RP2040's shared 256 KiB SRAM region.
+USE_PROCESS_STACKSIZE = 0x10000
 LDFLAGS += -L$(TOP_DIR)/platforms/chibios/boards/common/ld
 
 SRC += $(KEYBOARD_PATH_1)/mejiro_input.c

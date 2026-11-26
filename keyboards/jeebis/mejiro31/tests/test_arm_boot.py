@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the linked Rust initializer on Cortex-M, with the ELF's real stack bounds.
+"""Exercise linked firmware input on Cortex-M, with the ELF's real stack bounds.
 
 Requires pyelftools and unicorn. This checks CPU code and stack use, not USB or
 RP2040 peripherals. Run separately from the portable host tests:
@@ -42,12 +42,21 @@ def check(path):
 
     bottom = symbols["__process_stack_base__"]
     top = symbols["__process_stack_end__"]
-    # Leave space for main -> keyboard_init -> keyboard_post_init_user and its
-    # callers. The previous initializer exceeds even the entire empty stack.
+    # Leave space for the real QMK callers outside these tested entry points.
     initial = top - 512
     lowest = initial
     returned = False
     stop = 0x101FFF00
+    sent = bytearray()
+    taps = []
+    # Capture the firmware's actual output at its transport boundary. USB
+    # peripherals are not emulated. This still runs the C adapter, Rust
+    # previews, translation, commit, and acknowledgement exactly as linked.
+    output_hooks = {
+        symbols["send_char"] & ~1: sent,
+        symbols["mejiro_steno_tap"] & ~1: taps,
+        symbols["mejiro_steno_tap_jis"] & ~1: taps,
+    }
 
     def instruction(uc, address, size, data):
         nonlocal lowest, returned
@@ -57,6 +66,9 @@ def check(path):
         if address == stop:
             returned = True
             uc.emu_stop()
+        elif address in output_hooks:
+            output_hooks[address].append(uc.reg_read(UC_ARM_REG_R0))
+            uc.reg_write(UC_ARM_REG_PC, uc.reg_read(UC_ARM_REG_LR))
 
     cpu.hook_add(UC_HOOK_CODE, instruction)
     def invoke(name, *args):
@@ -92,7 +104,29 @@ def check(path):
     cpu.mem_write(stroke, b"#n")
     assert invoke("mejiro_qmk_process", stroke, 2, event) == 0
     assert invoke("mejiro_qmk_replayed_external", stroke, 2) == 2
-    print(f"{path}: ARM init/mixed recording replay passed, {top - lowest}/{top - bottom} stack bytes including caller reserve")
+    # Regression for issue #6. A bare suffix worked before the fix, but the
+    # registered verb plus suffix overflowed while the adapter committed it.
+    invoke("mejiro_engine_init")
+    for raw, expected in (
+        (b"nt-ntk*", b"shitekudasai"),
+        (b"KNAnt-ntk*", b"ganbattekudasai"),
+        (b"KA-", b"ka"),
+    ):
+        sent.clear()
+        cpu.mem_write(stroke, raw)
+        invoke("mejiro_engine_process", stroke, len(raw))
+        assert sent == expected, (raw, sent, expected)
+        if raw == b"KNAnt-ntk*":
+            cpu.mem_write(stroke, b"-U")
+            invoke("mejiro_engine_process", stroke, 2)
+            assert taps == [42] * 9, taps  # Backspace for each of the nine kana.
+            taps.clear()
+
+    # Keep headroom for untested paths. This is a representative regression,
+    # not proof of a global upper bound on runtime stack usage.
+    assert lowest - bottom >= 8 * 1024, (lowest - bottom)
+    print(f"{path}: ARM init, mixed recording replay and abbreviation output/Undo passed, "
+          f"{top - lowest}/{top - bottom} stack bytes including caller reserve")
 
 
 if __name__ == "__main__":
