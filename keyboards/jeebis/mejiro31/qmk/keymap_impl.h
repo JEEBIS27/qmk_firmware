@@ -141,8 +141,10 @@ static void sync_shortcut(void) {
 
 // Versioned user word, independent of VIA's editable keymap storage.
 #ifdef MJI_WEB_VIAL
-#    define MJI_SETTINGS_MAGIC UINT32_C(0x4d400000)
-#    define MJI_SETTINGS_MASK UINT32_C(0x7ffff)
+#    define MJI_SETTINGS_MAGIC UINT32_C(0x50000000)
+#    define MJI_SETTINGS_MASK UINT32_C(0x3ffffff)
+static uint8_t home_mode, modifier_order;
+#    define MJI_SHORTCUT_SETTINGS (((uint32_t)home_mode << 19) | ((uint32_t)modifier_order << 21))
 #    define MJI_LAYOUT_SETTINGS (((uint32_t)web_en_layout << 3) | ((uint32_t)web_jp_layout << 8))
 #    define MJI_CHORD_SETTINGS (((uint32_t)!mejiro_first_up_chord_send << 13) | ((uint32_t)immediate_sokuon << 14) | ((uint32_t)!auto_ime_switch << 15) | ((uint32_t)output_options << 16))
 #    define MJI_DEFAULT_LAYOUT_SETTINGS (((uint32_t)MJI_WEB_EN_DEFAULT << 3) | ((uint32_t)MJI_WEB_JP_DEFAULT << 8))
@@ -154,12 +156,13 @@ static uint8_t web_en_layout = MJI_WEB_EN_DEFAULT, web_jp_layout = MJI_WEB_JP_DE
 static const bool auto_ime_switch = true;
 #    define MJI_SETTINGS_MAGIC UINT32_C(0x4d310100)
 #    define MJI_SETTINGS_MASK UINT32_C(7)
+#    define MJI_SHORTCUT_SETTINGS UINT32_C(0)
 #    define MJI_LAYOUT_SETTINGS UINT32_C(0)
 #    define MJI_CHORD_SETTINGS UINT32_C(0)
 #    define MJI_DEFAULT_LAYOUT_SETTINGS UINT32_C(0)
 #endif
 static void save_settings(void) {
-    uint32_t word = MJI_SETTINGS_MAGIC | input.layout.jis_host | ((uint32_t)input.layout.alt_enabled << 1) | ((uint32_t)mejiro_mode << 2) | MJI_LAYOUT_SETTINGS | MJI_CHORD_SETTINGS;
+    uint32_t word = MJI_SETTINGS_MAGIC | input.layout.jis_host | ((uint32_t)input.layout.alt_enabled << 1) | ((uint32_t)mejiro_mode << 2) | MJI_LAYOUT_SETTINGS | MJI_CHORD_SETTINGS | MJI_SHORTCUT_SETTINGS;
     if (eeconfig_read_user() != word) eeconfig_update_user(word);
 }
 void eeconfig_init_user(void) {
@@ -172,9 +175,48 @@ void eeconfig_init_user(void) {
 static uint8_t expand_mods(uint8_t mods) {
     return mods & 0x10 ? (mods & 0x0f) << 4 : mods;
 }
+// Indices are Ctrl, Shift, Alt, GUI. Rank zero means the OS default.
+static void platform_order(uint8_t order[4]) {
+    for (uint8_t i = 0; i < 4; ++i) order[i] = i;
+#ifdef MJI_WEB_VIAL
+    if (modifier_order) {
+        uint8_t rank = modifier_order - 1;
+        const uint8_t strides[] = {6, 2, 1, 1};
+        for (uint8_t i = 0; i < 4; ++i) {
+            uint8_t index = i + rank / strides[i];
+            rank %= strides[i];
+            uint8_t target = order[index];
+            for (; index > i; --index) order[index] = order[index - 1];
+            order[i] = target;
+        }
+        return;
+    }
+#endif
+    if (mac) { order[0] = 3; order[3] = 0; }
+}
+static uint8_t remap_platform_mods(uint8_t mods, bool inverse) {
+    uint8_t order[4], result = 0;
+    platform_order(order);
+    for (uint8_t side = 0; side < 8; side += 4) {
+        for (uint8_t i = 0; i < 4; ++i) {
+            uint8_t from = side + (inverse ? order[i] : i);
+            uint8_t to = side + (inverse ? i : order[i]);
+            if (mods & (1u << from)) result |= 1u << to;
+        }
+    }
+    return result;
+}
 static uint8_t platform_mods(uint8_t mods) {
-    if (!mac) return mods;
-    return (mods & ~(MOD_MASK_CTRL | MOD_MASK_GUI)) | ((mods & MOD_MASK_CTRL) << 3) | ((mods & MOD_MASK_GUI) >> 3);
+    return remap_platform_mods(mods, false);
+}
+static uint8_t logical_mods(uint8_t mods) {
+    return remap_platform_mods(mods, true);
+}
+static bool platform_home(void) {
+#ifdef MJI_WEB_VIAL
+    if (home_mode) return home_mode == 2;
+#endif
+    return mac;
 }
 static void report_mods(uint8_t mods) {
     uint8_t native = platform_mods(mods);
@@ -229,16 +271,16 @@ static bool select_layout(const mji_layout_config_t *config) {
 }
 static mji_stroke_t encode_callback(void *user, mji_stroke_t stroke, uint8_t mods) {
     (void)user;
-    if (mac && (stroke.code == KC_HOME || stroke.code == KC_END)) {
+    if (platform_home() && (stroke.code == KC_HOME || stroke.code == KC_END)) {
         uint8_t effective = (mods & ~stroke.clear_mods) | stroke.mods;
         bool document = platform_mods(effective) & MOD_MASK_GUI;
         stroke.code = stroke.code == KC_HOME ? (document ? KC_UP : KC_LEFT) : (document ? KC_DOWN : KC_RIGHT);
-        // Logical Ctrl becomes Command at the platform boundary. Preserve
-        // Shift/Alt; suppress host Ctrl for the document-boundary variant.
-        stroke.mods |= MOD_LCTL;
+        // The synthesized shortcut always sends host Command, independently of swaps.
+        stroke.mods |= logical_mods(MOD_LGUI);
         if (document) {
-            stroke.mods &= ~MOD_MASK_GUI;
-            stroke.clear_mods |= MOD_MASK_GUI;
+            const uint8_t host_ctrl = logical_mods(MOD_MASK_CTRL);
+            stroke.mods &= ~host_ctrl;
+            stroke.clear_mods |= host_ctrl;
         }
     }
     return stroke;
@@ -267,10 +309,10 @@ static void steno_tap(uint16_t code, bool force_jis) {
     }
     uint8_t      saved         = get_mods();
     // Convert the saved platform mods back to logical mods before encoding.
-    stroke.mods = platform_mods(stroke.mods);
-    stroke.clear_mods = platform_mods(stroke.clear_mods);
-    stroke = encode_callback(NULL, stroke, platform_mods(saved));
-    set_mods(platform_mods((platform_mods(saved) & ~stroke.clear_mods) | stroke.mods));
+    stroke.mods = logical_mods(stroke.mods);
+    stroke.clear_mods = logical_mods(stroke.clear_mods);
+    stroke = encode_callback(NULL, stroke, logical_mods(saved));
+    set_mods(platform_mods((logical_mods(saved) & ~stroke.clear_mods) | stroke.mods));
     send_keyboard_report();
     tap_code16(stroke.code);
     set_mods(saved);
@@ -449,6 +491,10 @@ void keyboard_post_init_user(void) {
 #endif
     uint32_t settings = eeconfig_read_user();
 #ifdef MJI_WEB_VIAL
+    if ((settings & UINT32_C(0xfff80000)) == UINT32_C(0x4d400000)) {
+        settings = MJI_SETTINGS_MAGIC | (settings & UINT32_C(0x7ffff));
+        eeconfig_update_user(settings);
+    }
     // Migrate layout, timing-independent preferences and the earlier feature bits.
     if ((settings & UINT32_C(0xffff0000)) == UINT32_C(0x4d320000)) {
         settings = MJI_SETTINGS_MAGIC | (settings & UINT32_C(0xffff));
@@ -467,6 +513,10 @@ void keyboard_post_init_user(void) {
     // Zero in existing EEPROM words means the default, enabled.
     auto_ime_switch = (settings & UINT32_C(0x8000)) == 0;
     mejiro_engine_set_immediate_sokuon(immediate_sokuon);
+    home_mode = (settings >> 19) & 3;
+    modifier_order = (settings >> 21) & 31;
+    if (home_mode > 2) home_mode = 0;
+    if (modifier_order > 24) modifier_order = 0;
     output_options = (settings >> 16) & MJI_OUTPUT_OPTIONS_MASK;
     mejiro_engine_set_output(output_options);
     mejiro_rules_load();

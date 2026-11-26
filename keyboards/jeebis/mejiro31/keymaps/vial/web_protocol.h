@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Mejiro31 site extension, carried by VIA's custom Raw HID handler.
-// Request: FA 01 op (0=get, 1=layouts, 2=first-up, 3=timing, 4=immediate small-tsu, 5=automatic IME switch, 6=output options), bytes 4..11="M31WEB01".
+// Request: FA 01 op (0=get, 1=layouts, 2=first-up, 3=timing, 4=immediate small-tsu, 5=automatic IME switch, 6=output options, 7=read shortcuts, 8=write shortcuts), bytes 4..11="M31WEB01".
 // Response: same header, byte 3=status (0=ok,1=locked,2=invalid,3=busy).
 // Settings: byte12 flags (JIS=1, alternative=2, Mejiro=4), 13 EN, 14 JP.
 // Byte18: first-up (0=wait for all keys up, 1=send on first key up).
@@ -76,6 +76,23 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
     }
     if (!ready) { web_reply(data, 3); return; }
     if (data[2] == 0) { web_reply(data, 0); return; }
+    if (data[2] == 7 || data[2] == 8) {
+        if (data[2] == 8) {
+            if (data[12] > 2 || data[13] > 24) { web_reply(data, 2); return; }
+            if (!vial_unlocked) { web_reply(data, 1); return; }
+            if (home_mode != data[12] || modifier_order != data[13]) {
+                switch_context();
+                home_mode = data[12];
+                modifier_order = data[13];
+                save_settings();
+            }
+        }
+        web_reply(data, 0);
+        data[12] = home_mode;
+        data[13] = modifier_order;
+        data[14] = mac;
+        return;
+    }
     if (data[2] == 3) {
         mji_timing_t timing = {data[20] | (uint16_t)data[21] << 8,
                                data[22] | (uint16_t)data[23] << 8,

@@ -318,7 +318,40 @@ static void test_declarative_defaults(void) {
     assert(input.layout.maps[1].entries == web_layouts[MJI_WEB_JP_DEFAULT].entries);
     puts("declarative language/preset defaults preserved in Vial storage OK");
 }
+static void test_independent_shortcuts(void) {
+    setup();
+    uint8_t packet[32];
+    vial_unlocked = 0;
+    request(packet, 8, 2, 1, 0);
+    assert(packet[3] == 1);
+    vial_unlocked = 1;
+    request(packet, 8, 2, 25, 0);
+    assert(packet[3] == 2);
+    request(packet, 8, 2, 1, 0); // Apple navigation, identity modifiers
+    assert(packet[3] == 0 && packet[12] == 2 && packet[13] == 1);
+    keyboard_post_init_user();
+    request(packet, 7, 0, 0, 0);
+    assert(packet[3] == 0 && packet[12] == 2 && packet[13] == 1);
+    mji_stroke_t home = {.code = KC_HOME};
+    mji_stroke_t arrow = encode_callback(NULL, home, 0);
+    assert(arrow.code == KC_LEFT && platform_mods(arrow.mods) == MOD_LGUI);
+    assert(platform_mods(MOD_LCTL) == MOD_LCTL);
+    request(packet, 8, 1, 22, 0); // Native navigation, Control/GUI exchange
+    home = encode_callback(NULL, home, 0);
+    assert(home.code == KC_HOME && home.mods == 0);
+    assert(platform_mods(MOD_LCTL) == MOD_LGUI && platform_mods(MOD_LGUI) == MOD_LCTL);
+    for (uint8_t rank = 1; rank <= 24; ++rank) {
+        request(packet, 8, 2, rank, 0);
+        arrow = encode_callback(NULL, home, 0);
+        assert(arrow.code == KC_LEFT && platform_mods(arrow.mods) == MOD_LGUI);
+        for (unsigned mask = 0; mask <= 255; ++mask)
+            assert(logical_mods(platform_mods(mask)) == mask);
+    }
+    puts("independent navigation, 24 modifier permutations, lock and EEPROM restore OK");
+}
+
 int main(void) {
+    test_independent_shortcuts();
     test_declarative_defaults();
     test_extra_combos();
     assert(adapter_regression_main() == 0);
