@@ -51,6 +51,7 @@ static mji_engine_t input;
 static bool         mejiro_mode = MJI_DEFAULT_MEJIRO, steno_mode, ready, mac;
 static uint8_t      host_mods;
 static uint8_t      keyboard_language;
+static bool         steno_sent_ime_on;
 static uint16_t     held_codes[MJI_TOKEN_COUNT];
 static uint8_t      refs[256];
 static uint16_t     steno_keys[MJI_PHYSICAL_COUNT];
@@ -140,13 +141,17 @@ static void sync_shortcut(void) {
 
 // Versioned user word, independent of VIA's editable keymap storage.
 #ifdef MJI_WEB_VIAL
-#    define MJI_SETTINGS_MAGIC UINT32_C(0x4d320000)
-#    define MJI_SETTINGS_MASK UINT32_C(0x3fff)
+#    define MJI_SETTINGS_MAGIC UINT32_C(0x4d400000)
+#    define MJI_SETTINGS_MASK UINT32_C(0x7ffff)
 #    define MJI_LAYOUT_SETTINGS (((uint32_t)web_en_layout << 3) | ((uint32_t)web_jp_layout << 8))
-#    define MJI_CHORD_SETTINGS ((uint32_t)!mejiro_first_up_chord_send << 13)
+#    define MJI_CHORD_SETTINGS (((uint32_t)!mejiro_first_up_chord_send << 13) | ((uint32_t)immediate_sokuon << 14) | ((uint32_t)!auto_ime_switch << 15) | ((uint32_t)output_options << 16))
 #    define MJI_DEFAULT_LAYOUT_SETTINGS (((uint32_t)MJI_WEB_EN_DEFAULT << 3) | ((uint32_t)MJI_WEB_JP_DEFAULT << 8))
+static bool immediate_sokuon;
+static bool auto_ime_switch = true;
+static uint8_t output_options;
 static uint8_t web_en_layout = MJI_WEB_EN_DEFAULT, web_jp_layout = MJI_WEB_JP_DEFAULT;
 #else
+static const bool auto_ime_switch = true;
 #    define MJI_SETTINGS_MAGIC UINT32_C(0x4d310100)
 #    define MJI_SETTINGS_MASK UINT32_C(7)
 #    define MJI_LAYOUT_SETTINGS UINT32_C(0)
@@ -244,7 +249,7 @@ static mji_stroke_t encode_callback(void *user, mji_stroke_t stroke, uint8_t mod
 bool mejiro_steno_jis_host(void) {
     return input.layout.jis_host;
 }
-void mejiro_steno_tap(uint16_t code) {
+static void steno_tap(uint16_t code, bool force_jis) {
     mji_key_t key;
     if (!decode_callback(NULL, code, &key)) {
         tap_code16(code);
@@ -252,7 +257,14 @@ void mejiro_steno_tap(uint16_t code) {
     }
     mji_layout_config_t config = input.layout;
     config.alt_enabled         = false;
+    if (force_jis) config.jis_host = true;
     mji_stroke_t stroke        = mji_layout_resolve(&config, key, MJI_STENO, 0);
+    if (force_jis) {
+        // The Engine's Shift+0 operation means the physical kana を key,
+        // not the US ASCII right parenthesis (Shift+9 on a JIS host).
+        if (code == LSFT(KC_0)) stroke = (mji_stroke_t){KC_0, MOD_LSFT, 0};
+        stroke.clear_mods = UINT8_MAX;
+    }
     uint8_t      saved         = get_mods();
     // Convert the saved platform mods back to logical mods before encoding.
     stroke.mods = platform_mods(stroke.mods);
@@ -264,6 +276,8 @@ void mejiro_steno_tap(uint16_t code) {
     set_mods(saved);
     send_keyboard_report();
 }
+void mejiro_steno_tap(uint16_t code) { steno_tap(code, false); }
+void mejiro_steno_tap_jis(uint16_t code) { steno_tap(code, true); }
 static mji_binding_t binding(uint16_t tap, uint16_t hold) {
     mji_binding_t b = {.tap = tap, .hold_layer = MJI_NO_LAYER};
     // Native modifier/layer actions use the same engine Hold representation.
@@ -334,18 +348,18 @@ static bool custom_action(uint16_t code, bool pressed) {
                 mji_layout_config_t config = input.layout;
                 if (!steno_mode) keyboard_language = config.language;
                 steno_mode = !steno_mode;
-                bool ime_on_entry = !MJI_EN_PROFILE && steno_mode && mejiro_mode;
-                if (ime_on_entry) config.language = MJI_JAPANESE;
+                bool jp_mejiro = !MJI_EN_PROFILE && mejiro_mode;
+                if (steno_mode && jp_mejiro) config.language = MJI_JAPANESE;
+                // Restore the host IME only when this steno session changed it.
+                bool send_language = auto_ime_switch && jp_mejiro &&
+                                     (steno_mode || steno_sent_ime_on);
+                steno_sent_ime_on = steno_mode && send_language;
                 if (!steno_mode) config.language = keyboard_language;
                 switch_context();
                 if (config.language != input.layout.language) select_layout(&config);
                 // Send after releasing the previous context's keys and mods.
-                if (ime_on_entry || !steno_mode) {
-                    uint8_t language = config.language == MJI_JAPANESE ? KC_LNG1 : KC_LNG2;
-                    capture_key(language, true);
-                    tap_code16(language);
-                    capture_key(language, false);
-                }
+                if (send_language)
+                    tap_output(config.language == MJI_JAPANESE ? KC_LNG1 : KC_LNG2);
                 if (steno_mode) mejiro_engine_flush_keyboard();
             }
             return true;
@@ -434,13 +448,27 @@ void keyboard_post_init_user(void) {
     keymap_config.nkro = true;
 #endif
     uint32_t settings = eeconfig_read_user();
+#ifdef MJI_WEB_VIAL
+    // Migrate layout, timing-independent preferences and the earlier feature bits.
+    if ((settings & UINT32_C(0xffff0000)) == UINT32_C(0x4d320000)) {
+        settings = MJI_SETTINGS_MAGIC | (settings & UINT32_C(0xffff));
+        eeconfig_update_user(settings);
+    }
+#endif
     if ((settings & ~MJI_SETTINGS_MASK) != MJI_SETTINGS_MAGIC) {
         eeconfig_init_user();
         settings = eeconfig_read_user();
     }
     mejiro_mode = (settings & 4) != 0;
+    steno_sent_ime_on = false;
 #ifdef MJI_WEB_VIAL
     mejiro_first_up_chord_send = (settings & UINT32_C(0x2000)) == 0;
+    immediate_sokuon = (settings & UINT32_C(0x4000)) != 0;
+    // Zero in existing EEPROM words means the default, enabled.
+    auto_ime_switch = (settings & UINT32_C(0x8000)) == 0;
+    mejiro_engine_set_immediate_sokuon(immediate_sokuon);
+    output_options = (settings >> 16) & MJI_OUTPUT_OPTIONS_MASK;
+    mejiro_engine_set_output(output_options);
     mejiro_rules_load();
     web_en_layout = (settings >> 3) & 31;
     web_jp_layout = (settings >> 8) & 31;
@@ -523,7 +551,9 @@ void matrix_scan_user(void) {
 #ifdef MJI_WEB_VIAL
     if (web_pause_for_unlock()) return;
 #endif
-    mji_tick(&input, timer_read32());
+    uint32_t now = timer_read32();
+    mejiro_engine_tick(now);
+    mji_tick(&input, now);
     sync_shortcut();
     // OS detection may finish after startup; don't change mapping mid-hold.
     if (!input.physical && !input.event_count) mac = detected_host_os() == OS_MACOS || detected_host_os() == OS_IOS;

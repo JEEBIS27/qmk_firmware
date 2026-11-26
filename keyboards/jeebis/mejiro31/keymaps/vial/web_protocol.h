@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Mejiro31 site extension, carried by VIA's custom Raw HID handler.
-// Request: FA 01 op (0=get, 1=layouts, 2=first-up), bytes 4..11="M31WEB01".
+// Request: FA 01 op (0=get, 1=layouts, 2=first-up, 3=timing, 4=immediate small-tsu, 5=automatic IME switch, 6=output options), bytes 4..11="M31WEB01".
 // Response: same header, byte 3=status (0=ok,1=locked,2=invalid,3=busy).
 // Settings: byte12 flags (JIS=1, alternative=2, Mejiro=4), 13 EN, 14 JP.
 // Byte18: first-up (0=wait for all keys up, 1=send on first key up).
+// Byte26: immediate small-tsu capability, byte27: setting (0=off, 1=on).
+// Byte28: automatic IME switch capability, byte29: setting (0=off, 1=on).
+// Byte30: output settings capability; byte31: mode and gap (bits 0, 1–2).
 #pragma once
 #include "web_layouts.h"
 #include "via.h"
@@ -55,6 +58,12 @@ static void web_reply(uint8_t *data, uint8_t status) {
         data[20 + i * 2] = values[i] & 255;
         data[21 + i * 2] = values[i] >> 8;
     }
+    data[26] = 1;
+    data[27] = immediate_sokuon;
+    data[28] = 1;
+    data[29] = auto_ime_switch;
+    data[30] = 1;
+    data[31] = output_options;
 }
 void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
     if (length == 32 && data[0] == 0xfa && data[1] == 2) {
@@ -88,6 +97,42 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         if (mejiro_first_up_chord_send != enabled) {
             switch_context();
             mejiro_first_up_chord_send = enabled;
+            save_settings();
+        }
+        web_reply(data, 0);
+        return;
+    }
+    if (data[2] == 4) {
+        if (data[27] > 1) { web_reply(data, 2); return; }
+        if (!vial_unlocked) { web_reply(data, 1); return; }
+        bool enabled = data[27] != 0;
+        if (immediate_sokuon != enabled) {
+            switch_context();
+            mejiro_engine_set_immediate_sokuon(enabled);
+            immediate_sokuon = enabled;
+            save_settings();
+        }
+        web_reply(data, 0);
+        return;
+    }
+    if (data[2] == 5) {
+        if (data[29] > 1) { web_reply(data, 2); return; }
+        if (!vial_unlocked) { web_reply(data, 1); return; }
+        bool enabled = data[29] != 0;
+        if (auto_ime_switch != enabled) {
+            auto_ime_switch = enabled;
+            save_settings();
+        }
+        web_reply(data, 0);
+        return;
+    }
+    if (data[2] == 6) {
+        if (data[31] & ~MJI_OUTPUT_OPTIONS_MASK) { web_reply(data, 2); return; }
+        if (!vial_unlocked) { web_reply(data, 1); return; }
+        if (output_options != data[31]) {
+            if ((output_options ^ data[31]) & 1) switch_context();
+            mejiro_engine_set_output(data[31]);
+            output_options = data[31];
             save_settings();
         }
         web_reply(data, 0);

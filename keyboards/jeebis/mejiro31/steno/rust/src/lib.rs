@@ -30,6 +30,18 @@ pub extern "C" fn mejiro_qmk_init() {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn mejiro_qmk_set_immediate_sokuon(enabled: bool) {
+    unsafe { &mut *ENGINE.0.get() }.set_eager_romaji_sokuon(enabled);
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn mejiro_qmk_set_output_jis(jis: bool) {
+    let session = unsafe { &mut *ENGINE.0.get() };
+    session.set_typing_mode(if jis { Mode::Jis } else { Mode::Romaji }).unwrap();
+    session.reset();
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn mejiro_qmk_reset() {
     // Input context boundaries preserve recording; stopping is explicit.
     unsafe { &mut *ENGINE.0.get() }.reset();
@@ -78,8 +90,8 @@ pub unsafe extern "C" fn mejiro_qmk_process(
     if status == 0 {
         let session = unsafe { &mut *ENGINE.0.get() };
         // Commit opposite-hand fallback even for #-n, but keep the IME bridge
-        // in Romaji. In left-hand mode #n is instead an ordinary verb input.
-        if session.state().mode != Mode::Romaji {
+        // in the configured output mode. #n in left-hand mode is not a toggle.
+        if session.state().mode == Mode::Kana {
             session.process("#-n").unwrap();
         }
     }
@@ -139,8 +151,7 @@ pub unsafe extern "C" fn mejiro_qmk_preview(
         Ok(raw) => raw,
         Err(_) => return -1,
     };
-    let state: State = unsafe { &*ENGINE.0.get() }.state();
-    let result: Translation = match translate_with_rules(raw, state, true, unsafe { &*ENGINE.0.get() }.rules()) {
+    let result: Translation = match unsafe { &*ENGINE.0.get() }.preview(raw, true) {
         Ok(value) => value,
         Err(Error::Capacity) => return -2,
         Err(_) => return -1,

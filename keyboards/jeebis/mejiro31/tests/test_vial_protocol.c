@@ -81,6 +81,116 @@ static void test_rule_protocol(void) {
     assert(mejiro_rules_save());
     puts("dictionary transport, lock, EEPROM restore, hide and clear OK");
 }
+static void write_immediate_sokuon(uint8_t *packet, uint8_t enabled) {
+    request(packet, 0, 0, 0, 0);
+    packet[2] = 4;
+    packet[26] = 0;
+    packet[27] = enabled;
+    raw_hid_receive_kb(packet, 32);
+}
+static void test_immediate_sokuon(void) {
+    setup();
+    uint8_t packet[32];
+    request(packet, 0, 0, 0, 0);
+    assert(packet[3] == 0 && packet[26] == 1 && packet[27] == 0);
+    assert(!immediate_sokuon && !mock_immediate_sokuon);
+    const uint32_t original = settings_word;
+    const unsigned writes = settings_writes;
+    vial_unlocked = 0;
+    write_immediate_sokuon(packet, 1);
+    assert(packet[3] == 1 && packet[27] == 0);
+    vial_unlocked = 1;
+    write_immediate_sokuon(packet, 2);
+    assert(packet[3] == 2 && packet[27] == 0);
+    assert(!mock_immediate_sokuon && settings_word == original && settings_writes == writes);
+    ready = false;
+    write_immediate_sokuon(packet, 1);
+    assert(packet[3] == 3 && packet[27] == 0);
+    ready = true;
+    write_immediate_sokuon(packet, 1);
+    assert(packet[3] == 0 && packet[27] == 1 && mock_immediate_sokuon);
+    assert(settings_word == (original | UINT32_C(0x4000)) && settings_writes == writes + 1);
+    write_immediate_sokuon(packet, 1);
+    assert(packet[3] == 0 && settings_writes == writes + 1);
+    request(packet, 1, 5, 1, 16);
+    assert(packet[3] == 0 && packet[27] == 1);
+    keyboard_post_init_user();
+    request(packet, 0, 0, 0, 0);
+    assert(packet[27] == 1 && mock_immediate_sokuon && packet[12] == 5 && packet[13] == 1 && packet[14] == 16);
+    vial_unlocked = 1;
+    write_immediate_sokuon(packet, 0);
+    assert(packet[3] == 0 && packet[27] == 0 && !mock_immediate_sokuon);
+    keyboard_post_init_user();
+    assert(!mock_immediate_sokuon && !(settings_word & UINT32_C(0x4000)));
+    assert(web_en_layout == 1 && web_jp_layout == 16 && input.layout.jis_host);
+}
+static void write_auto_ime_switch(uint8_t *packet, uint8_t enabled) {
+    request(packet, 0, 0, 0, 0);
+    packet[2] = 5;
+    packet[29] = enabled;
+    raw_hid_receive_kb(packet, 32);
+}
+static void test_auto_ime_switch_protocol(void) {
+    setup();
+    uint8_t packet[32];
+    request(packet, 0, 0, 0, 0);
+    assert(packet[3] == 0 && packet[28] == 1 && packet[29] == 1);
+    uint32_t original = settings_word;
+    unsigned writes = settings_writes;
+    vial_unlocked = 0;
+    write_auto_ime_switch(packet, 0);
+    assert(packet[3] == 1 && packet[29] == 1);
+    vial_unlocked = 1;
+    write_auto_ime_switch(packet, 2);
+    assert(packet[3] == 2 && packet[29] == 1);
+    assert(settings_word == original && settings_writes == writes);
+    write_auto_ime_switch(packet, 0);
+    assert(packet[3] == 0 && packet[29] == 0 && !auto_ime_switch);
+    assert(settings_word == (original | UINT32_C(0x8000)) && settings_writes == writes + 1);
+    write_auto_ime_switch(packet, 0);
+    assert(packet[3] == 0 && settings_writes == writes + 1);
+    write_immediate_sokuon(packet, 1);
+    assert(packet[3] == 0 && packet[27] == 1 && packet[29] == 0);
+    keyboard_post_init_user();
+    request(packet, 0, 0, 0, 0);
+    assert(packet[28] == 1 && packet[29] == 0 && packet[27] == 1);
+    vial_unlocked = 1;
+    write_auto_ime_switch(packet, 1);
+    assert(packet[3] == 0 && packet[29] == 1 && auto_ime_switch);
+    assert(settings_word == (original | UINT32_C(0x4000)));
+}
+static void write_output_options(uint8_t *packet, uint8_t options) {
+    request(packet, 0, 0, 0, 0);
+    packet[2] = 6;
+    packet[31] = options;
+    raw_hid_receive_kb(packet, 32);
+}
+static void test_output_options_protocol(void) {
+    setup();
+    uint8_t packet[32];
+    const uint32_t prior = UINT32_C(0x4d32e00f);
+    settings_word = prior;
+    keyboard_post_init_user();
+    request(packet, 0, 0, 0, 0);
+    assert((settings_word & UINT32_C(0xffff)) == (prior & UINT32_C(0xffff)));
+    assert(packet[30] == 1 && packet[31] == 0 && packet[27] == 1 && packet[29] == 0);
+    const unsigned writes = settings_writes;
+    vial_unlocked = 0;
+    write_output_options(packet, 7);
+    assert(packet[3] == 1 && packet[31] == 0 && !mock_output_options);
+    vial_unlocked = 1;
+    write_output_options(packet, 8);
+    assert(packet[3] == 2 && settings_writes == writes);
+    for (uint8_t options = 1; options <= 7; ++options) {
+        write_output_options(packet, options);
+        assert(packet[3] == 0 && packet[31] == options && mock_output_options == options);
+    }
+    keyboard_post_init_user();
+    request(packet, 0, 0, 0, 0);
+    assert(packet[27] == 1 && packet[29] == 0 && packet[31] == 7 && mock_output_options == 7);
+    write_output_options(packet, 0);
+    assert(packet[3] == 0 && !packet[31] && !mock_output_options);
+}
 static void test_web_protocol(void) {
     setup();
     uint8_t packet[32];
@@ -213,6 +323,9 @@ int main(void) {
     test_extra_combos();
     assert(adapter_regression_main() == 0);
     test_web_protocol();
+    test_immediate_sokuon();
+    test_auto_ime_switch_protocol();
+    test_output_options_protocol();
     test_rule_protocol();
     test_unlock_barrier();
     return 0;

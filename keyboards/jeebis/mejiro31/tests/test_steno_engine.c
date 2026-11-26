@@ -40,6 +40,7 @@ void mejiro_steno_tap(uint16_t key) {
     assert(tap_len < sizeof(taps) / sizeof(*taps));
     taps[tap_len++] = key;
 }
+void mejiro_steno_tap_jis(uint16_t key) { mejiro_steno_tap(key); }
 void send_char(char c) {
     assert(text_len + 1 < sizeof(text));
     text[text_len++] = c;
@@ -137,7 +138,79 @@ static void test_one_hand_mode(void) {
     assert(text_len == 0 && tap_len == 1 && taps[0] == KC_BSPC);
 }
 
+extern bool mejiro_qmk_is_recording(size_t);
+static void test_output_controls(void) {
+    mejiro_engine_init();
+    clear_output();
+    // Fixture runs through the real Engine and the target's host adapter.
+    const char fixture[] = "ろーをがぱ、。";
+    mejiro_rule rule = {.kind = 0, .key_len = 3, .value_len = sizeof(fixture) - 1};
+    memcpy(rule.key, "KA-", 3);
+    memcpy(rule.value, fixture, sizeof(fixture) - 1);
+    assert(mejiro_qmk_rule_set(&rule) == 0);
+    mejiro_engine_set_output(1);
+    mejiro_engine_process("KA-", 3);
+    const uint16_t expected[] = {KC_BSLS, KC_PIPE, LSFT(KC_0), KC_T, KC_AT, KC_F, KC_LBRC, KC_LABK, KC_RABK};
+    assert(text_len == 0 && tap_len == sizeof(expected) / sizeof(*expected));
+    assert(!memcmp(taps, expected, sizeof(expected)));
+    clear_output();
+    mejiro_engine_process("-U", 2);
+    assert(tap_len == 7);
+    for (size_t i = 0; i < tap_len; ++i) assert(taps[i] == KC_BSPC);
+    clear_output();
+    mejiro_engine_process("-NY", 3);
+    mejiro_engine_process("-KNA", 4);
+    mejiro_engine_process("-KA", 3); // No direct kana ellipsis; never send the Romaji z. sequence.
+    const uint16_t punctuation[] = {KC_QUES, KC_LCBR, KC_RCBR, KC_LEFT};
+    assert(tap_len == sizeof(punctuation) / sizeof(*punctuation));
+    assert(!memcmp(taps, punctuation, sizeof(punctuation)) && !text_len);
+    clear_output();
+    mejiro_engine_process("#-n", 3);
+    mejiro_engine_process("KI-", 3);
+    assert(tap_len == 1 && taps[0] == KC_G);
+
+    mejiro_engine_init();
+    clear_output();
+    mejiro_engine_process("#n-*", 4);
+    mejiro_engine_process("KA-", 3);
+    mejiro_engine_process("#-*", 3);
+    mejiro_engine_process("KAtk-", 5); // Leaves a pending small tsu in Romaji.
+    mejiro_engine_set_output(1);
+    clear_output();
+    mejiro_engine_process("#n", 2); // Cannot replay the Romaji take into Japanese kana.
+    assert(!text_len && !tap_len);
+    mejiro_engine_process("TA-", 3);
+    assert(tap_len == 1 && taps[0] == KC_Q);
+    mejiro_engine_set_output(0);
+    clear_output();
+    mejiro_engine_process("#n", 2);
+    assert(!strcmp(text, "ka"));
+    mejiro_engine_process("#t-*", 4);
+    mejiro_engine_set_output(1);
+    assert(!mejiro_qmk_is_recording(1) && mejiro_engine_recording_failed());
+
+    mejiro_engine_init();
+    clear_output();
+    const char burst[] = "にゅうりょく";
+    rule.value_len = sizeof(burst) - 1;
+    memcpy(rule.value, burst, sizeof(burst) - 1);
+    assert(mejiro_qmk_rule_set(&rule) == 0);
+    mejiro_engine_set_output(6);
+    mejiro_engine_process("KA-", 3);
+    mejiro_engine_tick(UINT32_MAX - 5);
+    assert(!strcmp(text, "n"));
+    mejiro_engine_process("KI-", 3); // New stroke before the first one is done.
+    mejiro_engine_tick(3);
+    assert(!strcmp(text, "n"));
+    for (uint32_t i = 0; i < 10; ++i) mejiro_engine_tick(4 + 10 * i);
+    assert(!strcmp(text, "nyuuryokuki"));
+    assert(!tap_len);
+    mejiro_engine_process("TA-", 3);
+    mejiro_engine_reset(); // Keyboard/mode boundary completes queued text before changing context.
+    assert(!strcmp(text, "nyuuryokukita"));
+}
 int main(void) {
+    test_output_controls();
     test_one_hand_mode();
     // Both with and without an alternate system: select first, then one IME key.
     for (unsigned available = 0; available < 2; ++available) {
@@ -248,6 +321,30 @@ int main(void) {
     clear_output();
     mejiro_engine_process("-U", 2);
     assert(tap_len == 2 && taps[0] == KC_BSPC && taps[1] == KC_BSPC);
+    clear_output();
+
+    mejiro_engine_set_immediate_sokuon(true);
+    CHORD(STN_KL, STN_RL, STN_LR, STN_RR, STN_U, STN_E); // KA-TAtk
+    assert(strcmp(text, "kataltsu") == 0);
+    clear_output();
+    mejiro_engine_process("TA-", 3);
+    assert(strcmp(text, "ta") == 0);
+    clear_output();
+    mejiro_engine_process("-U", 2);
+    assert(tap_len == 1 && taps[0] == KC_BSPC);
+    clear_output();
+    mejiro_engine_process("-U", 2);
+    assert(tap_len == 3 && taps[0] == KC_BSPC && taps[1] == KC_BSPC && taps[2] == KC_BSPC);
+    clear_output();
+    // Toggling discards any uncommitted carry rather than leaking it across modes.
+    mejiro_engine_set_immediate_sokuon(false);
+    mejiro_engine_process("KAtk-", 5);
+    assert(strcmp(text, "ka") == 0);
+    clear_output();
+    mejiro_engine_set_immediate_sokuon(true);
+    mejiro_engine_process("TA-", 3);
+    assert(strcmp(text, "ta") == 0);
+    mejiro_engine_init();
     clear_output();
 
     CHORD(STN_N3, STN_DR);                 // n-*

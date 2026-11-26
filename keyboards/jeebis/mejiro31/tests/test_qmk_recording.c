@@ -14,7 +14,37 @@ void send_char(char c) {
 extern bool mejiro_qmk_is_recording(size_t);
 extern int32_t mejiro_qmk_replayed_external(mejiro_recorded_event *, size_t);
 
+static void test_real_jis_usages(void) {
+    setup();
+    const char fixture[] = "ろーをがぱ、。";
+    mejiro_rule rule = {.kind = 0, .key_len = 3, .value_len = sizeof(fixture) - 1};
+    memcpy(rule.key, "KA-", 3);
+    memcpy(rule.value, fixture, sizeof(fixture) - 1);
+    assert(mejiro_qmk_rule_set(&rule) == 0);
+    mejiro_engine_set_output(1);
+    assert(!input.layout.jis_host); // Built-in kana uses JIS independent of keyboard mode.
+    set_mods(MOD_LSFT);
+    mejiro_engine_process("KA-", 3);
+    assert(presses[KC_INT1] == 1 && pressed_mods[KC_INT1] == 0);
+    assert(presses[KC_INT3] == 1 && pressed_mods[KC_INT3] == MOD_LSFT);
+    assert(presses[KC_0] == 1 && pressed_mods[KC_0] == MOD_LSFT);
+    assert(presses[KC_T] == 1 && pressed_mods[KC_T] == 0);
+    assert(presses[KC_LBRC] == 1 && pressed_mods[KC_LBRC] == 0); // JP @
+    assert(presses[KC_F] == 1 && pressed_mods[KC_F] == 0);
+    assert(presses[KC_RBRC] == 1 && pressed_mods[KC_RBRC] == 0); // JP [
+    assert(presses[KC_COMM] == 1 && pressed_mods[KC_COMM] == MOD_LSFT);
+    assert(presses[KC_DOT] == 1 && pressed_mods[KC_DOT] == MOD_LSFT);
+    assert(get_mods() == MOD_LSFT);
+    set_mods(0);
+    mejiro_engine_process("-NY", 3);
+    mejiro_engine_process("-KNA", 4);
+    assert(presses[KC_SLSH] == 1 && pressed_mods[KC_SLSH] == MOD_LSFT);
+    assert(presses[KC_RBRC] == 2 && pressed_mods[KC_RBRC] == MOD_LSFT);
+    assert(presses[KC_NUHS] == 1 && pressed_mods[KC_NUHS] == MOD_LSFT);
+    all_up();
+}
 int main(void) {
+    test_real_jis_usages();
     setup();
     mejiro_mode = true;
     steno_mode = true;

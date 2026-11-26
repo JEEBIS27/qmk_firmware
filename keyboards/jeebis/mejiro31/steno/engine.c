@@ -10,7 +10,9 @@ extern void mejiro_qmk_init(void);
 extern void mejiro_qmk_reset(void);
 extern int32_t mejiro_qmk_process(const uint8_t *, size_t, mejiro_event *);
 extern int32_t mejiro_qmk_ack(uint64_t, uint32_t);
+extern void mejiro_qmk_set_immediate_sokuon(bool);
 extern bool mejiro_qmk_pending_sokuon(void);
+extern void mejiro_qmk_set_output_jis(bool);
 extern int32_t mejiro_qmk_preview(const uint8_t *, size_t, mejiro_translation *);
 extern int32_t mejiro_qmk_preview_kana(const uint8_t *, size_t, mejiro_translation *);
 extern bool mejiro_qmk_is_recording(size_t);
@@ -59,6 +61,57 @@ bool mejiro_engine_recording_failed(void) { return recording_failed; }
 static uint32_t undo_units[MEJIRO_HISTORY];
 static uint8_t undo_count;
 static uint32_t macro_units[MEJIRO_MACROS];
+static uint8_t macro_jis;
+static bool output_jis;
+static uint8_t output_gap;
+
+enum { OUT_CHAR = 0x4000, OUT_JIS = 0x8000, OUT_FLAG_MASK = 0xc000 };
+#define OUTPUT_CAPACITY 1024
+// A full rendered macro (512 bytes plus up to 8 operations) fits in the
+// queue; it can also hold many typical strokes. At saturation, flush FIFO
+// rather than dropping any key or moving a later stroke ahead of it.
+static uint16_t output_queue[OUTPUT_CAPACITY];
+static uint16_t output_head, output_count;
+static uint32_t last_tap;
+static bool have_last_tap;
+
+static void emit_key(uint16_t value) {
+    switch (value & OUT_FLAG_MASK) {
+        case OUT_CHAR: send_char((char)value); break;
+        case OUT_JIS: mejiro_steno_tap_jis(value & ~OUT_FLAG_MASK); break;
+        default: mejiro_steno_tap(value); break;
+    }
+}
+
+void mejiro_engine_drain(void) {
+    while (output_count) {
+        emit_key(output_queue[output_head]);
+        output_head = (output_head + 1) % OUTPUT_CAPACITY;
+        --output_count;
+    }
+    have_last_tap = false;
+}
+
+void mejiro_engine_tick(uint32_t now) {
+    if (have_last_tap && now - last_tap < output_gap) return;
+    have_last_tap = output_count != 0;
+    if (!output_count) return;
+    emit_key(output_queue[output_head]);
+    output_head = (output_head + 1) % OUTPUT_CAPACITY;
+    --output_count;
+    last_tap = now;
+}
+
+static void send_key(uint16_t value) {
+    if (!output_gap) {
+        emit_key(value);
+        return;
+    }
+    if (output_count == OUTPUT_CAPACITY) mejiro_engine_drain();
+    output_queue[(output_head + output_count) % OUTPUT_CAPACITY] = value;
+    ++output_count;
+}
+
 
 typedef struct {
     const char *glyph;
@@ -75,6 +128,10 @@ static const ime_glyph_t ime_glyphs[] = {
     {"‖", "z|"}, {"…", "z."}, {"←", "zh"}, {"↓", "zj"},
     {"↑", "zk"}, {"→", "zl"}, {"～", "~"}, {"＊", "*"},
     {"？", "?"}, {"！", "!"}, {"　", " "},
+};
+
+static const ime_glyph_t kana_glyphs[] = {
+    {"・", "?"}, {"「", "{"}, {"」", "}"}, {"　", " "},
 };
 
 static uint16_t ascii_key(char c) {
@@ -101,6 +158,12 @@ static uint16_t ascii_key(char c) {
         case '!': return KC_EXLM;
         case '@': return KC_AT;
         case '#': return KC_HASH;
+        case '\\': return KC_BSLS;
+        case '-': return KC_MINS;
+        case ';': return KC_SCLN;
+        case '&': return KC_AMPR;
+        case '$': return KC_DLR;
+        case '%': return KC_PERC;
         case ' ': return KC_SPC;
         default: return KC_NO;
     }
@@ -108,10 +171,17 @@ static uint16_t ascii_key(char c) {
 
 static void send_ascii(char c) {
     uint16_t key = ascii_key(c);
-    if (mejiro_steno_jis_host() && key != KC_NO) {
-        mejiro_steno_tap(key);
+    if (output_jis) {
+        if (c >= 'a' && c <= 'z') key = KC_A + c - 'a';
+        else if (c >= 'A' && c <= 'Z') key = LSFT(KC_A + c - 'A');
+        else if (c >= '1' && c <= '9') key = KC_1 + c - '1';
+        else if (c == '0') key = KC_0;
+        if (key != KC_NO) send_key(OUT_JIS | key);
+    } else if (mejiro_steno_jis_host() && key != KC_NO &&
+               c != '\\' && c != '-' && c != ';' && c != '&' && c != '$' && c != '%') {
+        send_key(key);
     } else {
-        send_char(c);
+        send_key(OUT_CHAR | (uint8_t)c);
     }
 }
 
@@ -122,10 +192,13 @@ static bool next_text(const uint8_t *text, size_t length, size_t *position, cons
         ++*position;
         return true;
     }
-    for (size_t i = 0; i < sizeof(ime_glyphs) / sizeof(ime_glyphs[0]); ++i) {
-        size_t bytes = strlen(ime_glyphs[i].glyph);
-        if (bytes <= length - *position && memcmp(text + *position, ime_glyphs[i].glyph, bytes) == 0) {
-            *keys = ime_glyphs[i].keys;
+    const ime_glyph_t *glyphs = output_jis ? kana_glyphs : ime_glyphs;
+    const size_t count = output_jis ? sizeof(kana_glyphs) / sizeof(*kana_glyphs)
+                                    : sizeof(ime_glyphs) / sizeof(*ime_glyphs);
+    for (size_t i = 0; i < count; ++i) {
+        size_t bytes = strlen(glyphs[i].glyph);
+        if (bytes <= length - *position && memcmp(text + *position, glyphs[i].glyph, bytes) == 0) {
+            *keys = glyphs[i].keys;
             *position += bytes;
             return true;
         }
@@ -173,6 +246,7 @@ static void send_text(const uint8_t *text, size_t length) {
 
 static void send_operation(uint8_t key) {
     if (key == MEJIRO_SELECT_ALTERNATE_SYSTEM) {
+        mejiro_engine_drain();
         (void)mejiro_steno_select_alternate_system();
         return;
     }
@@ -190,7 +264,7 @@ static void send_operation(uint8_t key) {
         [MEJIRO_SHIFT_0] = LSFT(KC_0),
         [MEJIRO_IME_ON] = KC_LNG1, [MEJIRO_IME_OFF] = KC_LNG2,
     };
-    if (supported_key(key)) mejiro_steno_tap(qmk_keys[key]);
+    if (supported_key(key)) send_key((output_jis && key == MEJIRO_SHIFT_0 ? OUT_JIS : 0) | qmk_keys[key]);
 }
 
 static bool valid_replay(const mejiro_translation *translation, size_t count) {
@@ -211,12 +285,16 @@ static void send_output(const mejiro_translation *translation, size_t external_c
     size_t from = 0;
     size_t external = 0;
     replaying = true;
-    if (external_count) mejiro_keyboard_replay_begin();
+    if (external_count) {
+        mejiro_engine_drain();
+        mejiro_keyboard_replay_begin();
+    }
     for (uint8_t i = 0; i <= translation->operation_count; ++i) {
         while (external < external_count && replay_events[external].operation_index == i) {
             mejiro_recorded_event e = replay_events[external++];
             send_text(translation->text + from, e.byte_offset - from);
             from = e.byte_offset;
+            mejiro_engine_drain();
             mejiro_keyboard_replay_event(&e.event);
         }
         if (i < translation->operation_count) {
@@ -227,7 +305,10 @@ static void send_output(const mejiro_translation *translation, size_t external_c
         }
     }
     send_text(translation->text + from, translation->text_len - from);
-    if (external_count) mejiro_keyboard_replay_end();
+    if (external_count) {
+        mejiro_engine_drain();
+        mejiro_keyboard_replay_end();
+    }
     replaying = false;
 }
 
@@ -260,6 +341,9 @@ static void remember_units(uint32_t units) {
 void mejiro_engine_init(void) {
     mejiro_qmk_init();
     undo_count = 0;
+    output_head = output_count = 0;
+    output_jis = have_last_tap = false;
+    output_gap = macro_jis = 0;
     memset(macro_units, 0, sizeof(macro_units));
     pending_count = 0;
     recording_failed = replaying = false;
@@ -267,7 +351,34 @@ void mejiro_engine_init(void) {
 }
 
 void mejiro_engine_reset(void) {
+    mejiro_engine_drain();
     mejiro_qmk_reset();
+    undo_count = 0;
+}
+
+void mejiro_engine_set_immediate_sokuon(bool enabled) {
+    mejiro_qmk_set_immediate_sokuon(enabled);
+    undo_count = 0;
+}
+
+void mejiro_engine_set_output(uint8_t options) {
+    static const uint8_t gaps[] = {0, 2, 5, 10};
+    if (options & ~MJI_OUTPUT_OPTIONS_MASK) return;
+    mejiro_engine_drain();
+    output_gap = gaps[options >> 1];
+    bool jis = (options & 1) != 0;
+    if (output_jis == jis) return;
+    mejiro_engine_flush_keyboard();
+    // Existing recordings are literal and only replay in their original
+    // format. Abort open takes rather than mix two output formats.
+    for (uint8_t i = 0; i < MEJIRO_MACROS; ++i) {
+        if (mejiro_qmk_is_recording(i)) {
+            abort_capture();
+            break;
+        }
+    }
+    output_jis = jis;
+    mejiro_qmk_set_output_jis(jis);
     undo_count = 0;
 }
 
@@ -285,16 +396,28 @@ void mejiro_engine_process(const char *stroke, uint8_t length) {
     }
     if (preview.request == 5) aborted_slots = 0;
     if (preview.request == 0 && !can_send(&preview)) return;
+    if (preview.request == 6 && preview.argument < MEJIRO_MACROS &&
+        ((macro_jis >> preview.argument) & 1U) != output_jis) return;
 
     mejiro_translation kana;
     uint32_t units = 0;
     if (preview.request == 0 && mejiro_qmk_preview_kana((const uint8_t *)stroke, length, &kana) == 0) {
+        if (output_jis) {
+            // Literal ASCII in a kana IME would be interpreted as kana; only
+            // the punctuation explicitly handled by the JIS renderer is safe.
+            for (uint16_t i = 0; i < kana.text_len; ++i) {
+                uint8_t c = kana.text[i];
+                if (c < 128 && c != ',' && c != '.' && c != '-' && c != ' ') return;
+            }
+        }
         units = kana_units(&kana);
         // The Kana preview includes a final small-tsu even when the Romaji
         // renderer defers it. A small-tsu carried from the previous stroke
         // is emitted with this stroke instead. Count only committed kana.
         if (mejiro_qmk_pending_sokuon()) ++units;
         if (preview.next.pending_sokuon && units) --units;
+    } else if (preview.request == 0 && output_jis) {
+        return;
     } else if (preview.request == 2 && undo_count) {
         units = undo_units[undo_count - 1];
     } else if (preview.request == 6 && preview.argument < MEJIRO_MACROS) {
@@ -317,13 +440,15 @@ void mejiro_engine_process(const char *stroke, uint8_t length) {
     if (event.kind == 2) {
         if (preview.request == 4 && preview.argument < MEJIRO_MACROS && mejiro_qmk_is_recording(preview.argument)) {
             macro_units[preview.argument] = 0;
+            uint8_t mask = (uint8_t)(1U << preview.argument);
+            macro_jis = (macro_jis & ~mask) | (output_jis ? mask : 0);
             recording_failed = false;
             aborted_slots = 0;
         }
         return;
     }
     if (event.kind == 1) {
-        for (uint32_t i = 0; i < event.erase_units; ++i) mejiro_steno_tap(KC_BSPC);
+        for (uint32_t i = 0; i < event.erase_units; ++i) send_key(KC_BSPC);
         if (undo_count) --undo_count;
         return;
     }

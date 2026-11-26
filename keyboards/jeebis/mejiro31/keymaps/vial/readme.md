@@ -78,6 +78,13 @@ and the requested value in byte 18. Writes require Vial unlock. This flag is
 stored in the keyboard's user settings and restored at startup. The existing
 layout command (`FA 01 01`) leaves this flag unchanged.
 
+The extension reports immediate small-tsu support in response byte 26
+(1 indicates support) and the current setting in response byte 27 (0/1).
+Set it with `FA 01 04`, the same signature, and value in byte 27. Send
+zero in byte 26 in all requests. Writes require Vial unlock. This setting
+is off by default, persists in user EEPROM, and affects only the built-in
+Mejiro Romaji output, not Plover HID.
+
 Unlocking requires holding the top-left and top-right physical keys. While
 unlocking, the unified input engine is paused. Do not enable Vial's dynamic
 Combo/Tap Dance/QMK Settings: this keyboard's engine owns combo and Tap/Hold

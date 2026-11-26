@@ -163,7 +163,12 @@ void mejiro_reset_state(void) {
 #endif
 }
 #ifndef MJI_TEST_REAL_RECORDING
-void mejiro_engine_init(void) {}
+static bool mock_immediate_sokuon;
+static uint8_t mock_output_options;
+void mejiro_engine_init(void) { mock_immediate_sokuon = false; mock_output_options = 0; }
+void mejiro_engine_set_output(uint8_t options) { mock_output_options = options; }
+void mejiro_engine_tick(uint32_t now) { (void)now; }
+void mejiro_engine_set_immediate_sokuon(bool enabled) { mock_immediate_sokuon = enabled; }
 void mejiro_engine_reset(void) {}
 void mejiro_engine_record(mejiro_hid_event event) { (void)event; }
 bool mejiro_engine_flush_keyboard(void) { return true; }
@@ -318,9 +323,38 @@ static void test_steno_entry_ime_on(void) {
         event(30, 29, true);
         event(35, 29, false);
         assert(steno_mode && presses[KC_LNG1] == 2 * expected);
-        assert(presses[KC_LNG2] == 1);
+        assert(presses[KC_LNG2] == expected);
         all_up();
     }
+}
+static void test_auto_ime_switch_disabled(void) {
+#ifdef MJI_WEB_VIAL
+    setup();
+    mejiro_mode = true;
+    auto_ime_switch = false;
+    assert(custom_action(MJI_MODE, true));
+    assert(steno_mode && input.layout.language == (MJI_EN_PROFILE ? MJI_ENGLISH : MJI_JAPANESE));
+    assert(!presses[KC_LNG1] && !presses[KC_LNG2]);
+    assert(custom_action(MJI_MODE, true));
+    assert(!steno_mode && input.layout.language == MJI_ENGLISH);
+    assert(!presses[KC_LNG1] && !presses[KC_LNG2]);
+    assert(custom_action(KC_LNG1, true));
+    assert(presses[KC_LNG1] == 1 && input.layout.language == MJI_JAPANESE);
+    assert(custom_action(KC_LNG2, true));
+    assert(presses[KC_LNG2] == 1 && input.layout.language == MJI_ENGLISH);
+
+    // Enabling after entry must not produce an unmatched exit tap.
+    assert(custom_action(MJI_MODE, true));
+    auto_ime_switch = true;
+    assert(custom_action(MJI_MODE, true));
+    assert(presses[KC_LNG1] == 1 && presses[KC_LNG2] == 1);
+    // Neither should switching from Plover to built-in Mejiro mid-session.
+    mejiro_mode = false;
+    assert(custom_action(MJI_MODE, true));
+    assert(custom_action(MJI_MEJIRO, true));
+    assert(custom_action(MJI_MODE, true));
+    assert(presses[KC_LNG1] == 1 && presses[KC_LNG2] == 1);
+#endif
 }
 static void test_keyboard_language_restored(void) {
     static const mji_layout_entry_t en[] = {{KC_Q, {KC_A, 0}, {KC_A, 0}}};
@@ -347,8 +381,9 @@ static void test_keyboard_language_restored(void) {
             event(20, 29, true);
             event(25, 29, false);
             assert(!steno_mode && input.layout.language == language);
-            assert(presses[KC_LNG1] == before_on + (language == MJI_JAPANESE));
-            assert(presses[KC_LNG2] == before_off + (language == MJI_ENGLISH));
+            bool expected = !MJI_EN_PROFILE && use_mejiro;
+            assert(presses[KC_LNG1] == before_on + (expected && language == MJI_JAPANESE));
+            assert(presses[KC_LNG2] == before_off + (expected && language == MJI_ENGLISH));
             assert(!pressed_mods[KC_LNG1] && !pressed_mods[KC_LNG2]);
             event(30, 1, true);
             tick(70);
@@ -920,6 +955,7 @@ int main(void) {
     test_mode_and_language_clear();
     puts("adapter mode/language reset OK");
     test_steno_entry_ime_on();
+    test_auto_ime_switch_disabled();
     puts("adapter steno entry IME ON OK");
     test_keyboard_language_restored();
     puts("adapter keyboard language/IME restoration OK");
